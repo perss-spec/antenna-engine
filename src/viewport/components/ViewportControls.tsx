@@ -1,172 +1,145 @@
 import { useState } from 'react'
 
-export interface ViewportControlsProps {
-  showGrid: boolean
-  onGridToggle: (show: boolean) => void
-  showAxes: boolean
-  onAxesToggle: (show: boolean) => void
-  showCurrent?: boolean
-  onCurrentToggle?: (show: boolean) => void
-  frequency?: number
-  onFrequencyChange?: (frequency: number) => void
+interface ViewportControlsProps {
+  onToggleRadiation: (visible: boolean) => void
+  onToggleAnimation: (animated: boolean) => void
+  onOpacityChange: (opacity: number) => void
+  radiationVisible: boolean
+  animationEnabled: boolean
+  radiationOpacity: number
 }
 
 export function ViewportControls({
-  showGrid,
-  onGridToggle,
-  showAxes,
-  onAxesToggle,
-  showCurrent = false,
-  onCurrentToggle,
-  frequency = 2.4e9,
-  onFrequencyChange
+  onToggleRadiation,
+  onToggleAnimation,
+  onOpacityChange,
+  radiationVisible,
+  animationEnabled,
+  radiationOpacity
 }: ViewportControlsProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-
-  const formatFrequency = (freq: number): string => {
-    if (freq >= 1e9) {
-      return `${(freq / 1e9).toFixed(2)} GHz`
-    } else if (freq >= 1e6) {
-      return `${(freq / 1e6).toFixed(2)} MHz`
-    } else if (freq >= 1e3) {
-      return `${(freq / 1e3).toFixed(2)} kHz`
-    } else {
-      return `${freq.toFixed(2)} Hz`
-    }
-  }
-
-  const handleFrequencyInput = (value: string) => {
-    const num = parseFloat(value)
-    if (!isNaN(num) && num > 0) {
-      onFrequencyChange?.(num * 1e9) // Assume input is in GHz
-    }
-  }
-
+  
   return (
-    <div className="viewport-controls" style={{
-      position: 'absolute',
-      top: '10px',
-      right: '10px',
-      background: 'rgba(0, 0, 0, 0.8)',
-      borderRadius: '8px',
-      padding: '12px',
-      color: 'white',
-      fontSize: '14px',
-      minWidth: '200px',
-      zIndex: 1000
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ margin: 0, fontSize: '16px', flexGrow: 1 }}>Viewport Controls</h3>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: '18px'
-          }}
-        >
-          {isExpanded ? '−' : '+'}
-        </button>
-      </div>
+    <div style={styles.container}>
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={styles.toggleButton}
+      >
+        {isExpanded ? '◀' : '▶'} Controls
+      </button>
       
       {isExpanded && (
-        <div>
-          {/* Display toggles */}
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+        <div style={styles.panel}>
+          <div style={styles.section}>
+            <h4 style={styles.sectionTitle}>Radiation Pattern</h4>
+            
+            <label style={styles.control}>
               <input
                 type="checkbox"
-                checked={showGrid}
-                onChange={(e) => onGridToggle(e.target.checked)}
-                style={{ marginRight: '8px' }}
+                checked={radiationVisible}
+                onChange={(e) => onToggleRadiation(e.target.checked)}
+                style={styles.checkbox}
               />
-              Show Grid
+              Show Pattern
             </label>
             
-            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+            <label style={styles.control}>
               <input
                 type="checkbox"
-                checked={showAxes}
-                onChange={(e) => onAxesToggle(e.target.checked)}
-                style={{ marginRight: '8px' }}
+                checked={animationEnabled}
+                onChange={(e) => onToggleAnimation(e.target.checked)}
+                disabled={!radiationVisible}
+                style={styles.checkbox}
               />
-              Show Axes
+              Auto Rotate
             </label>
             
-            {onCurrentToggle && (
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
-                <input
-                  type="checkbox"
-                  checked={showCurrent}
-                  onChange={(e) => onCurrentToggle(e.target.checked)}
-                  style={{ marginRight: '8px' }}
-                />
-                Current Distribution
-              </label>
-            )}
-          </div>
-          
-          {/* Frequency control */}
-          {onFrequencyChange && (
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '4px' }}>
-                Frequency: {formatFrequency(frequency)}
-              </label>
+            <label style={styles.control}>
+              <span>Opacity:</span>
               <input
                 type="range"
-                min="0.1"
-                max="10"
-                step="0.1"
-                value={frequency / 1e9}
-                onChange={(e) => handleFrequencyInput(e.target.value)}
-                style={{
-                  width: '100%',
-                  marginBottom: '4px'
-                }}
+                min={0.1}
+                max={1}
+                step={0.1}
+                value={radiationOpacity}
+                onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
+                disabled={!radiationVisible}
+                style={styles.slider}
               />
-              <input
-                type="number"
-                placeholder="GHz"
-                step="0.1"
-                min="0.1"
-                max="100"
-                value={(frequency / 1e9).toFixed(2)}
-                onChange={(e) => handleFrequencyInput(e.target.value)}
-                style={{
-                  width: '80px',
-                  padding: '2px 4px',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid #555',
-                  borderRadius: '4px',
-                  color: 'white'
-                }}
-              />
-              <span style={{ marginLeft: '4px', fontSize: '12px' }}>GHz</span>
-            </div>
-          )}
+              <span>{(radiationOpacity * 100).toFixed(0)}%</span>
+            </label>
+          </div>
           
-          {/* Current overlay legend */}
-          {showCurrent && (
-            <div style={{ fontSize: '12px', color: '#ccc' }}>
-              <div style={{ marginBottom: '4px' }}>Current Scale:</div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                background: 'linear-gradient(to right, #0066ff, #ff0000)',
-                height: '12px',
-                borderRadius: '2px',
-                marginBottom: '4px'
-              }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Low</span>
-                <span>High</span>
-              </div>
+          <div style={styles.section}>
+            <h4 style={styles.sectionTitle}>View</h4>
+            
+            <div style={styles.info}>
+              <div>• Mouse: Orbit camera</div>
+              <div>• Wheel: Zoom in/out</div>
+              <div>• Right-click: Pan view</div>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
   )
+}
+
+const styles = {
+  container: {
+    position: 'absolute' as const,
+    top: '20px',
+    left: '20px',
+    zIndex: 1000
+  },
+  toggleButton: {
+    background: 'rgba(0, 0, 0, 0.8)',
+    color: 'white',
+    border: 'none',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontFamily: 'monospace'
+  },
+  panel: {
+    background: 'rgba(0, 0, 0, 0.9)',
+    color: 'white',
+    padding: '16px',
+    borderRadius: '8px',
+    marginTop: '8px',
+    minWidth: '220px',
+    fontFamily: 'monospace',
+    fontSize: '12px'
+  },
+  section: {
+    marginBottom: '16px'
+  },
+  sectionTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#00ff88',
+    borderBottom: '1px solid #333',
+    paddingBottom: '4px'
+  },
+  control: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '8px',
+    cursor: 'pointer'
+  },
+  checkbox: {
+    cursor: 'pointer'
+  },
+  slider: {
+    flex: 1,
+    margin: '0 8px'
+  },
+  info: {
+    fontSize: '11px',
+    color: '#ccc',
+    lineHeight: '1.4'
+  }
 }

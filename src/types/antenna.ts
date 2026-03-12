@@ -237,6 +237,14 @@ export interface MeshData {
   edges: [number, number][];
 }
 
+// Radiation pattern data
+export interface RadiationPattern {
+  frequency: number;
+  theta: number[];
+  phi: number[];
+  gain: number[][];
+}
+
 export type ExportFormat = 'json' | 'csv' | 'touchstone' | 'matlab' | 'vtu';
 export type ImportFormat = 'json' | 'stl' | 'step' | 'gerber';
 
