@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Antenna Engine — Pipeline Map</title>
+<style>
+:root {
+  --bg: #18181b; --surface: #1e1e24; --node: #25252d; --node-hover: #2a2a34;
+  --border: #35353f; --text: #e4e4e7; --dim: #71717a; --muted: #3f3f46;
+  --accent: #6366f1; --ok: #22c55e; --err: #ef4444; --warn: #eab308;
+  --purple: #a855f7; --blue: #3b82f6; --green: #10b981; --teal: #14b8a6;
+  --orange: #f59e0b; --pink: #ec4899; --gray: #6b7280;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,system-ui,sans-serif;overflow:hidden;width:100vw;height:100vh;cursor:grab;user-select:none}
+body:active{cursor:grabbing}
+
+.dots{position:fixed;inset:0;background-image:radial-gradient(circle,#27272a 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+.topbar{position:fixed;top:0;left:0;right:0;height:44px;background:rgba(24,24,27,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;font-size:13px}
+.topbar-l{display:flex;align-items:center;gap:10px}
+.tlogo{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+.topbar h1{font-size:14px;font-weight:600}
+.topbar h1 b{color:var(--accent)}
+.topbar-r{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:12px}
+.nav-link{color:var(--accent);text-decoration:none;font-size:12px;font-weight:500;padding:4px 10px;border:1px solid rgba(99,102,241,.3);border-radius:5px;transition:all .2s}
+.nav-link:hover{background:rgba(99,102,241,.12);border-color:var(--accent)}
+.zbtn{width:26px;height:26px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.zbtn:hover{background:var(--node)}
+.zl{font-family:monospace;min-width:36px;text-align:center;font-size:11px;color:var(--dim)}
+.cdot{width:7px;height:7px;border-radius:50%;background:var(--gray)}
+.cdot.on{background:var(--ok);box-shadow:0 0 6px var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.canvas{position:fixed;top:44px;left:0;right:0;bottom:0;overflow:hidden}
+.world{position:absolute;transform-origin:0 0;will-change:transform}
+
+/* N8N-style nodes */
+.n{position:absolute;width:160px;height:42px;background:var(--node);border:1.5px solid var(--border);border-radius:8px;display:flex;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;overflow:hidden;font-size:12px}
+.n:hover{border-color:#52525b;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:5}
+.n.running{border-color:var(--accent);box-shadow:0 0 16px rgba(99,102,241,.25);animation:node-glow 2s ease-in-out infinite}
+.n.completed{border-color:rgba(34,197,94,.4);box-shadow:0 0 8px rgba(34,197,94,.1)}
+.n.error{border-color:rgba(239,68,68,.4);animation:node-err 1.5s ease-in-out infinite}
+@keyframes node-glow{0%,100%{box-shadow:0 0 16px rgba(99,102,241,.25);border-color:#6366f1}50%{box-shadow:0 0 28px rgba(99,102,241,.4);border-color:#818cf8}}
+@keyframes node-err{0%,100%{box-shadow:0 0 8px rgba(239,68,68,.2)}50%{box-shadow:0 0 18px rgba(239,68,68,.35)}}
+.n-accent{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:8px 0 0 8px}
+.n-ico{width:32px;height:42px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-left:4px}
+.n-name{flex:1;padding:0 8px 0 2px;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.n-sub{font-size:9px;color:var(--dim);position:absolute;bottom:2px;right:6px;font-weight:500}
+
+/* LLM sub-nodes (smaller) */
+.n.llm{width:120px;height:36px;border-radius:6px;opacity:.85}
+.n.llm .n-ico{width:26px;height:36px;font-size:12px}
+.n.llm .n-name{font-size:10px}
+
+/* Workflow group labels */
+.wf-label{position:absolute;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);pointer-events:none}
+.wf-label .wf-tag{font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;font-weight:400;letter-spacing:0}
+
+.wf-group{position:absolute;border:1px dashed rgba(63,63,70,.4);border-radius:12px;pointer-events:none}
+
+/* Connection SVG */
+svg.conns{position:absolute;top:0;left:0;overflow:visible;pointer-events:none}
+.c-line{fill:none;stroke:#3f3f46;stroke-width:1.5;transition:stroke .4s,stroke-width .4s}
+.c-line.active{stroke:var(--accent);stroke-width:2.5;filter:drop-shadow(0 0 3px rgba(99,102,241,.4))}
+.c-line.done{stroke:rgba(34,197,94,.5);stroke-width:1.5}
+.c-line.cross{stroke:#4f46e5;stroke-dasharray:6 3;stroke-width:1.5}
+.c-line.cross.active{stroke:#818cf8;stroke-width:2.5;stroke-dasharray:none;filter:drop-shadow(0 0 4px rgba(99,102,241,.5))}
+.c-line.retry{stroke:var(--warn);stroke-dasharray:4 3;stroke-width:1.5}
+.c-line.ai{stroke:var(--green);stroke-width:1;stroke-dasharray:3 2}
+.c-line.ai.active{stroke:#34d399;stroke-width:1.5;stroke-dasharray:none;filter:drop-shadow(0 0 3px rgba(16,185,129,.4))}
+/* Animated flowing particle on active lines */
+.flow-dot{fill:var(--accent);opacity:0;filter:drop-shadow(0 0 4px currentColor)}
+.flow-dot.on{opacity:.9}
+.c-arr{fill:#3f3f46}
+.c-arr.active{fill:var(--accent)}
+.c-arr.done{fill:rgba(34,197,94,.5)}
+
+/* Minimap */
+.mm{position:fixed;bottom:12px;right:12px;width:200px;height:140px;background:rgba(30,30,36,.85);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:8px;z-index:50;overflow:hidden}
+.mm-n{position:absolute;border-radius:1px;background:var(--muted)}
+.mm-n.running{background:var(--accent)}
+.mm-n.completed{background:var(--ok)}
+.mm-n.error{background:var(--err)}
+.mm-vp{position:absolute;border:1.5px solid var(--accent);border-radius:2px;background:rgba(99,102,241,.06);pointer-events:none}
+
+.legend{position:fixed;bottom:12px;left:12px;display:flex;gap:14px;font-size:11px;color:var(--dim);z-index:50;background:rgba(30,30,36,.85);backdrop-filter:blur(8px);padding:6px 12px;border-radius:6px;border:1px solid var(--border)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;vertical-align:middle}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted);z-index:50}
+.hint kbd{background:var(--surface);border:1px solid var(--border);padding:1px 4px;border-radius:2px;font-family:monospace;font-size:9px}
+</style>
+</head>
+<body>
+<div class="dots"></div>
+<div class="topbar">
+  <div class="topbar-l">
+    <div class="tlogo">A</div>
+    <h1><b>Antenna Engine</b> — Full Pipeline</h1>
+  </div>
+  <div class="topbar-r">
+    <a href="dashboard.html" class="nav-link">&#x2190; Dashboard</a>
+    <div style="display:flex;align-items:center;gap:5px"><div class="cdot" id="cd"></div><span id="cl">...</span></div>
+    <div style="display:flex;align-items:center;gap:3px">
+      <button class="zbtn" onclick="zoomBy(-.12)">-</button>
+      <span class="zl" id="zl">100%</span>
+      <button class="zbtn" onclick="zoomBy(.12)">+</button>
+      <button class="zbtn" onclick="fit()">F</button>
+    </div>
+  </div>
+</div>
+<div class="canvas" id="cv">
+  <div class="world" id="W">
+    <svg class="conns" id="svg" width="4000" height="3000"></svg>
+  </div>
+</div>
+<div class="mm" id="mm"></div>
+<div class="legend">
+  <span><i style="background:var(--muted)"></i>Idle</span>
+  <span><i style="background:var(--accent)"></i>Running</span>
+  <span><i style="background:var(--ok)"></i>Done</span>
+  <span><i style="background:var(--err)"></i>Error</span>
+  <span><i style="background:var(--green);opacity:.6"></i>LLM</span>
+  <span style="color:#4f46e5">--- Cross-WF</span>
+  <span style="color:var(--warn)">--- Retry</span>
+</div>
+<div class="hint"><kbd>Scroll</kbd> zoom <kbd>Drag</kbd> pan <kbd>F</kbd> fit <kbd>R</kbd> reset</div>
+
+<script>
+// ═══ TYPE STYLES ═══
+const T={
+  webhook:['#9333ea','⚡'],executeCommand:['#6b7280','▸_'],code:['#f59e0b','{ }'],
+  agent:['#3b82f6','\u{1F916}'],lmChatAnthropic:['#10b981','\u{1F170}'],
+  lmChatOpenAi:['#14b8a6','\u{1F310}'],if:['#8b5cf6','\u25C6'],
+  respondToWebhook:['#22c55e','\u21A9'],httpRequest:['#60a5fa','\u2197'],
+  merge:['#a855f7','\u2295']
+};
+
+// ═══ NODE DATA [id, name, type, x, y, wf, extra] ═══
+const NX=160, NY=42, LX=120, LY=36;
+const nodes=[];const conns=[];
+
+// Helper: team workflow template
+function addTeam(pfx, label, llm, llmT, cx, cy, wf){
+  const n=(id,nm,tp,dx,dy,extra)=>{nodes.push({id:pfx+id,name:nm,type:tp,x:cx+dx,y:cy+dy,wf,extra,team:pfx})};
+  n('-wh','Webhook','webhook',0,0);
+  n('-pull','Git Pull','executeCommand',0,62);
+  n('-agent',label+' Agent','agent',0,130);
+  n('-llm',llm,llmT,155,122,{isLlm:true});
+  n('-write','Write Files','code',0,200);
+  n('-build','Build & Test','executeCommand',0,270);
+  n('-check','Build OK?','if',0,340);
+  n('-commit','Git Commit','executeCommand',-15,415);
+  n('-ok','Respond OK','respondToWebhook',-15,485);
+  n('-retry','Check Retry','code',150,415);
+  n('-canretry','Can Retry?','if',150,485);
+  n('-errst','Set Error','executeCommand',150,560);
+  n('-fail','Respond Fail','respondToWebhook',150,630);
+  // Connections
+  const c=(a,b,t)=>conns.push({from:pfx+a,to:pfx+b,type:t||'main'});
+  c('-wh','-pull');c('-pull','-agent');c('-agent','-write');c('-write','-build');
+  c('-build','-check');c('-check','-commit','true');c('-check','-retry','false');
+  c('-commit','-ok');c('-retry','-canretry');
+  c('-canretry','-agent','retry');c('-canretry','-errst','false');c('-errst','-fail');
+  conns.push({from:pfx+'-llm',to:pfx+'-agent',type:'ai'});
+}
+
+// ── Trigger (y=40) ──
+const TY=40;
+nodes.push(
+  {id:'t-wh',name:'Webhook',type:'webhook',x:440,y:TY,wf:'trigger'},
+  {id:'t-init',name:'Init State',type:'code',x:630,y:TY,wf:'trigger'},
+  {id:'t-wt',name:'Setup Worktrees',type:'executeCommand',x:820,y:TY,wf:'trigger'},
+  {id:'t-pm',name:'Call PM',type:'httpRequest',x:1010,y:TY-20,wf:'trigger'},
+  {id:'t-resp',name:'Respond',type:'respondToWebhook',x:1010,y:TY+45,wf:'trigger'},
+);
+conns.push({from:'t-wh',to:'t-init',type:'main'},{from:'t-init',to:'t-wt',type:'main'},
+  {from:'t-wt',to:'t-pm',type:'main'},{from:'t-wt',to:'t-resp',type:'main'});
+
+// ── PM (y=155) ──
+const PY=155;
+nodes.push(
+  {id:'p-wh',name:'Webhook',type:'webhook',x:340,y:PY,wf:'pm'},
+  {id:'p-agent',name:'PM Agent',type:'agent',x:530,y:PY,wf:'pm'},
+  {id:'p-llm',name:'Claude Opus',type:'lmChatAnthropic',x:600,y:PY+65,wf:'pm',extra:{isLlm:true}},
+  {id:'p-save',name:'Save Roadmap',type:'code',x:720,y:PY,wf:'pm'},
+  {id:'p-arch',name:'Call Architect',type:'httpRequest',x:910,y:PY-15,wf:'pm'},
+  {id:'p-resp',name:'Respond',type:'respondToWebhook',x:910,y:PY+45,wf:'pm'},
+);
+conns.push({from:'p-wh',to:'p-agent',type:'main'},{from:'p-llm',to:'p-agent',type:'ai'},
+  {from:'p-agent',to:'p-save',type:'main'},{from:'p-save',to:'p-arch',type:'main'},
+  {from:'p-save',to:'p-resp',type:'main'});
+
+// ── Architect (y=290) ──
+const AY=290;
+nodes.push(
+  {id:'a-wh',name:'Webhook',type:'webhook',x:200,y:AY,wf:'architect'},
+  {id:'a-agent',name:'Architect Agent',type:'agent',x:390,y:AY,wf:'architect'},
+  {id:'a-llm',name:'Claude Opus',type:'lmChatAnthropic',x:460,y:AY+65,wf:'architect',extra:{isLlm:true}},
+  {id:'a-save',name:'Save Architecture',type:'code',x:580,y:AY,wf:'architect'},
+  {id:'a-commit',name:'Commit & Sync',type:'executeCommand',x:770,y:AY,wf:'architect'},
+  {id:'a-disp',name:'Call Dispatch',type:'httpRequest',x:960,y:AY-15,wf:'architect'},
+  {id:'a-resp',name:'Respond',type:'respondToWebhook',x:960,y:AY+45,wf:'architect'},
+);
+conns.push({from:'a-wh',to:'a-agent',type:'main'},{from:'a-llm',to:'a-agent',type:'ai'},
+  {from:'a-agent',to:'a-save',type:'main'},{from:'a-save',to:'a-commit',type:'main'},
+  {from:'a-commit',to:'a-disp',type:'main'},{from:'a-commit',to:'a-resp',type:'main'});
+
+// ── Dispatch (y=430) ──
+const DY=435;
+nodes.push(
+  {id:'d-wh',name:'Webhook',type:'webhook',x:80,y:DY,wf:'dispatch'},
+  {id:'d-prep',name:'Prepare Tasks',type:'code',x:260,y:DY,wf:'dispatch'},
+  {id:'d-core',name:'\u{1F980} Team Core',type:'httpRequest',x:450,y:DY-60,wf:'dispatch'},
+  {id:'d-ui',name:'\u{1F3A8} Team UI',type:'httpRequest',x:450,y:DY,wf:'dispatch'},
+  {id:'d-aiml',name:'\u{1F9E0} Team AIML',type:'httpRequest',x:450,y:DY+60,wf:'dispatch'},
+  {id:'d-m1',name:'Wave 1 Merge',type:'merge',x:650,y:DY,wf:'dispatch'},
+  {id:'d-w2',name:'Prep Wave 2',type:'code',x:840,y:DY,wf:'dispatch'},
+  {id:'d-gpu',name:'\u26A1 Team GPU',type:'httpRequest',x:1030,y:DY-35,wf:'dispatch'},
+  {id:'d-3d',name:'\u{1F52E} Team 3D',type:'httpRequest',x:1030,y:DY+35,wf:'dispatch'},
+  {id:'d-m2',name:'Wave 2 Merge',type:'merge',x:1230,y:DY,wf:'dispatch'},
+  {id:'d-fin',name:'Finalize',type:'code',x:1410,y:DY,wf:'dispatch'},
+  {id:'d-rev',name:'Call Review',type:'httpRequest',x:1590,y:DY-25,wf:'dispatch'},
+  {id:'d-resp',name:'Respond',type:'respondToWebhook',x:1590,y:DY+35,wf:'dispatch'},
+);
+conns.push(
+  {from:'d-wh',to:'d-prep',type:'main'},
+  {from:'d-prep',to:'d-core',type:'main'},{from:'d-prep',to:'d-ui',type:'main'},{from:'d-prep',to:'d-aiml',type:'main'},
+  {from:'d-core',to:'d-m1',type:'main'},{from:'d-ui',to:'d-m1',type:'main'},{from:'d-aiml',to:'d-m1',type:'main'},
+  {from:'d-m1',to:'d-w2',type:'main'},
+  {from:'d-w2',to:'d-gpu',type:'main'},{from:'d-w2',to:'d-3d',type:'main'},
+  {from:'d-gpu',to:'d-m2',type:'main'},{from:'d-3d',to:'d-m2',type:'main'},
+  {from:'d-m2',to:'d-fin',type:'main'},{from:'d-fin',to:'d-rev',type:'main'},{from:'d-fin',to:'d-resp',type:'main'}
+);
+
+// ── 5 TEAMS (y=620) ──
+const TEAM_Y=640;
+addTeam('core','Core','Claude Opus','lmChatAnthropic',    60,TEAM_Y,'team-core');
+addTeam('ui',  'UI',  'Claude Sonnet','lmChatAnthropic', 380,TEAM_Y,'team-ui');
+addTeam('aiml','AIML','Gemini 2.5','lmChatOpenAi',       700,TEAM_Y,'team-aiml');
+addTeam('gpu', 'GPU', 'DeepSeek V3','lmChatOpenAi',     1020,TEAM_Y,'team-gpu');
+addTeam('3d',  '3D',  'Claude Sonnet','lmChatAnthropic',1340,TEAM_Y,'team-3d');
+
+// ── Review (y=1380) ──
+const RY=1380;
+nodes.push(
+  {id:'r-wh',name:'Webhook',type:'webhook',x:200,y:RY,wf:'review'},
+  {id:'r-gather',name:'Gather Code',type:'code',x:390,y:RY,wf:'review'},
+  {id:'r-claude',name:'Claude Reviewer',type:'agent',x:580,y:RY-45,wf:'review'},
+  {id:'r-cllm',name:'Sonnet 4',type:'lmChatAnthropic',x:650,y:RY-110,wf:'review',extra:{isLlm:true}},
+  {id:'r-ds',name:'DeepSeek Reviewer',type:'agent',x:580,y:RY+45,wf:'review'},
+  {id:'r-dllm',name:'DeepSeek V3',type:'lmChatOpenAi',x:650,y:RY+110,wf:'review',extra:{isLlm:true}},
+  {id:'r-merge',name:'Merge Reviews',type:'merge',x:780,y:RY,wf:'review'},
+  {id:'r-combine',name:'Combine',type:'code',x:970,y:RY,wf:'review'},
+  {id:'r-if',name:'Approved?',type:'if',x:1150,y:RY,wf:'review'},
+  {id:'r-int',name:'Call Integrate',type:'httpRequest',x:1340,y:RY-30,wf:'review'},
+  {id:'r-retry',name:'Retry Dispatch',type:'httpRequest',x:1340,y:RY+45,wf:'review'},
+  {id:'r-resp',name:'Respond',type:'respondToWebhook',x:1530,y:RY,wf:'review'},
+);
+conns.push(
+  {from:'r-wh',to:'r-gather',type:'main'},
+  {from:'r-gather',to:'r-claude',type:'main'},{from:'r-gather',to:'r-ds',type:'main'},
+  {from:'r-cllm',to:'r-claude',type:'ai'},{from:'r-dllm',to:'r-ds',type:'ai'},
+  {from:'r-claude',to:'r-merge',type:'main'},{from:'r-ds',to:'r-merge',type:'main'},
+  {from:'r-merge',to:'r-combine',type:'main'},{from:'r-combine',to:'r-if',type:'main'},
+  {from:'r-if',to:'r-int',type:'true'},{from:'r-if',to:'r-retry',type:'false'},
+  {from:'r-int',to:'r-resp',type:'main'},{from:'r-retry',to:'r-resp',type:'main'}
+);
+
+// ── Integrate (y=1610) ──
+const IY=1610;
+nodes.push(
+  {id:'i-wh',name:'Webhook',type:'webhook',x:250,y:IY,wf:'integrate'},
+  {id:'i-merge',name:'Merge Branches',type:'executeCommand',x:440,y:IY,wf:'integrate'},
+  {id:'i-conf',name:'Conflicts?',type:'if',x:630,y:IY,wf:'integrate'},
+  {id:'i-build',name:'Full Build',type:'executeCommand',x:820,y:IY-30,wf:'integrate'},
+  {id:'i-bcheck',name:'Build OK?',type:'if',x:1010,y:IY-30,wf:'integrate'},
+  {id:'i-tag',name:'Git Tag',type:'executeCommand',x:1200,y:IY-50,wf:'integrate'},
+  {id:'i-ok',name:'Respond OK',type:'respondToWebhook',x:1390,y:IY-50,wf:'integrate'},
+  {id:'i-bfail',name:'Build Failed',type:'respondToWebhook',x:1200,y:IY+30,wf:'integrate'},
+  {id:'i-cfail',name:'Conflict!',type:'respondToWebhook',x:820,y:IY+50,wf:'integrate'},
+);
+conns.push(
+  {from:'i-wh',to:'i-merge',type:'main'},{from:'i-merge',to:'i-conf',type:'main'},
+  {from:'i-conf',to:'i-build',type:'true'},{from:'i-conf',to:'i-cfail',type:'false'},
+  {from:'i-build',to:'i-bcheck',type:'main'},
+  {from:'i-bcheck',to:'i-tag',type:'true'},{from:'i-bcheck',to:'i-bfail',type:'false'},
+  {from:'i-tag',to:'i-ok',type:'main'}
+);
+
+// ── Status (side) ──
+nodes.push(
+  {id:'s-wh',name:'GET Status',type:'webhook',x:1500,y:80,wf:'status'},
+  {id:'s-read',name:'Read State',type:'executeCommand',x:1500,y:140,wf:'status'},
+  {id:'s-resp',name:'Respond',type:'respondToWebhook',x:1500,y:200,wf:'status'},
+);
+conns.push({from:'s-wh',to:'s-read',type:'main'},{from:'s-read',to:'s-resp',type:'main'});
+
+// ── Cross-workflow connections ──
+conns.push(
+  {from:'t-pm',to:'p-wh',type:'cross'},{from:'p-arch',to:'a-wh',type:'cross'},
+  {from:'a-disp',to:'d-wh',type:'cross'},
+  {from:'d-core',to:'core-wh',type:'cross'},{from:'d-ui',to:'ui-wh',type:'cross'},
+  {from:'d-aiml',to:'aiml-wh',type:'cross'},{from:'d-gpu',to:'gpu-wh',type:'cross'},
+  {from:'d-3d',to:'3d-wh',type:'cross'},
+  {from:'d-rev',to:'r-wh',type:'cross'},
+  {from:'r-int',to:'i-wh',type:'cross'},
+  {from:'r-retry',to:'d-wh',type:'cross'},
+);
+
+// ═══ WORKFLOW GROUPS ═══
+const groups=[
+  {name:'TRIGGER',wf:'trigger',color:'#6366f1'},
+  {name:'PROJECT MANAGER',wf:'pm',color:'#818cf8'},
+  {name:'ARCHITECT',wf:'architect',color:'#818cf8'},
+  {name:'DISPATCH',wf:'dispatch',color:'#6366f1'},
+  {name:'\u{1F980} RUST CORE',wf:'team-core',color:'#f97316'},
+  {name:'\u{1F3A8} UI',wf:'team-ui',color:'#a855f7'},
+  {name:'\u{1F9E0} AI/ML',wf:'team-aiml',color:'#22c55e'},
+  {name:'\u26A1 GPU',wf:'team-gpu',color:'#eab308'},
+  {name:'\u{1F52E} 3D',wf:'team-3d',color:'#06b6d4'},
+  {name:'REVIEW',wf:'review',color:'#c084fc'},
+  {name:'INTEGRATE',wf:'integrate',color:'#22d3ee'},
+  {name:'STATUS',wf:'status',color:'#6b7280'},
+];
+
+// Team ID → state key
+const teamMap={core:'core',ui:'ui',aiml:'aiml',gpu:'gpu','3d':'3d'};
+
+// ═══ RENDER ═══
+const W=document.getElementById('W');
+const svg=document.getElementById('svg');
+const nodeMap={};
+
+function render(){
+  // Groups
+  for(const g of groups){
+    const gn=nodes.filter(n=>n.wf===g.wf);
+    if(!gn.length)continue;
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const n of gn){
+      const w=n.extra?.isLlm?LX:NX, h=n.extra?.isLlm?LY:NY;
+      minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);
+      maxX=Math.max(maxX,n.x+w);maxY=Math.max(maxY,n.y+h);
+    }
+    const pad=16;
+    const div=document.createElement('div');
+    div.className='wf-group';
+    div.style.cssText=`left:${minX-pad}px;top:${minY-pad-14}px;width:${maxX-minX+pad*2}px;height:${maxY-minY+pad*2+14}px;border-color:${g.color}22`;
+    W.appendChild(div);
+    const lbl=document.createElement('div');
+    lbl.className='wf-label';
+    lbl.style.cssText=`left:${minX-pad+8}px;top:${minY-pad-12}px;color:${g.color}88`;
+    lbl.textContent=g.name;
+    W.appendChild(lbl);
+  }
+
+  // Nodes
+  for(const n of nodes){
+    const isLlm=n.extra?.isLlm;
+    const w=isLlm?LX:NX, h=isLlm?LY:NY;
+    const el=document.createElement('div');
+    el.className='n'+(isLlm?' llm':'');
+    el.id='nd-'+n.id;
+    el.style.left=n.x+'px';
+    el.style.top=n.y+'px';
+    const ts=T[n.type]||['#6b7280','?'];
+    el.innerHTML=`<div class="n-accent" style="background:${ts[0]}"></div><div class="n-ico">${ts[1]}</div><div class="n-name">${n.name}</div>`;
+    el.title=`${n.name}\n${n.type}\n${n.wf}`;
+    W.appendChild(el);
+    nodeMap[n.id]={el,data:n,w,h};
+  }
+
+  // Connections
+  svg.innerHTML='<defs>'+
+    '<marker id="ar" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#3f3f46"/></marker>'+
+    '<marker id="ar-a" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#6366f1"/></marker>'+
+    '<marker id="ar-d" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="rgba(34,197,94,.5)"/></marker>'+
+    '<marker id="ar-c" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#4f46e5"/></marker>'+
+    '<marker id="ar-w" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#eab308"/></marker>'+
+    '</defs>';
+
+  for(let i=0;i<conns.length;i++){
+    const c=conns[i];
+    const fn=nodeMap[c.from], tn=nodeMap[c.to];
+    if(!fn||!tn)continue;
+
+    const f=fn.data, t=tn.data;
+    let fx,fy,tx,ty;
+
+    // Determine connection direction
+    const dx=t.x-f.x, dy=t.y-f.y;
+    const goDown=dy>20;
+    const goRight=dx>20 && Math.abs(dy)<100;
+    const goUp=dy<-20;
+
+    if(c.type==='ai'){
+      // LLM → Agent: connect from left of LLM to right of Agent
+      fx=f.x; fy=f.y+fn.h/2;
+      tx=t.x+tn.w; ty=t.y+tn.h/2;
+    }else if(c.type==='retry'){
+      // Can Retry → Agent: loop back up
+      fx=f.x; fy=f.y;
+      tx=t.x+tn.w+5; ty=t.y+tn.h/2;
+    }else if(goDown){
+      fx=f.x+fn.w/2; fy=f.y+fn.h;
+      tx=t.x+tn.w/2; ty=t.y;
+    }else if(goUp){
+      fx=f.x+fn.w/2; fy=f.y;
+      tx=t.x+tn.w/2; ty=t.y+tn.h;
+    }else{
+      fx=f.x+fn.w; fy=f.y+fn.h/2;
+      tx=t.x; ty=t.y+tn.h/2;
+    }
+
+    let d;
+    if(c.type==='retry'){
+      // Loop: go left then up
+      const mx=fx-40;
+      d=`M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
+    }else if(c.type==='ai'){
+      const mx=(fx+tx)/2;
+      d=`M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
+    }else if(goDown||goUp){
+      const cp=Math.max(25,Math.abs(dy)*0.35);
+      const sign=goDown?1:-1;
+      d=`M${fx},${fy} C${fx},${fy+cp*sign} ${tx},${ty-cp*sign} ${tx},${ty}`;
+    }else{
+      const cp=Math.max(30,Math.abs(dx)*0.3);
+      d=`M${fx},${fy} C${fx+cp},${fy} ${tx-cp},${ty} ${tx},${ty}`;
+    }
+
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    let cls='c-line';
+    let marker='url(#ar)';
+    if(c.type==='cross'){cls='c-line cross';marker='url(#ar-c)';}
+    else if(c.type==='retry'){cls='c-line retry';marker='url(#ar-w)';}
+    else if(c.type==='ai'){cls='c-line ai';marker='';}
+    path.setAttribute('d',d);
+    path.setAttribute('class',cls);
+    path.setAttribute('id','cn-'+i);
+    if(marker)path.setAttribute('marker-end',marker);
+    svg.appendChild(path);
+  }
+}
+
+// ═══ ZOOM & PAN ═══
+let zoom=.48,panX=50,panY=10,drag=false,dsx,dsy;
+const cv=document.getElementById('cv');
+function apply(){W.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;document.getElementById('zl').textContent=Math.round(zoom*100)+'%';updMM()}
+cv.addEventListener('wheel',e=>{e.preventDefault();const d=e.deltaY>0?-.06:.06;const oz=zoom;zoom=Math.max(.12,Math.min(2.5,zoom+d));const r=cv.getBoundingClientRect();const mx=e.clientX-r.left,my=e.clientY-r.top;panX=mx-(mx-panX)*(zoom/oz);panY=my-(my-panY)*(zoom/oz);apply()},{passive:false});
+cv.addEventListener('mousedown',e=>{if(e.target.closest('.n'))return;drag=true;dsx=e.clientX-panX;dsy=e.clientY-panY});
+window.addEventListener('mousemove',e=>{if(!drag)return;panX=e.clientX-dsx;panY=e.clientY-dsy;apply()});
+window.addEventListener('mouseup',()=>drag=false);
+function zoomBy(d){zoom=Math.max(.12,Math.min(2.5,zoom+d));apply()}
+function fit(){zoom=.48;panX=50;panY=10;apply()}
+window.addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F')fit();if(e.key==='r'||e.key==='R'){zoom=1;panX=0;panY=0;apply()}if(e.key==='+')zoomBy(.1);if(e.key==='-')zoomBy(-.1)});
+
+// Touch
+let ltd=0;
+cv.addEventListener('touchstart',e=>{if(e.touches.length===1){drag=true;dsx=e.touches[0].clientX-panX;dsy=e.touches[0].clientY-panY}else if(e.touches.length===2){ltd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)}},{passive:true});
+cv.addEventListener('touchmove',e=>{if(e.touches.length===1&&drag){panX=e.touches[0].clientX-dsx;panY=e.touches[0].clientY-dsy;apply()}else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);zoom=Math.max(.12,Math.min(2.5,zoom+(d-ltd)*.004));ltd=d;apply()}},{passive:true});
+cv.addEventListener('touchend',()=>drag=false);
+
+// ═══ MINIMAP ═══
+function initMM(){
+  const mm=document.getElementById('mm');
+  const s=.055;
+  for(const n of nodes){
+    if(n.extra?.isLlm)continue;
+    const d=document.createElement('div');d.className='mm-n';d.id='mn-'+n.id;
+    d.style.cssText=`left:${n.x*s+6}px;top:${n.y*s+4}px;width:${NX*s}px;height:${NY*s}px`;
+    mm.appendChild(d);
+  }
+  const vp=document.createElement('div');vp.className='mm-vp';vp.id='mvp';mm.appendChild(vp);
+}
+function updMM(){
+  const vp=document.getElementById('mvp');if(!vp)return;
+  const s=.055,cw=window.innerWidth,ch=window.innerHeight-44;
+  vp.style.left=(-panX/zoom*s+6)+'px';vp.style.top=(-panY/zoom*s+4)+'px';
+  vp.style.width=(cw/zoom*s)+'px';vp.style.height=(ch/zoom*s)+'px';
+}
+
+// ═══ STATE POLLING ═══
+let prevState=null;
+const SRC=['state.json','http://localhost:5678/webhook/ae/status'];
+let si=0;
+
+async function poll(){
+  let state=null;
+  for(let i=0;i<SRC.length;i++){
+    try{
+      const r=await fetch(SRC[(si+i)%SRC.length],{signal:AbortSignal.timeout(3000),cache:'no-store'});
+      if(r.ok){const d=await r.json();if(d?.teams){si=(si+i)%SRC.length;state=d;break;}}
+    }catch{}
+  }
+  document.getElementById('cd').className='cdot '+(state?'on':'');
+  document.getElementById('cl').textContent=state?'Live':'Offline';
+  if(!state)return;
+  prevState=state;
+
+  // Update team nodes
+  for(const [pfx,key] of Object.entries(teamMap)){
+    const ts=state.teams[key];
+    if(!ts)continue;
+    const s=ts.status||'idle';
+    // Update all nodes in this team
+    for(const n of nodes){
+      if(n.team!==pfx)continue;
+      const el=document.getElementById('nd-'+n.id);
+      if(!el)continue;
+      el.className=el.className.replace(/ (running|completed|error)/g,'')+
+        (s==='running'?' running':s==='completed'?' completed':s==='error'?' error':'');
+    }
+    // Minimap
+    for(const n of nodes){
+      if(n.team!==pfx||n.extra?.isLlm)continue;
+      const mn=document.getElementById('mn-'+n.id);
+      if(mn)mn.className='mm-n'+(s==='running'?' running':s==='completed'?' completed':s==='error'?' error':'');
+    }
+  }
+
+  // Update pipeline phases
+  const phase=state.current_phase||'';
+  const phaseMap={trigger:'trigger',pm:'pm',architect:'architect',teams:'dispatch',review:'review',integrate:'integrate'};
+  const phaseOrder=['trigger','pm','architect','dispatch'];
+  const pi=phaseOrder.indexOf(phaseMap[phase]);
+
+  for(const n of nodes){
+    if(n.team)continue; // teams handled above
+    const el=document.getElementById('nd-'+n.id);
+    if(!el)continue;
+    const npi=phaseOrder.indexOf(n.wf);
+    let cls='';
+    if(npi>=0&&pi>=0){
+      if(npi<pi)cls=' completed';
+      else if(npi===pi)cls=' running';
+    }
+    if(n.wf==='review'&&phase==='review')cls=' running';
+    if(n.wf==='integrate'&&phase==='integrate')cls=' running';
+    if(phase==='done'){cls=' completed';}
+    el.className=el.className.replace(/ (running|completed|error)/g,'')+cls;
+  }
+
+  // Update connection lines & flow dots
+  updateConnections(state);
+}
+
+// ═══ FLOW ANIMATION ═══
+const pathEls=[];  // {path, dot, conn, len}
+let animActive=true;
+
+function initFlowDots(){
+  for(let i=0;i<conns.length;i++){
+    const path=document.getElementById('cn-'+i);
+    if(!path)continue;
+    const len=path.getTotalLength();
+    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('r', conns[i].type==='cross'?3.5:2.5);
+    dot.setAttribute('class','flow-dot');
+    dot.setAttribute('cx','0');dot.setAttribute('cy','0');
+    svg.appendChild(dot);
+    pathEls.push({path,dot,conn:conns[i],len,offset:Math.random()*len,idx:i,speed:0.4+Math.random()*0.3});
+  }
+}
+
+let lastFrame=0;
+function animateFlows(ts){
+  if(!animActive){requestAnimationFrame(animateFlows);return;}
+  const dt=ts-lastFrame;lastFrame=ts;
+  if(dt>200){requestAnimationFrame(animateFlows);return;} // skip big gaps
+
+  for(const p of pathEls){
+    if(!p.dot.classList.contains('on')){continue;}
+    p.offset=(p.offset+p.speed*(dt/16))%p.len;
+    try{
+      const pt=p.path.getPointAtLength(p.offset);
+      p.dot.setAttribute('cx',pt.x);
+      p.dot.setAttribute('cy',pt.y);
+    }catch{}
+  }
+  requestAnimationFrame(animateFlows);
+}
+
+function updateConnections(state){
+  if(!state)return;
+  const teamStatus={};
+  for(const [pfx,key] of Object.entries(teamMap)){
+    teamStatus[pfx]=state.teams[key]?.status||'idle';
+  }
+  const phase=state.current_phase||'';
+  const phaseMap={trigger:'trigger',pm:'pm',architect:'architect',teams:'dispatch',review:'review',integrate:'integrate'};
+  const phaseOrder=['trigger','pm','architect','dispatch'];
+  const pi=phaseOrder.indexOf(phaseMap[phase]);
+
+  // Determine node states
+  function nodeState(id){
+    const n=nodeMap[id];if(!n)return'idle';
+    const d=n.data;
+    if(d.team){return teamStatus[d.team]||'idle';}
+    const npi=phaseOrder.indexOf(d.wf);
+    if(npi>=0&&pi>=0){
+      if(npi<pi)return'completed';
+      if(npi===pi)return'running';
+    }
+    if(d.wf==='review'&&phase==='review')return'running';
+    if(d.wf==='integrate'&&phase==='integrate')return'running';
+    if(phase==='done')return'completed';
+    return'idle';
+  }
+
+  for(const p of pathEls){
+    const c=p.conn;
+    const fromS=nodeState(c.from);
+    const toS=nodeState(c.to);
+    const path=p.path;
+
+    // Determine line state
+    let lineState='idle';
+    if(fromS==='completed'&&toS==='completed')lineState='done';
+    else if(fromS==='running'||fromS==='completed'||(fromS==='running'&&toS==='running'))lineState='active';
+
+    // Update line class
+    let baseCls='c-line';
+    if(c.type==='cross')baseCls='c-line cross';
+    else if(c.type==='retry')baseCls='c-line retry';
+    else if(c.type==='ai')baseCls='c-line ai';
+
+    if(lineState==='active')path.setAttribute('class',baseCls+' active');
+    else if(lineState==='done')path.setAttribute('class',baseCls+' done');
+    else path.setAttribute('class',baseCls);
+
+    // Update marker
+    if(c.type!=='ai'){
+      if(lineState==='active')path.setAttribute('marker-end','url(#ar-a)');
+      else if(lineState==='done')path.setAttribute('marker-end','url(#ar-d)');
+      else if(c.type==='cross')path.setAttribute('marker-end','url(#ar-c)');
+      else if(c.type==='retry')path.setAttribute('marker-end','url(#ar-w)');
+      else path.setAttribute('marker-end','url(#ar)');
+    }
+
+    // Flow dot visibility
+    if(lineState==='active'){
+      p.dot.classList.add('on');
+      // Color dot based on type
+      if(c.type==='cross')p.dot.style.fill='#818cf8';
+      else if(c.type==='ai')p.dot.style.fill='#34d399';
+      else if(c.type==='retry')p.dot.style.fill='#eab308';
+      else p.dot.style.fill='#6366f1';
+    }else{
+      p.dot.classList.remove('on');
+    }
+  }
+}
+
+// ═══ INIT ═══
+render();
+initFlowDots();
+initMM();
+apply();
+poll();
+setInterval(poll,3000);
+requestAnimationFrame(animateFlows);
+</script>
+</body>
+</html>

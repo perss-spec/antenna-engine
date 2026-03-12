@@ -6,6 +6,7 @@
 export type AntennaType =
   | { type: 'dipole'; params: DipoleParams }
   | { type: 'patch'; params: PatchParams }
+  | { type: 'qfh'; params: QfhParams }
   | { type: 'yagi'; params: YagiParams }
   | { type: 'horn'; params: HornParams }
   | { type: 'custom'; params: CustomGeometry };
@@ -13,7 +14,7 @@ export type AntennaType =
 export interface DipoleParams {
   length: number;
   radius: number;
-  feedGap: number;
+  center: Vec3;
   orientation: Vec3;
 }
 
@@ -21,8 +22,17 @@ export interface PatchParams {
   width: number;
   length: number;
   substrateHeight: number;
-  substratePermittivity: number;
-  feedPosition: Vec2;
+  substrateEr: number;
+  center: Vec3;
+}
+
+export interface QfhParams {
+  frequency: number;
+  turns: number;
+  diameter: number;
+  height: number;
+  wireRadius: number;
+  center: Vec3;
 }
 
 export interface YagiParams {

@@ -3,288 +3,1056 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Antenna Engine — Pipeline Dashboard</title>
+<title>AI Antenna Engine — Mission Control</title>
 <style>
   :root {
-    --bg: #0a0e17; --surface: #131a2b; --border: #1e2a42;
-    --text: #c9d1d9; --dim: #6b7685; --accent: #58a6ff;
-    --ok: #3fb950; --warn: #d29922; --err: #f85149; --idle: #484f58;
+    --bg: #06090f;
+    --surface: rgba(15, 23, 42, 0.8);
+    --surface-solid: #0f172a;
+    --card: rgba(15, 23, 42, 0.6);
+    --border: rgba(56, 78, 118, 0.3);
+    --border-bright: rgba(56, 78, 118, 0.6);
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-muted: #475569;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.15);
+    --ok: #22c55e;
+    --ok-glow: rgba(34, 197, 94, 0.15);
+    --warn: #eab308;
+    --warn-glow: rgba(234, 179, 8, 0.15);
+    --err: #ef4444;
+    --err-glow: rgba(239, 68, 68, 0.15);
+    --idle: #475569;
+    --radius: 12px;
   }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
 
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-  h1 { font-size: 18px; font-weight: 600; }
-  h1 span { color: var(--accent); }
-  .meta { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--dim); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-  .dot.live { background: var(--ok); animation: pulse 2s infinite; }
-  .dot.off { background: var(--err); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(34, 197, 94, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .logo h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .logo h1 span { color: var(--accent); }
+
+  .logo .subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .nav-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border: 1px solid rgba(59,130,246,.3);
+    border-radius: 6px;
+    transition: all .2s;
+  }
+  .nav-link:hover {
+    background: rgba(59,130,246,.1);
+    border-color: var(--accent);
+  }
+
+  .conn-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--idle);
+    transition: all 0.3s;
+  }
+
+  .conn-dot.live {
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .conn-dot.off {
+    background: var(--err);
+    box-shadow: 0 0 8px var(--err);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
+    50% { opacity: 0.5; box-shadow: 0 0 4px currentColor; }
+  }
+
+  .elapsed {
+    font-size: 13px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    color: var(--text-dim);
+    background: var(--surface);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── RUN BANNER ── */
+  .run-banner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    font-size: 13px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s;
+  }
+
+  .run-banner .label {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .run-banner .value {
+    font-weight: 600;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 13px;
+  }
+
+  .run-banner .phase-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .run-banner .phase-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+
+  .run-banner .spacer { flex: 1; }
+
+  .overall-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .overall-progress .ring {
+    position: relative;
+    width: 32px;
+    height: 32px;
+  }
+
+  .overall-progress .ring svg {
+    transform: rotate(-90deg);
+  }
+
+  .overall-progress .ring-track {
+    fill: none;
+    stroke: var(--border-bright);
+    stroke-width: 3;
+  }
+
+  .overall-progress .ring-fill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s ease;
+  }
+
+  .overall-progress .ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    font-family: monospace;
+  }
+
+  /* ── PIPELINE FLOW ── */
+  .pipeline-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 20px 10px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+
+  .pipeline-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 100px;
+  }
+
+  .pipeline-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--surface-solid);
+    border: 2px solid var(--border-bright);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.5s ease;
+    position: relative;
+  }
+
+  .pipeline-circle.idle { border-color: var(--border-bright); color: var(--text-muted); }
+  .pipeline-circle.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow);
+    animation: node-pulse 2s ease-in-out infinite;
+  }
+  .pipeline-circle.done {
+    border-color: var(--ok);
+    color: var(--ok);
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .pipeline-circle.error {
+    border-color: var(--err);
+    color: var(--err);
+    background: rgba(239, 68, 68, 0.08);
+  }
+
+  @keyframes node-pulse {
+    0%, 100% { box-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow); }
+    50% { box-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow); }
+  }
+
+  .pipeline-circle .spinner {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+  }
+
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .grid { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+  .pipeline-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+  }
 
-  /* Left panel — pipeline phases */
-  .phases { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-  .phases h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-  .phase { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .phase:last-child { border-bottom: none; }
-  .phase-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-  .phase-icon.idle { background: #1c2333; color: var(--idle); }
-  .phase-icon.active { background: #0d2847; color: var(--accent); }
-  .phase-icon.done { background: #0d2d1b; color: var(--ok); }
-  .phase-icon.error { background: #2d1114; color: var(--err); }
-  .phase-name { font-size: 13px; flex: 1; }
-  .phase-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 600; }
-  .badge-idle { background: #1c2333; color: var(--idle); }
-  .badge-active { background: #0d2847; color: var(--accent); }
-  .badge-done { background: #0d2d1b; color: var(--ok); }
-  .badge-error { background: #2d1114; color: var(--err); }
+  .pipeline-connector {
+    width: 60px;
+    height: 2px;
+    background: var(--border-bright);
+    position: relative;
+    margin: 0 -4px;
+    margin-bottom: 24px;
+    transition: background 0.5s;
+  }
 
-  /* Right panel — team cards */
-  .teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-content: start; }
-  .team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; transition: border-color .3s; }
-  .team-card.active { border-color: var(--accent); }
-  .team-card.done { border-color: var(--ok); }
-  .team-card.error { border-color: var(--err); }
-  .team-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .team-name { font-size: 14px; font-weight: 600; }
-  .team-model { font-size: 10px; color: var(--dim); }
-  .team-status { font-size: 12px; margin-bottom: 8px; }
-  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
-  .progress-fill.idle { width: 0%; background: var(--idle); }
-  .progress-fill.pending { width: 10%; background: var(--idle); }
-  .progress-fill.active { width: 60%; background: var(--accent); animation: progress-pulse 1.5s infinite; }
-  .progress-fill.done { width: 100%; background: var(--ok); }
-  .progress-fill.error { width: 100%; background: var(--err); }
-  @keyframes progress-pulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
-  .team-branch { font-size: 10px; color: var(--dim); margin-top: 8px; }
-  .team-commit { font-size: 10px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pipeline-connector.done {
+    background: var(--ok);
+    box-shadow: 0 0 6px var(--ok-glow);
+  }
 
-  /* Bottom — log */
-  .log-panel { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 4px; max-height: 180px; overflow-y: auto; }
-  .log-panel h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-  .log-entry { font-size: 11px; padding: 2px 0; color: var(--dim); }
-  .log-entry .ts { color: var(--idle); margin-right: 8px; }
-  .log-entry.info { color: var(--text); }
-  .log-entry.ok { color: var(--ok); }
-  .log-entry.err { color: var(--err); }
+  .pipeline-connector.active {
+    background: linear-gradient(90deg, var(--ok), var(--accent));
+    overflow: hidden;
+  }
 
-  /* Run ID banner */
-  .run-banner { display: none; background: #0d2847; border: 1px solid #1a3a5c; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: var(--accent); margin-bottom: 16px; }
-  .run-banner.visible { display: flex; gap: 16px; align-items: center; }
+  .pipeline-connector.active::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -100%;
+    width: 40px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: flow 1.5s linear infinite;
+  }
 
-  .cost { font-size: 12px; color: var(--dim); }
+  @keyframes flow { to { left: 200%; } }
+
+  /* ── TEAM CARDS ── */
+  .teams-section h2 {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .teams-section h2 .count {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .team-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .team-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--border);
+    transition: all 0.4s;
+  }
+
+  .team-card.running { border-color: rgba(59, 130, 246, 0.4); }
+  .team-card.running::before { background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+  .team-card.completed { border-color: rgba(34, 197, 94, 0.3); }
+  .team-card.completed::before { background: var(--ok); }
+  .team-card.error { border-color: rgba(239, 68, 68, 0.3); }
+  .team-card.error::before { background: var(--err); }
+
+  .team-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .team-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+  }
+
+  .team-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .badge-idle { background: rgba(71, 85, 105, 0.2); color: var(--idle); }
+  .badge-running { background: var(--accent-glow); color: var(--accent); }
+  .badge-completed { background: var(--ok-glow); color: var(--ok); }
+  .badge-error { background: var(--err-glow); color: var(--err); }
+
+  .team-name {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .team-model {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .team-progress {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .team-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease, background 0.4s;
+    width: 0%;
+    background: var(--idle);
+  }
+
+  .team-progress-fill.idle { width: 0%; }
+  .team-progress-fill.running {
+    width: 65%;
+    background: var(--accent);
+    animation: progress-shimmer 2s ease-in-out infinite;
+  }
+  .team-progress-fill.completed { width: 100%; background: var(--ok); }
+  .team-progress-fill.error { width: 100%; background: var(--err); }
+
+  @keyframes progress-shimmer {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+
+  .team-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .team-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .team-meta-label {
+    color: var(--text-dim);
+  }
+
+  .team-meta-value {
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .team-meta-value.commit {
+    color: var(--accent);
+  }
+
+  .retry-dots {
+    display: flex;
+    gap: 3px;
+  }
+
+  .retry-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border-bright);
+    transition: all 0.3s;
+  }
+
+  .retry-dot.used { background: var(--warn); }
+  .retry-dot.failed { background: var(--err); }
+
+  /* ── ACTIVITY LOG ── */
+  .log-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    backdrop-filter: blur(10px);
+  }
+
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .log-header h2 {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .log-header .clear-btn {
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .log-header .clear-btn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .log-body {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-bright) transparent;
+  }
+
+  .log-body::-webkit-scrollbar { width: 4px; }
+  .log-body::-webkit-scrollbar-track { background: transparent; }
+  .log-body::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+  .log-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 12px;
+    animation: log-in 0.3s ease;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+  }
+
+  @keyframes log-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-ts {
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    min-width: 70px;
+  }
+
+  .log-icon {
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+    font-size: 10px;
+  }
+
+  .log-msg { color: var(--text-dim); }
+  .log-entry.ok .log-msg { color: var(--ok); }
+  .log-entry.err .log-msg { color: var(--err); }
+  .log-entry.warn .log-msg { color: var(--warn); }
+  .log-entry.info .log-msg { color: var(--text); }
+
+  /* ── OFFLINE BANNER ── */
+  .offline-banner {
+    display: none;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--err);
+  }
+
+  .offline-banner code {
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .offline-banner.visible { display: block; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .container { padding: 12px; }
+    .teams-grid { grid-template-columns: 1fr; }
+    .pipeline-flow { flex-wrap: wrap; gap: 8px; }
+    .pipeline-connector { display: none; }
+    header { flex-direction: column; gap: 12px; }
+    .run-banner { flex-wrap: wrap; gap: 12px; }
+  }
+
+  /* ── Transitions ── */
+  .fade-in { animation: fade-in 0.5s ease; }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>⚡ <span>AI Antenna Engine</span> — Pipeline</h1>
-  <div class="meta">
-    <span><span class="dot live" id="conn-dot"></span> <span id="conn-label">Connecting...</span></span>
-    <span id="poll-info">Poll: 3s</span>
-    <span id="uptime"></span>
-  </div>
-</header>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">A</div>
+      <div>
+        <h1><span>Antenna Engine</span> Pipeline</h1>
+        <div class="subtitle">AI-Orchestrated Multi-Team Development</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="map.html" class="nav-link">Pipeline Map &#x2197;</a>
+      <div class="conn-indicator">
+        <div class="conn-dot" id="connDot"></div>
+        <span id="connLabel">Connecting...</span>
+      </div>
+      <div class="elapsed" id="elapsed">--:--</div>
+    </div>
+  </header>
 
-<div class="run-banner" id="run-banner">
-  <span>Run: <strong id="run-id">—</strong></span>
-  <span>Phase: <strong id="run-phase">—</strong></span>
-  <span>Started: <strong id="run-started">—</strong></span>
-</div>
-
-<div class="grid">
-  <div class="phases">
-    <h2>Pipeline Phases</h2>
-    <div class="phase" data-phase="pm">
-      <div class="phase-icon idle" id="ph-pm-icon">1</div>
-      <span class="phase-name">Project Manager</span>
-      <span class="phase-badge badge-idle" id="ph-pm-badge">idle</span>
-    </div>
-    <div class="phase" data-phase="architect">
-      <div class="phase-icon idle" id="ph-arch-icon">2</div>
-      <span class="phase-name">Architect</span>
-      <span class="phase-badge badge-idle" id="ph-arch-badge">idle</span>
-    </div>
-    <div class="phase" data-phase="teams">
-      <div class="phase-icon idle" id="ph-teams-icon">3</div>
-      <span class="phase-name">Teams (5 parallel)</span>
-      <span class="phase-badge badge-idle" id="ph-teams-badge">idle</span>
-    </div>
-    <div class="phase" data-phase="review">
-      <div class="phase-icon idle" id="ph-review-icon">4</div>
-      <span class="phase-name">Review</span>
-      <span class="phase-badge badge-idle" id="ph-review-badge">idle</span>
-    </div>
-    <div class="phase" data-phase="integrate">
-      <div class="phase-icon idle" id="ph-int-icon">5</div>
-      <span class="phase-name">Integrate</span>
-      <span class="phase-badge badge-idle" id="ph-int-badge">idle</span>
-    </div>
-    <div class="phase" data-phase="done">
-      <div class="phase-icon idle" id="ph-done-icon">✓</div>
-      <span class="phase-name">Complete</span>
-      <span class="phase-badge badge-idle" id="ph-done-badge">idle</span>
-    </div>
+  <div class="offline-banner" id="offlineBanner">
+    Data source unavailable. Retrying automatically...<br>
+    <small style="color: var(--text-dim); margin-top:4px; display:block;">
+      If opened via <code>file://</code>, try: <code>python3 -m http.server 8080 -d "D:/NAS-DATA/antenna-engine/.ai-pipeline"</code> then open <code>http://localhost:8080/dashboard.html</code>
+    </small>
   </div>
 
-  <div class="teams" id="teams-grid"></div>
+  <div class="run-banner" id="runBanner">
+    <div>
+      <div class="label">Run ID</div>
+      <div class="value" id="runId">-</div>
+    </div>
+    <div>
+      <div class="label">Phase</div>
+      <div class="value phase-indicator">
+        <span class="phase-dot" id="phaseDot" style="display:none"></span>
+        <span id="runPhase">-</span>
+      </div>
+    </div>
+    <div>
+      <div class="label">Started</div>
+      <div class="value" id="runStarted">-</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="overall-progress">
+      <div class="ring">
+        <svg width="32" height="32" viewBox="0 0 32 32">
+          <circle class="ring-track" cx="16" cy="16" r="13"/>
+          <circle class="ring-fill" id="progressRing" cx="16" cy="16" r="13"
+            stroke-dasharray="81.68" stroke-dashoffset="81.68"/>
+        </svg>
+        <div class="ring-text" id="progressText">0%</div>
+      </div>
+      <div>
+        <div class="label">Teams</div>
+        <div class="value" id="teamsDone">0/5</div>
+      </div>
+    </div>
+  </div>
 
-  <div class="log-panel">
-    <h2>Activity Log</h2>
-    <div id="log"></div>
+  <!-- Pipeline Flow -->
+  <div class="pipeline-flow" id="pipelineFlow">
+    <div class="pipeline-node" data-phase="pm">
+      <div class="pipeline-circle idle" id="pn-pm"><span>PM</span></div>
+      <div class="pipeline-label">Project Mgr</div>
+    </div>
+    <div class="pipeline-connector" id="pc-1"></div>
+    <div class="pipeline-node" data-phase="architect">
+      <div class="pipeline-circle idle" id="pn-arch"><span>AR</span></div>
+      <div class="pipeline-label">Architect</div>
+    </div>
+    <div class="pipeline-connector" id="pc-2"></div>
+    <div class="pipeline-node" data-phase="teams">
+      <div class="pipeline-circle idle" id="pn-teams"><span>5</span></div>
+      <div class="pipeline-label">Teams</div>
+    </div>
+    <div class="pipeline-connector" id="pc-3"></div>
+    <div class="pipeline-node" data-phase="review">
+      <div class="pipeline-circle idle" id="pn-review"><span>QA</span></div>
+      <div class="pipeline-label">Review</div>
+    </div>
+    <div class="pipeline-connector" id="pc-4"></div>
+    <div class="pipeline-node" data-phase="integrate">
+      <div class="pipeline-circle idle" id="pn-int"><span>MG</span></div>
+      <div class="pipeline-label">Integrate</div>
+    </div>
+  </div>
+
+  <!-- Teams Grid -->
+  <div class="teams-section">
+    <h2>Development Teams <span class="count" id="teamsCount">0 / 5 complete</span></h2>
+    <div class="teams-grid" id="teamsGrid"></div>
+  </div>
+
+  <!-- Activity Log -->
+  <div class="log-section">
+    <div class="log-header">
+      <h2>Activity Log</h2>
+      <button class="clear-btn" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log-body" id="logBody"></div>
   </div>
 </div>
 
 <script>
-const API = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-  ? `http://${location.hostname}:5678/webhook/ae/status`
-  : 'http://10.0.10.210:5678/webhook/ae/status';
-
-const POLL_MS = 3000;
 const TEAMS = [
-  { key: 'core',  name: 'Rust Core',  model: 'Opus 4',      icon: '🦀' },
-  { key: 'ui',    name: 'UI',         model: 'Sonnet 4',    icon: '🎨' },
-  { key: 'aiml',  name: 'AI / ML',    model: 'Gemini 2.5',  icon: '🧠' },
-  { key: 'gpu',   name: 'GPU',        model: 'DeepSeek V3', icon: '⚡' },
-  { key: '3d',    name: '3D Viewport', model: 'Sonnet 4',   icon: '🔮' },
+  { key: 'core', name: 'Rust Core',    model: 'Claude Opus 4',  icon: '\u{1F980}', color: '#f97316' },
+  { key: 'ui',   name: 'UI',           model: 'Claude Sonnet 4', icon: '\u{1F3A8}', color: '#a855f7' },
+  { key: '3d',   name: '3D Viewport',  model: 'Claude Sonnet 4', icon: '\u{1F52E}', color: '#06b6d4' },
+  { key: 'gpu',  name: 'GPU Compute',  model: 'DeepSeek V3',    icon: '\u26A1',     color: '#eab308' },
+  { key: 'aiml', name: 'AI / ML',      model: 'Gemini 2.5 Pro', icon: '\u{1F9E0}', color: '#22c55e' },
 ];
 
 const PHASE_ORDER = ['pm', 'architect', 'teams', 'review', 'integrate', 'done'];
-const PHASE_MAP = {
-  pm: 'ph-pm', architect: 'ph-arch', teams: 'ph-teams',
-  review: 'ph-review', integrate: 'ph-int', done: 'ph-done',
-  review_failed: 'ph-review',
-};
+const PHASE_NODES = { pm: 'pn-pm', architect: 'pn-arch', teams: 'pn-teams', review: 'pn-review', integrate: 'pn-int' };
+const CONNECTORS = { 0: 'pc-1', 1: 'pc-2', 2: 'pc-3', 3: 'pc-4' };
+
+const POLL_MS = 3000;
+const SOURCES = [
+  'state.json',
+  'http://localhost:5678/webhook/ae/status',
+  'http://127.0.0.1:5678/webhook/ae/status',
+];
 
 let prevState = null;
 let logs = [];
+let sourceIdx = 0;
+let failCount = 0;
+let startedAt = null;
+let elapsedTimer = null;
 
-function initTeamCards() {
-  const grid = document.getElementById('teams-grid');
+// ── INIT ──
+function initCards() {
+  const grid = document.getElementById('teamsGrid');
   grid.innerHTML = TEAMS.map(t => `
     <div class="team-card" id="card-${t.key}">
-      <div class="team-header">
-        <span class="team-name">${t.icon} ${t.name}</span>
-        <span class="team-model">${t.model}</span>
+      <div class="team-top">
+        <div class="team-icon">${t.icon}</div>
+        <span class="team-status-badge badge-idle" id="badge-${t.key}">idle</span>
       </div>
-      <div class="team-status" id="status-${t.key}">idle</div>
-      <div class="progress-bar"><div class="progress-fill idle" id="bar-${t.key}"></div></div>
-      <div class="team-branch" id="branch-${t.key}">—</div>
-      <div class="team-commit" id="commit-${t.key}">—</div>
+      <div class="team-name">${t.name}</div>
+      <div class="team-model">${t.model}</div>
+      <div class="team-progress">
+        <div class="team-progress-fill idle" id="bar-${t.key}"></div>
+      </div>
+      <div class="team-meta">
+        <div class="team-meta-row">
+          <span class="team-meta-label">Branch</span>
+          <span class="team-meta-value" id="branch-${t.key}">-</span>
+        </div>
+        <div class="team-meta-row">
+          <span class="team-meta-label">Commit</span>
+          <span class="team-meta-value commit" id="commit-${t.key}">-</span>
+        </div>
+        <div class="team-meta-row">
+          <span class="team-meta-label">Retries</span>
+          <div class="retry-dots" id="retries-${t.key}">
+            <div class="retry-dot"></div><div class="retry-dot"></div><div class="retry-dot"></div>
+          </div>
+        </div>
+      </div>
     </div>
   `).join('');
 }
 
+// ── LOGGING ──
 function addLog(msg, level = 'info') {
-  const ts = new Date().toLocaleTimeString();
-  logs.unshift({ ts, msg, level });
-  if (logs.length > 50) logs.pop();
-  const el = document.getElementById('log');
+  const ts = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const icons = { info: '\u25CF', ok: '\u2713', err: '\u2717', warn: '\u25B2' };
+  logs.unshift({ ts, msg, level, icon: icons[level] || '\u25CF' });
+  if (logs.length > 100) logs.pop();
+  renderLog();
+}
+
+function renderLog() {
+  const el = document.getElementById('logBody');
   el.innerHTML = logs.map(l =>
-    `<div class="log-entry ${l.level}"><span class="ts">${l.ts}</span>${l.msg}</div>`
+    `<div class="log-entry ${l.level}">
+      <span class="log-ts">${l.ts}</span>
+      <span class="log-icon">${l.icon}</span>
+      <span class="log-msg">${l.msg}</span>
+    </div>`
   ).join('');
 }
 
-function updatePhases(currentPhase) {
-  const idx = PHASE_ORDER.indexOf(currentPhase === 'review_failed' ? 'review' : (currentPhase || ''));
-  PHASE_ORDER.forEach((p, i) => {
-    const prefix = PHASE_MAP[p];
-    const icon = document.getElementById(`${prefix}-icon`);
-    const badge = document.getElementById(`${prefix}-badge`);
-    let cls, label;
-    if (currentPhase === 'done' || (idx >= 0 && i < idx)) {
-      cls = 'done'; label = 'done';
+function clearLog() { logs = []; renderLog(); }
+
+// ── PIPELINE FLOW ──
+function updatePipeline(phase) {
+  const idx = PHASE_ORDER.indexOf(phase === 'review_failed' ? 'review' : (phase || ''));
+
+  for (let i = 0; i < PHASE_ORDER.length - 1; i++) {
+    const p = PHASE_ORDER[i];
+    const node = document.getElementById(PHASE_NODES[p]);
+    const conn = document.getElementById(CONNECTORS[i]);
+    if (!node) continue;
+
+    // Remove spinner
+    const oldSpinner = node.querySelector('.spinner');
+    if (oldSpinner) oldSpinner.remove();
+
+    let cls = 'idle';
+    if (phase === 'done' || (idx >= 0 && i < idx)) {
+      cls = 'done';
+      node.querySelector('span').textContent = '\u2713';
     } else if (i === idx) {
-      if (currentPhase === 'review_failed') { cls = 'error'; label = 'failed'; }
-      else { cls = 'active'; label = 'active'; }
-    } else {
-      cls = 'idle'; label = 'idle';
+      cls = phase === 'review_failed' ? 'error' : 'active';
+      if (cls === 'active') {
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner';
+        node.appendChild(spinner);
+      }
     }
-    icon.className = `phase-icon ${cls}`;
-    badge.className = `phase-badge badge-${cls}`;
-    badge.textContent = label;
-  });
+
+    node.className = `pipeline-circle ${cls}`;
+    if (conn) {
+      if (idx >= 0 && i < idx) conn.className = 'pipeline-connector done';
+      else if (i === idx) conn.className = 'pipeline-connector active';
+      else conn.className = 'pipeline-connector';
+    }
+  }
 }
 
+// ── TEAM CARDS ──
 function updateTeams(teams) {
   if (!teams) return;
+  let doneCount = 0;
+
   for (const t of TEAMS) {
-    const data = teams[t.key];
-    if (!data) continue;
+    const d = teams[t.key];
+    if (!d) continue;
+
+    const s = d.status || 'idle';
+    if (s === 'completed') doneCount++;
+
     const card = document.getElementById(`card-${t.key}`);
-    const status = document.getElementById(`status-${t.key}`);
+    const badge = document.getElementById(`badge-${t.key}`);
     const bar = document.getElementById(`bar-${t.key}`);
     const branch = document.getElementById(`branch-${t.key}`);
     const commit = document.getElementById(`commit-${t.key}`);
 
-    const s = data.status || 'idle';
-    card.className = `team-card ${s === 'running' ? 'active' : s === 'completed' ? 'done' : s === 'error' ? 'error' : ''}`;
-    status.textContent = s;
-    bar.className = `progress-fill ${s === 'running' ? 'active' : s === 'completed' ? 'done' : s === 'error' ? 'error' : s === 'pending' ? 'pending' : 'idle'}`;
-    branch.textContent = data.branch || '—';
-    commit.textContent = data.last_commit ? `Last: ${data.last_commit.substring(0, 8)}` : 'No commits yet';
+    card.className = `team-card ${s}`;
+    badge.className = `team-status-badge badge-${s === 'completed' ? 'completed' : s === 'running' ? 'running' : s === 'error' ? 'error' : 'idle'}`;
+    badge.textContent = s;
+    bar.className = `team-progress-fill ${s === 'completed' ? 'completed' : s === 'running' ? 'running' : s === 'error' ? 'error' : 'idle'}`;
+    branch.textContent = d.branch || '-';
+    commit.textContent = d.last_commit || '-';
+
+    // Retries
+    const retriesEl = document.getElementById(`retries-${t.key}`);
+    const retryCount = d.retries || 0;
+    const dots = retriesEl.querySelectorAll('.retry-dot');
+    dots.forEach((dot, i) => {
+      if (i < retryCount && s === 'error') dot.className = 'retry-dot failed';
+      else if (i < retryCount) dot.className = 'retry-dot used';
+      else dot.className = 'retry-dot';
+    });
+  }
+
+  // Update counters
+  document.getElementById('teamsCount').textContent = `${doneCount} / 5 complete`;
+  document.getElementById('teamsDone').textContent = `${doneCount}/5`;
+
+  // Progress ring (pipeline has ~7 phases, teams = 3rd. Weight teams more)
+  const phaseWeight = { pm: 10, architect: 10, teams: 60, review: 10, integrate: 10 };
+  let progress = 0;
+  const curPhase = prevState?.current_phase || '';
+  const phIdx = PHASE_ORDER.indexOf(curPhase);
+  // Phases before current = 100%
+  for (let i = 0; i < phIdx && i < PHASE_ORDER.length - 1; i++) {
+    progress += phaseWeight[PHASE_ORDER[i]] || 0;
+  }
+  // Current phase partial
+  if (curPhase === 'teams') {
+    progress += (doneCount / 5) * 60;
+  } else if (curPhase === 'done') {
+    progress = 100;
+  } else if (phIdx >= 0) {
+    progress += (phaseWeight[curPhase] || 0) * 0.5;
+  }
+
+  const circumference = 2 * Math.PI * 13;
+  const offset = circumference - (progress / 100) * circumference;
+  document.getElementById('progressRing').style.strokeDashoffset = offset;
+  document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+
+  // Ring color
+  const ring = document.getElementById('progressRing');
+  if (progress >= 100) ring.style.stroke = 'var(--ok)';
+  else if (progress > 0) ring.style.stroke = 'var(--accent)';
+}
+
+// ── ELAPSED TIMER ──
+function updateElapsed() {
+  if (!startedAt) return;
+  const diff = Math.floor((Date.now() - startedAt) / 1000);
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  const parts = [];
+  if (h > 0) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  parts.push(`${String(s).padStart(2, '0')}s`);
+  document.getElementById('elapsed').textContent = parts.join(' ');
+}
+
+// ── DETECT CHANGES ──
+function detectChanges(state) {
+  if (!prevState) return;
+
+  if (prevState.current_phase !== state.current_phase) {
+    addLog(`Phase: ${prevState.current_phase || 'idle'} \u2192 ${state.current_phase || 'idle'}`, 'info');
+  }
+
+  for (const t of TEAMS) {
+    const oldS = prevState.teams?.[t.key]?.status;
+    const newS = state.teams?.[t.key]?.status;
+    if (oldS !== newS) {
+      const level = newS === 'completed' ? 'ok' : newS === 'error' ? 'err' : newS === 'running' ? 'info' : 'info';
+      addLog(`${t.icon} ${t.name}: ${oldS || 'idle'} \u2192 ${newS}`, level);
+    }
+    const oldC = prevState.teams?.[t.key]?.last_commit;
+    const newC = state.teams?.[t.key]?.last_commit;
+    if (!oldC && newC) {
+      addLog(`${t.icon} ${t.name}: committed ${newC}`, 'ok');
+    }
   }
 }
 
+// ── DATA FETCHING ──
+async function fetchState() {
+  for (let attempt = 0; attempt < SOURCES.length; attempt++) {
+    const src = SOURCES[(sourceIdx + attempt) % SOURCES.length];
+    try {
+      const r = await fetch(src, { signal: AbortSignal.timeout(4000), cache: 'no-store' });
+      if (!r.ok) continue;
+      const state = await r.json();
+      if (state && state.teams) {
+        sourceIdx = (sourceIdx + attempt) % SOURCES.length;
+        failCount = 0;
+        return state;
+      }
+    } catch {}
+  }
+  failCount++;
+  return null;
+}
+
+// ── MAIN POLL ──
 async function poll() {
-  const dot = document.getElementById('conn-dot');
-  const label = document.getElementById('conn-label');
-  try {
-    const r = await fetch(API, { signal: AbortSignal.timeout(5000) });
-    const state = await r.json();
+  const dot = document.getElementById('connDot');
+  const label = document.getElementById('connLabel');
+  const offBanner = document.getElementById('offlineBanner');
 
-    dot.className = 'dot live';
-    label.textContent = 'Connected';
+  const state = await fetchState();
 
-    // Detect changes
-    const prev = JSON.stringify(prevState);
-    const curr = JSON.stringify(state);
-    if (prev !== curr && prevState) {
-      if (prevState.current_phase !== state.current_phase) {
-        addLog(`Phase changed: ${prevState.current_phase || 'idle'} → ${state.current_phase || 'idle'}`, 'info');
-      }
-      if (prevState.status !== state.status) {
-        addLog(`Status: ${state.status}`, state.status === 'completed' ? 'ok' : state.status === 'error' ? 'err' : 'info');
-      }
-      for (const t of TEAMS) {
-        const oldS = prevState.teams?.[t.key]?.status;
-        const newS = state.teams?.[t.key]?.status;
-        if (oldS !== newS) {
-          addLog(`${t.name}: ${oldS || 'idle'} → ${newS}`, newS === 'completed' ? 'ok' : newS === 'error' ? 'err' : 'info');
-        }
-      }
-    }
-    prevState = state;
-
-    // Update banner
-    const banner = document.getElementById('run-banner');
-    if (state.run_id) {
-      banner.className = 'run-banner visible';
-      document.getElementById('run-id').textContent = state.run_id;
-      document.getElementById('run-phase').textContent = state.current_phase || '—';
-      document.getElementById('run-started').textContent = state.started_at ? new Date(state.started_at).toLocaleTimeString() : '—';
-    } else {
-      banner.className = 'run-banner';
-    }
-
-    updatePhases(state.current_phase);
-    updateTeams(state.teams);
-
-  } catch (e) {
-    dot.className = 'dot off';
+  if (!state) {
+    dot.className = 'conn-dot off';
     label.textContent = 'Offline';
+    if (failCount > 3) offBanner.className = 'offline-banner visible';
+    return;
   }
+
+  dot.className = 'conn-dot live';
+  label.textContent = `Source: ${SOURCES[sourceIdx].includes('state.json') ? 'local' : 'n8n'}`;
+  offBanner.className = 'offline-banner';
+
+  // Start timer
+  if (state.started_at && !startedAt) {
+    startedAt = new Date(state.started_at).getTime();
+    if (!elapsedTimer) elapsedTimer = setInterval(updateElapsed, 1000);
+    updateElapsed();
+  }
+
+  // Update banner
+  document.getElementById('runId').textContent = state.run_id || '-';
+  document.getElementById('runPhase').textContent = state.current_phase || '-';
+  document.getElementById('runStarted').textContent = state.started_at
+    ? new Date(state.started_at).toLocaleTimeString('en-GB') : '-';
+
+  const phaseDot = document.getElementById('phaseDot');
+  phaseDot.style.display = (state.status === 'running') ? 'inline-block' : 'none';
+
+  // Detect & render
+  detectChanges(state);
+  prevState = state;
+
+  updatePipeline(state.current_phase);
+  updateTeams(state.teams);
 }
 
-initTeamCards();
-addLog('Dashboard started, polling ' + API);
+// ── START ──
+initCards();
+addLog('Dashboard initialized', 'info');
 poll();
 setInterval(poll, POLL_MS);
 </script>
+
 </body>
 </html>
