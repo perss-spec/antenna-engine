@@ -1,5 +1,4 @@
 pub mod core;
-pub mod gpu;
 
 pub fn run() {
     tauri::Builder::default()
