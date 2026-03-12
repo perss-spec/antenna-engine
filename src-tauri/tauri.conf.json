@@ -10,7 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "title": "AI Antenna Engine",
     "windows": [
       {
         "fullscreen": false,
