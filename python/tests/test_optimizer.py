@@ -1,133 +1,97 @@
-from typing import Tuple
-
 import numpy as np
 import pytest
 
-from antenna_ml.optimizer import AntennaOptimizer, SurrogateModel
+from antenna_ml.optimizer import AntennaOptimizer
+
+# --- Mock Surrogate Model for a Dipole Antenna ---
+# This mock simulates a simple dipole where the resonant frequency is inversely
+# proportional to its length. We design it so that a known length gives the
+# best S11 at our target frequency.
+
+# Constants for the mock model
+TARGET_FREQ_MHZ = 3000.0
+OPTIMAL_LENGTH = 0.047  # meters, chosen as the 'true' optimal length for 3GHz
+C_FACTOR = TARGET_FREQ_MHZ * OPTIMAL_LENGTH  # A constant to define resonance
 
 
-class MockDipoleSurrogate(SurrogateModel):
+def mock_surrogate_model(params: np.ndarray) -> np.ndarray:
+    """A mock surrogate model for a single-parameter (length) dipole.
+
+    Args:
+        params: A numpy array of shape (batch_size, 1) where the column is length.
+
+    Returns:
+        A numpy array of shape (batch_size, num_freqs) representing S11 dB.
     """
-    A mock surrogate model for a simple dipole antenna.
-    The resonant frequency is modeled as f_res (GHz) = 150 / length (mm).
-    This is a simplified physical relationship for a half-wave dipole.
-    """
+    length = params[:, 0]
+    freqs = np.linspace(2000, 4000, 101).reshape(1, -1)
 
-    def __init__(
-        self,
-        freq_start_ghz: float = 1.0,
-        freq_stop_ghz: float = 5.0,
-        num_points: int = 401,
-    ):
-        self.frequencies = np.linspace(freq_start_ghz, freq_stop_ghz, num_points)
+    # Resonant frequency is inversely proportional to length
+    resonant_freq = C_FACTOR / length.reshape(-1, 1)
 
-    def predict(self, params: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Predicts the S11 curve for a given dipole length.
+    # Simple quadratic model for S11 notch: S11(f) = A*(f - f_res)^2 + S11_min
+    # This gives a parabolic notch at the resonant frequency.
+    s11_min = -30.0  # dB
+    q_factor = 0.001 # Controls the width of the notch
+    s11_db = q_factor * (freqs - resonant_freq) ** 2 + s11_min
 
-        Args:
-            params (np.ndarray): A 1-element array containing the dipole length in mm.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray]: Frequencies (GHz) and complex S11 values.
-        """
-        if params.ndim != 1 or len(params) != 1:
-            raise ValueError("Expected a 1D array with a single parameter (length).")
-
-        length_mm = params[0]
-
-        # Simplified model: resonant frequency f_res = 150 / length
-        f_res_ghz = 150.0 / length_mm
-
-        # Model S11 magnitude as a V-shape centered at f_res.
-        # tanh creates a value between 0 and 1.
-        s11_mag = np.tanh(0.5 * np.abs(self.frequencies - f_res_ghz))
-
-        # The phase is not important for this test's objective function,
-        # but we return a complex array to match the interface.
-        s11_complex = s11_mag * np.exp(1j * np.pi / 4)
-
-        return self.frequencies, s11_complex
+    return s11_db
 
 
 def test_optimizer_initialization():
-    """Tests that the optimizer initializes correctly."""
-    model = MockDipoleSurrogate()
-    optimizer = AntennaOptimizer(model)
-    assert optimizer.model is model
-
-    class BadModel:
-        pass
-
-    with pytest.raises(TypeError, match="Model must have a callable 'predict' method."):
-        AntennaOptimizer(BadModel())
-
-
-def test_find_optimal_dipole_length():
-    """
-    Tests the optimizer's ability to find the correct dipole length for a
-    target frequency using the mock surrogate model.
-    """
-    # 1. Setup
-    mock_model = MockDipoleSurrogate()
-    optimizer = AntennaOptimizer(mock_model)
-
-    target_freq_ghz = 2.4
-
-    # Theoretical optimal length from our mock model's formula
-    expected_optimal_length = 150.0 / target_freq_ghz  # approx 62.5 mm
-
-    # 2. Define search space and initial guess
-    length_bounds_mm = (50.0, 70.0)
-    initial_length_mm = 60.0
-
-    # 3. Run optimization
-    optimal_length, min_s11_mag = optimizer.find_optimal_length(
-        target_frequency_ghz=target_freq_ghz,
-        initial_length_mm=initial_length_mm,
-        length_bounds_mm=length_bounds_mm,
+    """Test the initialization of the AntennaOptimizer."""
+    freqs = np.linspace(2000, 4000, 101)
+    optimizer = AntennaOptimizer(
+        surrogate_model=mock_surrogate_model,
+        param_names=["length"],
+        freq_mhz=freqs,
+        target_freq_mhz=TARGET_FREQ_MHZ,
+        bounds=[(0.03, 0.06)],
     )
-
-    # 4. Assert results
-    assert isinstance(optimal_length, float)
-    assert np.isclose(optimal_length, expected_optimal_length, atol=1e-4)
-
-    assert isinstance(min_s11_mag, float)
-    assert min_s11_mag < 1e-6
+    assert optimizer.target_freq_idx == np.argmin(np.abs(freqs - TARGET_FREQ_MHZ))
+    assert optimizer.param_names == ["length"]
 
 
-def test_optimize_general_method():
-    """
-    Tests the more general `optimize` method.
-    """
-    mock_model = MockDipoleSurrogate()
-    optimizer = AntennaOptimizer(mock_model)
-
-    target_freq_ghz = 3.5
-    expected_optimal_length = 150.0 / target_freq_ghz  # approx 42.857 mm
-
-    initial_guess = np.array([40.0])
-    bounds = [(30.0, 50.0)]
-
-    optimal_params, min_value = optimizer.optimize(
-        target_frequency_ghz=target_freq_ghz, initial_guess=initial_guess, bounds=bounds
-    )
-
-    assert optimal_params.shape == (1,)
-    assert np.isclose(optimal_params[0], expected_optimal_length, atol=1e-4)
-    assert min_value < 1e-6
-
-
-def test_optimizer_input_validation():
-    """Tests that the optimizer raises errors for invalid inputs."""
-    mock_model = MockDipoleSurrogate()
-    optimizer = AntennaOptimizer(mock_model)
-
-    with pytest.raises(
-        ValueError, match="Length of initial_guess must match length of bounds."
-    ):
-        optimizer.optimize(
-            target_frequency_ghz=2.4,
-            initial_guess=np.array([60.0, 1.0]),  # two params
-            bounds=[(50.0, 70.0)],  # one bound
+def test_optimizer_value_error():
+    """Test that a ValueError is raised for mismatched params and bounds."""
+    with pytest.raises(ValueError):
+        AntennaOptimizer(
+            surrogate_model=mock_surrogate_model,
+            param_names=["length", "radius"], # 2 params
+            freq_mhz=np.linspace(2000, 4000, 101),
+            target_freq_mhz=TARGET_FREQ_MHZ,
+            bounds=[(0.03, 0.06)], # 1 bound
         )
+
+def test_dipole_length_optimization():
+    """Test the full optimization process for a dipole's length."""
+    freqs = np.linspace(2000, 4000, 101)
+    param_names = ["length"]
+    bounds = [(0.03, 0.06)]
+
+    optimizer = AntennaOptimizer(
+        surrogate_model=mock_surrogate_model,
+        param_names=param_names,
+        freq_mhz=freqs,
+        target_freq_mhz=TARGET_FREQ_MHZ,
+        bounds=bounds,
+    )
+
+    # Initial guess, intentionally off from the optimal value
+    x0 = np.array([0.04])
+
+    best_params, min_s11, result = optimizer.optimize(x0)
+
+    assert result.success, f"Optimization failed: {result.message}"
+
+    # Check that the optimizer found the known optimal length
+    assert "length" in best_params
+    found_length = best_params["length"]
+    assert np.isclose(
+        found_length, OPTIMAL_LENGTH, atol=1e-5
+    ), f"Expected length {OPTIMAL_LENGTH}, but found {found_length}"
+
+    # Check that the minimum S11 value is close to the model's minimum
+    assert np.isclose(
+        min_s11, -30.0, atol=1e-5
+    ), f"Expected min S11 of -30.0 dB, but got {min_s11}"
