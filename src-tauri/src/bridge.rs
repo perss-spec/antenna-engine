@@ -143,9 +143,10 @@ pub async fn simulate_antenna(request: SimulateRequest) -> Result<SimulateRespon
     let mut impedance_imag = Vec::new();
     
     for &freq in &frequencies {
+        let wavelength = C0 / freq;
         let params = SimulationParams {
             frequency: freq,
-            resolution: 0.01,
+            resolution: wavelength / 20.0, // λ/20 for adequate sampling
             reference_impedance: 50.0,
         };
         
