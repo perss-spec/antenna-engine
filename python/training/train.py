@@ -1,102 +1,165 @@
-"""
-Training script for the surrogate antenna model.
-This script generates synthetic data, defines a model, and runs a training loop.
-"""
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-from pathlib import Path
+from torch.utils.data import DataLoader, random_split
+import json
 import logging
+from pathlib import Path
+from typing import Dict, List, Any
 
-from models.surrogate import SurrogateAntennaModel
-from training.data_generator import generate_synthetic_data
+# Assuming python path is configured to see antenna_ml and models
+from antenna_ml.data.dataset import AntennaS11Dataset
+from antenna_ml.data.normalization import MinMaxNormalizer
+from models.surrogate import SurrogateMLP
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Configuration ---
-NUM_SAMPLES = 5000
-VALIDATION_SPLIT = 0.2
-BATCH_SIZE = 64
-EPOCHS = 100
-LEARNING_RATE = 0.001
-SEED = 42
-MODEL_SAVE_PATH = Path("models/surrogate_model.pth")
-
-def train_model():
+def train_surrogate(
+    data_path: str,
+    model_path: str, # Full path to the output .pth file
+    epochs: int = 100,
+    batch_size: int = 64,
+    lr: float = 1e-3,
+    validation_split: float = 0.2,
+    hidden_dim: int = 256,
+    n_hidden_layers: int = 3,
+) -> Dict[str, Any]:
     """
-    Main function to orchestrate the model training process.
+    Trains a surrogate model on antenna simulation data, saves the best checkpoint,
+    and returns training metrics.
+
+    Args:
+        data_path: Path to the JSONL dataset file.
+        model_path: Full path to save the best model checkpoint (.pth).
+        epochs: Number of training epochs.
+        batch_size: Batch size for training.
+        lr: Learning rate for the Adam optimizer.
+        validation_split: Fraction of data to use for validation.
+        hidden_dim: Number of units in hidden layers.
+        n_hidden_layers: Number of hidden layers.
+
+    Returns:
+        A dictionary containing training history.
     """
-    logging.info("Starting model training process...")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logging.info(f"Using device: {device}")
 
-    # Ensure the model directory exists
-    MODEL_SAVE_PATH.parent.mkdir(exist_ok=True)
+    model_save_path = Path(model_path)
+    model_save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 1. Generate Data
-    logging.info(f"Generating {NUM_SAMPLES} synthetic data points...")
-    X, y = generate_synthetic_data(num_samples=NUM_SAMPLES, seed=SEED)
-    
-    # Convert to PyTorch Tensors
-    X_tensor = torch.from_numpy(X)
-    y_tensor = torch.from_numpy(y)
+    # 1. Prepare data and normalizer by pre-scanning the dataset
+    logging.info("Preparing data and fitting normalizer...")
+    params_list = []
+    output_dim = 0
+    freq_info = {}
+
+    with open(data_path, "r") as f:
+        for i, line in enumerate(f):
+            if line.strip():
+                data = json.loads(line)
+                params_list.append(data["params"])
+                if i == 0:
+                    output_dim = len(data["s11"]) * 2
+                    # The data generator script from the prompt does not save frequency info.
+                    # This is a placeholder for a more robust data pipeline.
+                    if "freq_range" in data and "num_freq_points" in data:
+                         freq_info = {
+                             "freq_range": data["freq_range"],
+                             "num_freq_points": data["num_freq_points"]
+                         }
+
+    if not params_list:
+        raise ValueError("Dataset is empty or could not be read.")
+
+    normalizer = MinMaxNormalizer()
+    normalizer.fit(params_list)
+    input_dim = len(normalizer.param_keys)
 
     # 2. Create Datasets and DataLoaders
-    dataset = TensorDataset(X_tensor, y_tensor)
+    full_dataset = AntennaS11Dataset(data_path=data_path, normalizer=normalizer)
     
-    val_size = int(NUM_SAMPLES * VALIDATION_SPLIT)
-    train_size = NUM_SAMPLES - val_size
-    
-    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
-    
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
-    logging.info(f"Data loaded. Training set size: {len(train_dataset)}, Validation set size: {len(val_dataset)}")
+    val_size = int(len(full_dataset) * validation_split)
+    train_size = len(full_dataset) - val_size
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size)
+    logging.info(f"Data loaded. Train size: {train_size}, Val size: {val_size}")
 
     # 3. Initialize Model, Loss, and Optimizer
-    model = SurrogateAntennaModel(input_size=3, output_size=1)
-    loss_fn = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    model = SurrogateMLP(
+        input_dim=input_dim,
+        output_dim=output_dim,
+        hidden_dim=hidden_dim,
+        n_hidden_layers=n_hidden_layers,
+    ).to(device)
     
-    logging.info(f"Model initialized. Starting training for {EPOCHS} epochs.")
+    loss_fn = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     # 4. Training Loop
     best_val_loss = float('inf')
-    for epoch in range(EPOCHS):
+    train_loss_history: List[float] = []
+    val_loss_history: List[float] = []
+
+    logging.info(f"Starting training for {epochs} epochs...")
+    for epoch in range(epochs):
         model.train()
-        train_loss = 0.0
+        running_train_loss = 0.0
         for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = loss_fn(outputs, targets)
             loss.backward()
             optimizer.step()
-            train_loss += loss.item() * inputs.size(0)
+            running_train_loss += loss.item() * inputs.size(0)
+
+        epoch_train_loss = running_train_loss / train_size
+        train_loss_history.append(epoch_train_loss)
 
         # Validation
         model.eval()
-        val_loss = 0.0
+        running_val_loss = 0.0
         with torch.no_grad():
             for inputs, targets in val_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
                 outputs = model(inputs)
                 loss = loss_fn(outputs, targets)
-                val_loss += loss.item() * inputs.size(0)
-
-        train_loss /= len(train_loader.dataset)
-        val_loss /= len(val_loader.dataset)
+                running_val_loss += loss.item() * inputs.size(0)
         
+        epoch_val_loss = running_val_loss / val_size
+        val_loss_history.append(epoch_val_loss)
+
         if (epoch + 1) % 10 == 0:
-            logging.info(f"Epoch {epoch+1}/{EPOCHS}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+            logging.info(f"Epoch {epoch+1}/{epochs}, Train Loss: {epoch_train_loss:.6f}, Val Loss: {epoch_val_loss:.6f}")
 
-        # Save the model if validation loss has improved
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save(model.state_dict(), MODEL_SAVE_PATH)
-            logging.debug(f"Model saved at epoch {epoch+1} with validation loss {val_loss:.4f}")
+        # Save best model checkpoint
+        if epoch_val_loss < best_val_loss:
+            best_val_loss = epoch_val_loss
+            
+            checkpoint = {
+                'model_state_dict': model.state_dict(),
+                'normalizer_state': {
+                    'min_vals': normalizer.min_vals,
+                    'max_vals': normalizer.max_vals,
+                    'param_keys': normalizer.param_keys,
+                },
+                'model_config': {
+                    'input_dim': input_dim,
+                    'output_dim': output_dim,
+                    'hidden_dim': hidden_dim,
+                    'n_hidden_layers': n_hidden_layers,
+                },
+                **freq_info
+            }
+            torch.save(checkpoint, model_save_path)
+            logging.info(f"New best model saved at epoch {epoch+1} with val loss: {epoch_val_loss:.6f}")
 
-    logging.info("Training complete.")
-    logging.info(f"Best validation loss: {best_val_loss:.4f}")
-    logging.info(f"Trained model saved to {MODEL_SAVE_PATH}")
-
-if __name__ == "__main__":
-    train_model()
+    logging.info(f"Training finished. Best validation loss: {best_val_loss:.6f}")
+    
+    return {
+        "train_loss": train_loss_history,
+        "val_loss": val_loss_history,
+        "epochs_trained": epochs,
+    }
