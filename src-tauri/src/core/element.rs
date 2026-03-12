@@ -1,208 +1,190 @@
-use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
+use crate::core::geometry::{Point3D, Mesh, Segment, Triangle};
+use crate::core::types::{AntennaError, Result};
 
-use crate::core::types::Result;
-
-/// Trait for antenna elements that can compute impedance and radiation patterns
-pub trait AntennaElement: Send + Sync {
-    /// Calculate the input impedance at a given frequency
-    /// 
-    /// # Arguments
-    /// * `freq` - Frequency in Hz
-    /// 
-    /// # Returns
-    /// Complex impedance in Ohms
-    fn impedance(&self, freq: f64) -> Result<Complex64>;
-    
-    /// Calculate the radiation pattern at given angles
-    /// 
-    /// # Arguments
-    /// * `theta` - Elevation angle in radians (0 to π)
-    /// * `phi` - Azimuth angle in radians (0 to 2π)
-    /// 
-    /// # Returns
-    /// Normalized radiation intensity (0.0 to 1.0)
-    fn radiation_pattern(&self, theta: f64, phi: f64) -> Result<f64>;
-}
-
-/// Half-wave dipole antenna element
+/// Antenna element types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DipoleAntenna {
-    /// Length of the dipole in meters
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum AntennaElement {
+    Dipole(DipoleParams),
+    Patch(PatchParams),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DipoleParams {
     pub length: f64,
-    /// Radius of the dipole conductor in meters
     pub radius: f64,
+    pub center: Point3D,
+    pub orientation: Point3D,
 }
 
-impl DipoleAntenna {
-    /// Create a new dipole antenna
-    pub fn new(length: f64, radius: f64) -> Result<Self> {
-        if length <= 0.0 {
-            return Err("Dipole length must be positive".into());
-        }
-        if radius <= 0.0 {
-            return Err("Dipole radius must be positive".into());
-        }
-        if radius >= length / 2.0 {
-            return Err("Dipole radius must be less than half the length".into());
-        }
-        
-        Ok(Self { length, radius })
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchParams {
+    pub width: f64,
+    pub length: f64,
+    pub substrate_height: f64,
+    pub substrate_er: f64,
+    pub center: Point3D,
+}
+
+impl AntennaElement {
+    pub fn new_dipole(length: f64, radius: f64) -> Self {
+        AntennaElement::Dipole(DipoleParams {
+            length,
+            radius,
+            center: Point3D::origin(),
+            orientation: Point3D::new(0.0, 0.0, 1.0),
+        })
     }
-    
-    /// Calculate the wavelength at a given frequency
-    fn wavelength(&self, freq: f64) -> f64 {
-        const C: f64 = 299_792_458.0; // Speed of light in m/s
-        C / freq
+
+    pub fn new_patch(width: f64, length: f64, substrate_height: f64, substrate_er: f64) -> Self {
+        AntennaElement::Patch(PatchParams {
+            width,
+            length,
+            substrate_height,
+            substrate_er,
+            center: Point3D::origin(),
+        })
     }
-    
-    /// Calculate beta (propagation constant)
-    fn beta(&self, freq: f64) -> f64 {
-        2.0 * PI / self.wavelength(freq)
+
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            AntennaElement::Dipole(p) => {
+                if p.length <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("Dipole length must be positive".into()));
+                }
+                if p.radius <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("Dipole radius must be positive".into()));
+                }
+                Ok(())
+            }
+            AntennaElement::Patch(p) => {
+                if p.width <= 0.0 || p.length <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("Patch dimensions must be positive".into()));
+                }
+                if p.substrate_height <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("Substrate height must be positive".into()));
+                }
+                if p.substrate_er < 1.0 {
+                    return Err(AntennaError::InvalidGeometry("Substrate permittivity must be >= 1".into()));
+                }
+                Ok(())
+            }
+        }
+    }
+
+    pub fn generate_mesh(&self, resolution: f64) -> Result<Mesh> {
+        self.validate()?;
+        match self {
+            AntennaElement::Dipole(p) => generate_dipole_mesh(p, resolution),
+            AntennaElement::Patch(p) => generate_patch_mesh(p, resolution),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            AntennaElement::Dipole(_) => "dipole",
+            AntennaElement::Patch(_) => "patch",
+        }
     }
 }
 
-impl AntennaElement for DipoleAntenna {
-    fn impedance(&self, freq: f64) -> Result<Complex64> {
-        if freq <= 0.0 {
-            return Err("Frequency must be positive".into());
-        }
-        
-        let beta = self.beta(freq);
-        let k_l = beta * self.length;
-        
-        // Characteristic impedance of free space
-        const Z0: f64 = 376.730313668; // Ohms
-        
-        // Simplified dipole impedance formula
-        // For thin dipoles, we use the sinusoidal current distribution approximation
-        let sin_kl = k_l.sin();
-        let cos_kl = k_l.cos();
-        
-        // Radiation resistance (approximate for thin dipoles)
-        let r_rad = if (sin_kl).abs() < 1e-10 {
-            // Near resonance
-            73.13
-        } else {
-            // General case using induced EMF method
-            let factor = Z0 / (2.0 * PI);
-            factor * (1.0 - cos_kl) / sin_kl.powi(2)
-        };
-        
-        // Reactance calculation using induced EMF method
-        let ln_term = (self.length / self.radius).ln();
-        let x_a = (Z0 / (2.0 * PI)) * 
-                  (sin_kl * (ln_term - 1.0) + 
-                   cos_kl * (0.5772 + ln_term * (1.0 - cos_kl) / sin_kl));
-        
-        Ok(Complex64::new(r_rad, x_a))
+fn generate_dipole_mesh(p: &DipoleParams, resolution: f64) -> Result<Mesh> {
+    let n_seg = ((p.length / resolution).ceil() as usize).max(10);
+    let dir = p.orientation.normalized();
+    let mut vertices = Vec::with_capacity(n_seg + 1);
+    let mut segments = Vec::with_capacity(n_seg);
+
+    for i in 0..=n_seg {
+        let t = (i as f64) / (n_seg as f64) - 0.5;
+        let offset = dir.scale(t * p.length);
+        vertices.push(p.center.add(&offset));
     }
-    
-    fn radiation_pattern(&self, theta: f64, phi: f64) -> Result<f64> {
-        if theta < 0.0 || theta > PI {
-            return Err("Theta must be between 0 and π".into());
-        }
-        if phi < 0.0 || phi > 2.0 * PI {
-            return Err("Phi must be between 0 and 2π".into());
-        }
-        
-        // Dipole radiation pattern (normalized)
-        // For a dipole aligned along z-axis, pattern is independent of phi
-        let sin_theta = theta.sin();
-        
-        if sin_theta.abs() < 1e-10 {
-            Ok(0.0) // No radiation along the dipole axis
-        } else {
-            // Classic dipole pattern: sin²(θ)
-            Ok(sin_theta.powi(2))
+
+    for i in 0..n_seg {
+        segments.push(Segment { start: i, end: i + 1 });
+    }
+
+    Ok(Mesh {
+        vertices,
+        triangles: Vec::new(),
+        segments,
+    })
+}
+
+fn generate_patch_mesh(p: &PatchParams, resolution: f64) -> Result<Mesh> {
+    let nx = ((p.width / resolution).ceil() as usize).max(4);
+    let ny = ((p.length / resolution).ceil() as usize).max(4);
+    let mut vertices = Vec::with_capacity((nx + 1) * (ny + 1));
+    let mut triangles = Vec::with_capacity(nx * ny * 2);
+
+    for j in 0..=ny {
+        for i in 0..=nx {
+            let x = p.center.x + (i as f64 / nx as f64 - 0.5) * p.width;
+            let y = p.center.y + (j as f64 / ny as f64 - 0.5) * p.length;
+            let z = p.center.z + p.substrate_height;
+            vertices.push(Point3D::new(x, y, z));
         }
     }
+
+    for j in 0..ny {
+        for i in 0..nx {
+            let v0 = j * (nx + 1) + i;
+            let v1 = v0 + 1;
+            let v2 = v0 + nx + 1;
+            let v3 = v2 + 1;
+            triangles.push(Triangle { vertices: [v0, v1, v2] });
+            triangles.push(Triangle { vertices: [v1, v3, v2] });
+        }
+    }
+
+    Ok(Mesh {
+        vertices,
+        triangles,
+        segments: Vec::new(),
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_relative_eq;
-    
+
     #[test]
-    fn test_dipole_creation() {
-        // Valid dipole
-        let dipole = DipoleAntenna::new(0.5, 0.001).unwrap();
-        assert_eq!(dipole.length, 0.5);
-        assert_eq!(dipole.radius, 0.001);
-        
-        // Invalid length
-        assert!(DipoleAntenna::new(-0.5, 0.001).is_err());
-        assert!(DipoleAntenna::new(0.0, 0.001).is_err());
-        
-        // Invalid radius
-        assert!(DipoleAntenna::new(0.5, -0.001).is_err());
-        assert!(DipoleAntenna::new(0.5, 0.0).is_err());
-        
-        // Radius too large
-        assert!(DipoleAntenna::new(0.5, 0.3).is_err());
+    fn test_dipole_creation_and_mesh() {
+        let elem = AntennaElement::new_dipole(0.15, 0.001);
+        assert_eq!(elem.name(), "dipole");
+        assert!(elem.validate().is_ok());
+
+        let mesh = elem.generate_mesh(0.01).unwrap();
+        assert!(mesh.vertices.len() >= 11);
+        assert!(mesh.segments.len() >= 10);
+        assert!(mesh.triangles.is_empty());
     }
-    
+
     #[test]
-    fn test_dipole_impedance() {
-        // Half-wave dipole at 300 MHz
-        let freq = 300e6; // 300 MHz
-        let wavelength = 299_792_458.0 / freq; // ~1 meter
-        let dipole = DipoleAntenna::new(wavelength / 2.0, 0.001).unwrap();
-        
-        let z = dipole.impedance(freq).unwrap();
-        
-        // At resonance (half-wave), impedance should be approximately 73 + j0 ohms
-        assert_relative_eq!(z.re, 73.13, epsilon = 5.0);
-        assert!(z.im.abs() < 50.0); // Reactance should be small near resonance
-        
-        // Test invalid frequency
-        assert!(dipole.impedance(-100e6).is_err());
-        assert!(dipole.impedance(0.0).is_err());
+    fn test_patch_creation_and_mesh() {
+        let elem = AntennaElement::new_patch(0.03, 0.04, 0.0016, 4.4);
+        assert_eq!(elem.name(), "patch");
+        assert!(elem.validate().is_ok());
+
+        let mesh = elem.generate_mesh(0.005).unwrap();
+        assert!(mesh.vertices.len() > 0);
+        assert!(mesh.triangles.len() > 0);
+        assert!(mesh.segments.is_empty());
     }
-    
+
     #[test]
-    fn test_dipole_radiation_pattern() {
-        let dipole = DipoleAntenna::new(0.5, 0.001).unwrap();
-        
-        // Test at various angles
-        // At theta=0 (along dipole axis), should be 0
-        assert_relative_eq!(dipole.radiation_pattern(0.0, 0.0).unwrap(), 0.0, epsilon = 1e-10);
-        assert_relative_eq!(dipole.radiation_pattern(PI, 0.0).unwrap(), 0.0, epsilon = 1e-10);
-        
-        // At theta=π/2 (perpendicular to dipole), should be maximum (1.0)
-        assert_relative_eq!(dipole.radiation_pattern(PI/2.0, 0.0).unwrap(), 1.0, epsilon = 1e-10);
-        assert_relative_eq!(dipole.radiation_pattern(PI/2.0, PI).unwrap(), 1.0, epsilon = 1e-10);
-        
-        // At theta=π/4, should be sin²(π/4) = 0.5
-        assert_relative_eq!(dipole.radiation_pattern(PI/4.0, 0.0).unwrap(), 0.5, epsilon = 1e-10);
-        
-        // Pattern should be independent of phi
-        let theta = PI / 3.0;
-        let pattern1 = dipole.radiation_pattern(theta, 0.0).unwrap();
-        let pattern2 = dipole.radiation_pattern(theta, PI).unwrap();
-        let pattern3 = dipole.radiation_pattern(theta, PI/2.0).unwrap();
-        assert_relative_eq!(pattern1, pattern2, epsilon = 1e-10);
-        assert_relative_eq!(pattern1, pattern3, epsilon = 1e-10);
-        
-        // Test invalid angles
-        assert!(dipole.radiation_pattern(-0.1, 0.0).is_err());
-        assert!(dipole.radiation_pattern(PI + 0.1, 0.0).is_err());
-        assert!(dipole.radiation_pattern(PI/2.0, -0.1).is_err());
-        assert!(dipole.radiation_pattern(PI/2.0, 2.0*PI + 0.1).is_err());
+    fn test_invalid_dipole() {
+        let elem = AntennaElement::new_dipole(-1.0, 0.001);
+        assert!(elem.validate().is_err());
+        assert!(elem.generate_mesh(0.01).is_err());
     }
-    
+
     #[test]
-    fn test_wavelength_calculation() {
-        let dipole = DipoleAntenna::new(0.5, 0.001).unwrap();
-        
-        // Test at 300 MHz
-        let wavelength = dipole.wavelength(300e6);
-        assert_relative_eq!(wavelength, 0.999308, epsilon = 1e-6);
-        
-        // Test at 1 GHz
-        let wavelength = dipole.wavelength(1e9);
-        assert_relative_eq!(wavelength, 0.299792458, epsilon = 1e-9);
+    fn test_invalid_patch() {
+        let elem = AntennaElement::new_patch(0.03, 0.04, 0.0016, 0.5);
+        assert!(elem.validate().is_err());
     }
 }
