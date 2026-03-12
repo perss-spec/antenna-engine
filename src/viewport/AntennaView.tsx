@@ -1,82 +1,134 @@
-import { useState, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
-import type { AntennaGeometry, FieldData } from '../types/antenna';
-import { AntennaRenderer } from './components/AntennaRenderer';
-import { CurrentOverlay } from './components/CurrentOverlay';
+import { useState, useCallback } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls, Grid } from '@react-three/drei'
+import { AntennaRenderer } from './components/AntennaRenderer'
+import { RadiationPattern } from './components/RadiationPattern'
+import { FrequencySweep } from './components/FrequencySweep'
+import type { AntennaGeometry, RadiationPattern as RadiationPatternData } from '../types/antenna'
 
-export interface AntennaViewProps {
-  geometry: AntennaGeometry;
-  currentData?: FieldData;
-  showCurrentOverlay?: boolean;
-  showGrid?: boolean;
-  showAxes?: boolean;
+interface AntennaViewProps {
+  geometry: AntennaGeometry
+  radiationPatterns?: RadiationPatternData[]
+  showRadiationPattern?: boolean
+  className?: string
 }
 
-export function AntennaView({
-  geometry,
-  currentData,
-  showCurrentOverlay = false,
-  showGrid = true,
-  showAxes = true
+export function AntennaView({ 
+  geometry, 
+  radiationPatterns = [], 
+  showRadiationPattern = false,
+  className 
 }: AntennaViewProps) {
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | undefined>()
+  const [currentPattern, setCurrentPattern] = useState<RadiationPatternData | undefined>(
+    radiationPatterns[0]
+  )
+  const [showFrequencySweep, setShowFrequencySweep] = useState(false)
 
-  const cameraPosition = useMemo(() => {
-    const { min, max } = geometry.bounds;
-    const size = Math.max(
-      max.x - min.x,
-      max.y - min.y,
-      max.z - min.z
-    );
-    return [size * 2, size * 2, size * 2] as [number, number, number];
-  }, [geometry.bounds]);
+  const handleElementClick = useCallback((elementId: string) => {
+    setSelectedElementId(prev => prev === elementId ? undefined : elementId)
+  }, [])
+
+  const handlePatternChange = useCallback((pattern: RadiationPatternData) => {
+    setCurrentPattern(pattern)
+  }, [])
+
+  const toggleFrequencySweep = useCallback(() => {
+    setShowFrequencySweep(prev => !prev)
+  }, [])
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div className={className} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <Canvas
-        camera={{ position: cameraPosition, fov: 50 }}
+        camera={{ position: [5, 5, 5], fov: 50 }}
         style={{ background: '#1a1a1a' }}
       >
         <ambientLight intensity={0.4} />
         <directionalLight position={[10, 10, 5]} intensity={0.8} />
         <directionalLight position={[-10, -10, -5]} intensity={0.3} />
-
+        
+        {/* Grid and axes */}
+        <Grid 
+          cellSize={0.5} 
+          sectionSize={2} 
+          fadeDistance={30} 
+          fadeStrength={1}
+          cellColor="#444444"
+          sectionColor="#666666"
+        />
+        <axesHelper args={[2]} />
+        
+        {/* Antenna geometry */}
         <AntennaRenderer
           geometry={geometry}
           selectedElementId={selectedElementId}
-          onElementSelect={setSelectedElementId}
+          onElementClick={handleElementClick}
         />
-
-        {showCurrentOverlay && currentData && (
-          <CurrentOverlay fieldData={currentData} />
-        )}
-
-        {showGrid && (
-          <Grid
-            cellSize={0.5}
-            sectionSize={2}
-            fadeDistance={30}
-            fadeStrength={1}
-            cellThickness={0.5}
-            sectionThickness={1.5}
-            cellColor="#6f6f6f"
-            sectionColor="#9d4b4b"
-            position={[0, geometry.bounds.min.y - 0.1, 0]}
+        
+        {/* Radiation pattern */}
+        {showRadiationPattern && currentPattern && (
+          <RadiationPattern
+            pattern={currentPattern}
+            visible={true}
+            opacity={0.7}
           />
         )}
-
-        {showAxes && <axesHelper args={[2]} />}
-
-        <OrbitControls
-          enablePan
-          enableZoom
-          enableRotate
-          dampingFactor={0.1}
-          rotateSpeed={0.5}
-          zoomSpeed={0.8}
-        />
+        
+        <OrbitControls enableDamping dampingFactor={0.05} />
       </Canvas>
+      
+      {/* Controls */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        background: 'rgba(0, 0, 0, 0.8)',
+        borderRadius: '8px',
+        padding: '16px',
+        color: 'white',
+        fontFamily: 'monospace',
+        fontSize: '14px'
+      }}>
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={showRadiationPattern}
+              onChange={(e) => setShowFrequencySweep(e.target.checked)}
+            />
+            Show Radiation Pattern
+          </label>
+        </div>
+        
+        {radiationPatterns.length > 1 && (
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showFrequencySweep}
+                onChange={toggleFrequencySweep}
+              />
+              Frequency Sweep
+            </label>
+          </div>
+        )}
+        
+        {selectedElementId && (
+          <div style={{ marginTop: '12px', fontSize: '12px', color: '#ccc' }}>
+            Selected: {selectedElementId}
+          </div>
+        )}
+      </div>
+      
+      {/* Frequency sweep controls */}
+      {showFrequencySweep && radiationPatterns.length > 1 && (
+        <FrequencySweep
+          patterns={radiationPatterns}
+          onPatternChange={handlePatternChange}
+          autoPlay={false}
+          duration={5}
+        />
+      )}
     </div>
-  );
+  )
 }
