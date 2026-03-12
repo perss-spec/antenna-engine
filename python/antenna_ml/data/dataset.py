@@ -1,73 +1,47 @@
-import torch
-import numpy as np
-from torch.utils.data import Dataset
+import json
 from typing import List, Tuple
 
-from antenna_ml.data.schemas import AntennaDataPoint
+import numpy as np
+import torch
+from torch.utils.data import Dataset
 
-class AntennaDataset(Dataset):
+from .normalization import MinMaxNormalizer
+from .simulation_data import SimulationResult
+
+
+class AntennaS11Dataset(Dataset):
     """
-    PyTorch Dataset for antenna parameters and simulation results.
-    Converts a list of Pydantic models into tensors for model training.
+    PyTorch Dataset for loading antenna simulation data from a JSONL file.
+    It handles parameter normalization and prepares tensors for S11 prediction.
     """
 
-    def __init__(self, data: List[AntennaDataPoint]):
-        """
-        Initializes the dataset.
+    def __init__(self, data_path: str, normalizer: MinMaxNormalizer):
+        self.normalizer = normalizer
+        self.sim_results: List[SimulationResult] = []
 
-        Args:
-            data (List[AntennaDataPoint]): A list of data points, where each point
-                                           contains antenna parameters and simulation results.
-        """
-        self.data = data
-        self.inputs, self.labels = self._preprocess()
-
-    def _preprocess(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Converts the list of Pydantic models into input and label tensors.
-        """
-        if not self.data:
-            # Handle empty data case to avoid errors with np.array on empty list
-            return torch.empty(0, 4, dtype=torch.float32), torch.empty(0, 3, dtype=torch.float32)
-
-        inputs = []
-        labels = []
-        for item in self.data:
-            # Input features: flatten the parameters
-            input_features = [
-                item.params.length,
-                item.params.width,
-                item.params.substrate_height,
-                item.params.substrate_epsilon,
-            ]
-            inputs.append(input_features)
-
-            # Output labels
-            output_labels = [
-                item.results.resonant_frequency,
-                item.results.gain_db,
-                item.results.vswr,
-            ]
-            labels.append(output_labels)
-
-        # Convert to numpy arrays and then to torch tensors
-        input_tensor = torch.tensor(np.array(inputs), dtype=torch.float32)
-        label_tensor = torch.tensor(np.array(labels), dtype=torch.float32)
-
-        return input_tensor, label_tensor
+        with open(data_path, "r") as f:
+            for line in f:
+                if line.strip():
+                    data = json.loads(line)
+                    self.sim_results.append(SimulationResult(**data))
 
     def __len__(self) -> int:
-        """Returns the total number of samples in the dataset."""
-        return len(self.data)
+        return len(self.sim_results)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Retrieves the input and label tensors for a given index.
+        result = self.sim_results[idx]
 
-        Args:
-            idx (int): The index of the data point.
+        # Input: Normalized parameters
+        # The normalizer ensures the order and normalization
+        input_tensor = torch.from_numpy(self.normalizer.transform(result.params))
 
-        Returns:
-            A tuple containing the input tensor and the label tensor.
-        """
-        return self.inputs[idx], self.labels[idx]
+        # Target: S11 curve (real and imaginary parts interleaved)
+        s11_data = result.s11
+        target_values = np.zeros(len(s11_data) * 2, dtype=np.float32)
+        for i, c in enumerate(s11_data):
+            target_values[2 * i] = c.real
+            target_values[2 * i + 1] = c.imag
+
+        target_tensor = torch.from_numpy(target_values)
+
+        return input_tensor, target_tensor
