@@ -322,7 +322,6 @@ impl Default for ExportConfig {
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use tempfile::NamedTempFile;
 
     #[test]
     fn test_export_config_default() {
