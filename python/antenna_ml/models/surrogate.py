@@ -1,67 +1,91 @@
-"""
-Defines the PyTorch neural network model for antenna gain prediction
-and provides an inference function for use with PyO3.
-"""
 import torch
 import torch.nn as nn
-from pathlib import Path
-
-from antenna_ml.types import AntennaParameters, GainPrediction
+from typing import List
 
 
-class SurrogateAntennaModel(nn.Module):
+class SurrogateMLP(nn.Module):
     """
-    A simple Multi-Layer Perceptron (MLP) to approximate antenna gain.
+    A Multi-Layer Perceptron (MLP) surrogate model to approximate antenna simulations.
+
+    This model takes a set of normalized antenna parameters as input and predicts
+    the S11 scattering parameter curve over a range of frequencies.
+
+    The output is a flattened tensor of real and imaginary parts of the S11 curve.
+    For N frequency points, the output size is 2*N. The structure is:
+    [re_1, re_2, ..., re_N, im_1, im_2, ..., im_N]
     """
-    def __init__(self, input_size: int = 3, hidden_size: int = 64, output_size: int = 1):
+
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,  # Should be 2 * num_frequency_points
+        hidden_dim: int = 256,
+        n_hidden_layers: int = 4,
+    ):
+        """
+        Initializes the MLP model.
+
+        Args:
+            input_dim: The number of input antenna parameters.
+            output_dim: The size of the output vector (2 * num_frequency_points).
+            hidden_dim: The number of units in each hidden layer.
+            n_hidden_layers: The number of hidden layers.
+        """
         super().__init__()
-        self.input_size = input_size
-        self.model = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
-        )
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+        layers: List[nn.Module] = [nn.Linear(input_dim, hidden_dim), nn.ReLU()]
+
+        for _ in range(n_hidden_layers):
+            layers.extend([nn.Linear(hidden_dim, hidden_dim), nn.ReLU()])
+
+        # Final output layer
+        layers.append(nn.Linear(hidden_dim, output_dim))
+
+        self.network = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+        """
+        Performs the forward pass of the model.
 
-    def export_onnx(self, path: str) -> None:
-        """Export model to ONNX format for Rust inference via ort crate."""
-        import torch
-        dummy_input = torch.randn(1, self.input_size)
+        Args:
+            x: A tensor of shape (batch_size, input_dim) containing
+               normalized antenna parameters.
+
+        Returns:
+            A tensor of shape (batch_size, output_dim) representing the
+            flattened real and imaginary parts of the S11 curve.
+        """
+        return self.network(x)
+
+    def export_onnx(self, path: str):
+        """
+        Exports the model to ONNX format for use with ONNX Runtime.
+
+        Args:
+            path: The file path to save the .onnx model.
+        """
+        # Create a dummy input tensor with the correct shape for tracing.
+        # The batch size is typically set to 1 for export, but we use dynamic axes.
+        dummy_input = torch.randn(1, self.input_dim, device=next(self.parameters()).device)
+
+        # Set the model to evaluation mode (important for layers like dropout, batchnorm)
+        self.eval()
+
+        print(f"Exporting model to ONNX at {path}...")
         torch.onnx.export(
-            self.model, dummy_input, path,
-            input_names=['parameters'],
-            output_names=['prediction'],
-            dynamic_axes={'parameters': {0: 'batch'}, 'prediction': {0: 'batch'}},
-            opset_version=17
+            self,
+            dummy_input,
+            path,
+            export_params=True,
+            opset_version=14,  # A reasonably modern opset version
+            do_constant_folding=True,
+            input_names=['antenna_params'],
+            output_names=['s11_real_imag'],
+            dynamic_axes={
+                'antenna_params': {0: 'batch_size'},
+                's11_real_imag': {0: 'batch_size'}
+            }
         )
-
-
-def predict_gain(params: AntennaParameters, model_path: str) -> GainPrediction:
-    """
-    Loads a trained surrogate model and predicts antenna gain for the given parameters.
-    This function is designed to be called from Rust via PyO3.
-
-    Raises:
-        FileNotFoundError: If the model file does not exist.
-    """
-    model_file = Path(model_path)
-    if not model_file.exists():
-        raise FileNotFoundError(f"Model file not found at: {model_path}")
-
-    model = SurrogateAntennaModel(input_size=3, output_size=1)
-    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-    model.eval()
-
-    input_data = torch.tensor(
-        [[params.length, params.width, params.substrate_height]],
-        dtype=torch.float32
-    )
-
-    with torch.no_grad():
-        prediction = model(input_data)
-
-    return GainPrediction(gain_db=prediction.item())
+        print(f"Model successfully exported to {path}")
