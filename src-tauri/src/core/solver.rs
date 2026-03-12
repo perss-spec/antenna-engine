@@ -1,8 +1,8 @@
-use crate::core::types::{Result, AntennaError};
-use crate::core::geometry::{Point3D, Mesh, Segment};
+use crate::core::types::Result;
+use crate::core::geometry::{Point3D, Mesh};
 use crate::core::element::AntennaElement;
 use crate::core::field::{FieldResult, FarFieldSample, NearFieldSample, ElectricField};
-use crate::core::port::{Port, PortExcitation};
+use crate::core::port::Port;
 use crate::core::green::GreenFunction;
 use crate::core::constants::{C0, ETA0};
 use num_complex::Complex64;
@@ -256,7 +256,7 @@ impl MomSolver {
         phi: f64
     ) -> Result<(Complex64, Complex64)> {
         let mut e_theta = Complex64::new(0.0, 0.0);
-        let mut e_phi = Complex64::new(0.0, 0.0);
+        let e_phi = Complex64::new(0.0, 0.0);
         
         let sin_theta = theta.sin();
         let cos_theta = theta.cos();
@@ -288,8 +288,8 @@ impl MomSolver {
 
     fn calculate_near_field(
         &self,
-        currents: &Array1<Complex64>,
-        k: f64
+        _currents: &Array1<Complex64>,
+        _k: f64
     ) -> Result<Vec<NearFieldSample>> {
         let samples = vec![
             NearFieldSample {
