@@ -3,13 +3,13 @@ pub mod geometry;
 pub mod element;
 pub mod solver;
 pub mod field;
+pub mod port;
 
 // Re-export commonly used types
 pub use types::{AntennaError, Result};
-pub use geometry::{Point3D, Segment, Triangle, Mesh, Bounds3D};
-pub use element::{AntennaElement, DipoleParams, PatchParams};
-pub use solver::{MomSolver, SimulationParams, SimulationResult, SParameterResult};
-pub use field::{ElectricField, FieldResult, NearFieldSample, FarFieldSample};
+pub use geometry::{Point3D, Segment, Triangle, Mesh};
+pub use element::AntennaElement;
+pub use solver::{MomSolver, SimulationParams, SimulationResult};
 
 // Physical constants
 pub const C0: f64 = 299792458.0; // Speed of light in vacuum (m/s)
