@@ -62,20 +62,20 @@ const SmithChart: FC<SmithChartProps> = ({
   const drawResistanceCircles = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number) => {
     const resistanceValues = [0.2, 0.5, 1, 2, 5];
     
-    ctx.strokeStyle = '#e0e0e0';
+    ctx.strokeStyle = '#2a2a3e';
     ctx.lineWidth = 1;
-    
+
     resistanceValues.forEach(r => {
       const circleRadius = radius / (1 + r);
       const circleX = centerX + (r * radius) / (1 + r);
-      
+
       ctx.beginPath();
       ctx.arc(circleX, centerY, circleRadius, 0, 2 * Math.PI);
       ctx.stroke();
-      
+
       // Label
       if (showLabels) {
-        ctx.fillStyle = '#666';
+        ctx.fillStyle = '#555';
         ctx.font = '10px Arial';
         ctx.fillText(r.toString(), circleX + circleRadius - 10, centerY - 5);
       }
@@ -86,28 +86,28 @@ const SmithChart: FC<SmithChartProps> = ({
   const drawReactanceCircles = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number) => {
     const reactanceValues = [0.2, 0.5, 1, 2, 5];
     
-    ctx.strokeStyle = '#e0e0e0';
+    ctx.strokeStyle = '#2a2a3e';
     ctx.lineWidth = 1;
-    
+
     reactanceValues.forEach(x => {
       // Positive reactance (upper half)
       const circleRadius = radius / x;
       const circleY = centerY - radius / x;
-      
+
       ctx.beginPath();
       ctx.arc(centerX + radius, circleY, circleRadius, 0, 2 * Math.PI);
       ctx.stroke();
-      
+
       // Negative reactance (lower half)
       const circleYNeg = centerY + radius / x;
-      
+
       ctx.beginPath();
       ctx.arc(centerX + radius, circleYNeg, circleRadius, 0, 2 * Math.PI);
       ctx.stroke();
-      
+
       // Labels
       if (showLabels) {
-        ctx.fillStyle = '#666';
+        ctx.fillStyle = '#555';
         ctx.font = '10px Arial';
         ctx.fillText(`+j${x}`, centerX + radius - 15, circleY - circleRadius + 10);
         ctx.fillText(`-j${x}`, centerX + radius - 15, circleYNeg + circleRadius - 5);
@@ -118,27 +118,27 @@ const SmithChart: FC<SmithChartProps> = ({
   // Draw the outer circle and axes
   const drawBoundary = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number) => {
     // Outer circle
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = '#444';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
-    
+
     // Horizontal axis
-    ctx.strokeStyle = '#666';
+    ctx.strokeStyle = '#555';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(centerX - radius, centerY);
     ctx.lineTo(centerX + radius, centerY);
     ctx.stroke();
-    
+
     // Labels
     if (showLabels) {
-      ctx.fillStyle = '#333';
+      ctx.fillStyle = '#666';
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('0', centerX - radius - 15, centerY + 5);
-      ctx.fillText('∞', centerX + radius + 15, centerY + 5);
+      ctx.fillText('\u221E', centerX + radius + 15, centerY + 5);
       ctx.fillText('+jX', centerX - 10, centerY - radius - 10);
       ctx.fillText('-jX', centerX - 10, centerY + radius + 20);
     }
@@ -160,7 +160,7 @@ const SmithChart: FC<SmithChartProps> = ({
     if (points.length === 0) return;
     
     // Draw trace line
-    ctx.strokeStyle = '#2196F3';
+    ctx.strokeStyle = '#6366f1';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -172,7 +172,7 @@ const SmithChart: FC<SmithChartProps> = ({
     
     // Draw points
     points.forEach((point, index) => {
-      ctx.fillStyle = index === 0 ? '#4CAF50' : index === points.length - 1 ? '#F44336' : '#2196F3';
+      ctx.fillStyle = index === 0 ? '#22c55e' : index === points.length - 1 ? '#ef4444' : '#6366f1';
       ctx.beginPath();
       ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
       ctx.fill();

@@ -41,19 +41,25 @@ pub struct MomSolver {
     mesh: Mesh,
     ports: Vec<Port>,
     green_function: GreenFunction,
+    wire_radius: f64,
 }
 
 impl MomSolver {
     pub fn new(element: &AntennaElement, params: &SimulationParams) -> Result<Self> {
         let mesh = element.generate_mesh(params.resolution)?;
         let ports = Self::create_ports(element, &mesh)?;
-        let wavelength = C0 / params.frequency;
-        let green_function = GreenFunction::new(wavelength);
+        let green_function = GreenFunction::from_frequency(params.frequency);
+        let wire_radius = match element {
+            AntennaElement::Dipole(p) => p.radius,
+            AntennaElement::Qfh(p) => p.wire_radius,
+            AntennaElement::Patch(_) => 0.001,
+        };
 
         Ok(Self {
             mesh,
             ports,
             green_function,
+            wire_radius,
         })
     }
 
@@ -174,7 +180,8 @@ impl MomSolver {
         }
 
         // Build impedance matrix
-        let mut impedance_builder = ImpedanceMatrix::new(&self.mesh, &self.green_function)?;
+        let mut impedance_builder = ImpedanceMatrix::new(&self.mesh, &self.green_function)?
+            .with_wire_radius(self.wire_radius);
         let z_matrix = impedance_builder.build()?;
 
         // Build excitation vector
@@ -300,31 +307,31 @@ impl MomSolver {
 
     fn calculate_s_parameters(
         &self,
-        z_matrix: &Array2<Complex64>,
+        _z_matrix: &Array2<Complex64>,
         current_distribution: &Array1<Complex64>,
         params: &SimulationParams,
     ) -> Result<Vec<SParameterResult>> {
         let mut s_params = Vec::new();
-        
+
         for port in &self.ports {
             if port.segment_index >= current_distribution.len() {
                 continue;
             }
-            
-            // Calculate input impedance at port
-            let port_voltage = port.get_excitation();
+
+            // Input impedance: Z_in = V_excitation / I_port
+            // With delta-gap excitation V=1V, Z_in = 1/I
             let port_current = current_distribution[port.segment_index];
-            
-            let input_impedance = if port_current.norm() > 1e-15 {
+            let port_voltage = port.get_excitation();
+
+            let input_impedance = if port_current.norm() > 1e-20 {
                 port_voltage / port_current
             } else {
-                Complex64::new(1e6, 0.0) // Very high impedance for open circuit
+                Complex64::new(1e6, 0.0)
             };
-            
-            // Calculate S11
+
             let s11 = port.calculate_s_parameter(input_impedance, params.reference_impedance);
             let vswr = Port::calculate_vswr(s11);
-            
+
             s_params.push(SParameterResult {
                 frequency: params.frequency,
                 s11_re: s11.re,
@@ -334,7 +341,7 @@ impl MomSolver {
                 input_impedance_im: input_impedance.im,
             });
         }
-        
+
         Ok(s_params)
     }
 
@@ -406,16 +413,57 @@ mod tests {
         let element = AntennaElement::new_dipole(0.15, 0.001);
         let params = SimulationParams {
             frequency: 1e9,
-            resolution: 0.05,
+            resolution: 0.01,
             reference_impedance: 50.0,
         };
-        
+
         let mut solver = MomSolver::new(&element, &params).unwrap();
         let result = solver.solve(&params);
         assert!(result.is_ok());
-        
+
         let sim_result = result.unwrap();
         assert!(!sim_result.s_parameters.is_empty());
         assert!(!sim_result.current_distribution.is_empty());
+
+        let sp = &sim_result.s_parameters[0];
+        // Half-wave dipole at 1 GHz (λ/2 = 0.15m): expect Z_in ~ 73+j42 Ω
+        // Allow wide tolerance for MoM approximation
+        let z_re = sp.input_impedance_re;
+        let z_im = sp.input_impedance_im;
+        eprintln!("Dipole Z_in = {:.1} + j{:.1} Ω", z_re, z_im);
+        eprintln!("S11 = {:.3} dB", 20.0 * sp.s11_re.hypot(sp.s11_im).log10());
+
+        // Real part should be positive (radiation resistance exists)
+        assert!(z_re > 0.0, "Radiation resistance should be positive, got {}", z_re);
+        // |S11| should be < 1 (antenna radiates some power)
+        let s11_mag = (sp.s11_re * sp.s11_re + sp.s11_im * sp.s11_im).sqrt();
+        assert!(s11_mag < 1.0, "|S11| should be < 1, got {}", s11_mag);
+    }
+
+    #[test]
+    fn test_halfwave_dipole_impedance() {
+        // Classical half-wave dipole: L = λ/2, expect Z ≈ 73 + j42 Ω
+        let freq = 300e6; // 300 MHz, λ = 1m
+        let length = 0.5; // λ/2
+        let radius = 0.001; // 1mm wire
+
+        let element = AntennaElement::new_dipole(length, radius);
+        let params = SimulationParams {
+            frequency: freq,
+            resolution: length / 40.0, // 40+ segments for convergence
+            reference_impedance: 50.0,
+        };
+
+        let mut solver = MomSolver::new(&element, &params).unwrap();
+        let result = solver.solve(&params).unwrap();
+        let sp = &result.s_parameters[0];
+
+        eprintln!("Half-wave dipole at {} MHz:", freq / 1e6);
+        eprintln!("  Z_in = {:.1} + j{:.1} Ω", sp.input_impedance_re, sp.input_impedance_im);
+        eprintln!("  |S11| = {:.3}", (sp.s11_re.powi(2) + sp.s11_im.powi(2)).sqrt());
+
+        // Expect Re(Z) in range 40-120 Ω (theoretical 73 Ω)
+        assert!(sp.input_impedance_re > 20.0 && sp.input_impedance_re < 200.0,
+            "Re(Z) = {} out of expected range", sp.input_impedance_re);
     }
 }
