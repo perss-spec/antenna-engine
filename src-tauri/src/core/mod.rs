@@ -1,2 +1,2 @@
-// Core antenna simulation engine
-pub mod types;
+#[cfg(test)]
+mod placeholder;
