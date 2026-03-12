@@ -31,8 +31,10 @@ pub struct FieldResult {
     pub directivity_dbi: f64,
     pub efficiency: f64,
     pub beamwidth_deg: f64,
-    pub near_field_samples: Vec<NearFieldSample>,
-    pub far_field_samples: Vec<FarFieldSample>,
+    pub front_to_back_ratio_db: f64,
+    pub polarization: String,
+    pub near_field: Vec<NearFieldSample>,
+    pub far_field: Vec<FarFieldSample>,
 }
 
 impl FieldResult {
@@ -44,8 +46,10 @@ impl FieldResult {
             directivity_dbi: 2.15,
             efficiency: 1.0,
             beamwidth_deg: 78.0,
-            near_field_samples: Vec::new(),
-            far_field_samples: vec![
+            front_to_back_ratio_db: 0.0,
+            polarization: "linear".to_string(),
+            near_field: Vec::new(),
+            far_field: vec![
                 FarFieldSample {
                     theta_deg: 0.0,
                     phi_deg: 0.0,
@@ -117,8 +121,8 @@ mod tests {
         let fr = FieldResult::placeholder(1e9);
         assert!((fr.frequency - 1e9).abs() < 1.0);
         assert!((fr.max_gain_dbi - 2.15).abs() < 1e-10);
-        assert_eq!(fr.far_field_samples.len(), 2);
-        assert!(fr.near_field_samples.is_empty());
+        assert_eq!(fr.far_field.len(), 2);
+        assert!(fr.near_field.is_empty());
     }
 
     #[test]
