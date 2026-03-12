@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface OptimizationResult {
   iteration: number;
@@ -33,18 +38,14 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   results = [],
   className = ''
 }) => {
-  const [targetFrequency, setTargetFrequency] = useState<number>(2400); // MHz
-  const [targetS11, setTargetS11] = useState<number>(-20); // dB
+  const [targetFrequency, setTargetFrequency] = useState<number>(2400);
+  const [targetS11, setTargetS11] = useState<number>(-20);
   const [method, setMethod] = useState<'gradient' | 'random' | 'bayesian'>('gradient');
 
   const handleStartOptimization = useCallback((e: FormEvent) => {
     e.preventDefault();
     if (onStartOptimization && !isOptimizing) {
-      onStartOptimization({
-        targetFrequency,
-        targetS11,
-        method
-      });
+      onStartOptimization({ targetFrequency, targetS11, method });
     }
   }, [targetFrequency, targetS11, method, onStartOptimization, isOptimizing]);
 
@@ -67,269 +68,93 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   }, []);
 
   const formatFrequency = (freq: number): string => {
-    if (freq >= 1000) {
-      return `${(freq / 1000).toFixed(2)} GHz`;
-    }
+    if (freq >= 1000) return `${(freq / 1000).toFixed(2)} GHz`;
     return `${freq} MHz`;
   };
 
-  const formatS11 = (s11: number): string => {
-    return `${s11.toFixed(2)} dB`;
-  };
+  const formatS11 = (s11: number): string => `${s11.toFixed(2)} dB`;
 
-  const formatTimestamp = (timestamp: Date): string => {
-    return timestamp.toLocaleTimeString();
-  };
+  const formatTimestamp = (timestamp: Date): string => timestamp.toLocaleTimeString();
 
   const getBestResult = (): OptimizationResult | null => {
     if (results.length === 0) return null;
-    return results.reduce((best, current) => 
-      current.s11 < best.s11 ? current : best
-    );
+    return results.reduce((best, current) => current.s11 < best.s11 ? current : best);
   };
 
   const bestResult = getBestResult();
 
   return (
-    <div 
-      className={className}
-      style={{
-        background: '#12121a',
-        border: '1px solid #1e1e2e',
-        borderRadius: '8px',
-        padding: '20px',
-        color: '#ffffff',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      }}
-    >
-      <div style={{ marginBottom: '24px' }}>
-        <h3 style={{
-          margin: '0 0 16px 0',
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#ffffff'
-        }}>
-          Antenna Optimization
-        </h3>
-        
-        <form onSubmit={handleStartOptimization} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-            <div>
-              <label 
-                htmlFor="target-frequency"
-                style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#e5e7eb'
-                }}
-              >
-                Target Frequency (MHz)
-              </label>
-              <input
+    <div className={`p-5 text-text ${className}`}>
+      <div className="mb-6">
+        <h3 className="text-sm font-semibold text-text mb-4">Antenna Optimization</h3>
+
+        <form onSubmit={handleStartOptimization} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="target-frequency">Target Frequency (MHz)</Label>
+              <Input
                 id="target-frequency"
                 type="number"
                 value={targetFrequency}
                 onChange={handleFrequencyChange}
-                min="100"
-                max="10000"
-                step="1"
+                min={100}
+                max={10000}
+                step={1}
                 disabled={isOptimizing}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: '#1e1e2e',
-                  border: '1px solid #374151',
-                  borderRadius: '4px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease',
-                  ...(isOptimizing && {
-                    opacity: '0.6',
-                    cursor: 'not-allowed'
-                  })
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#6366f1';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#374151';
-                }}
               />
             </div>
 
-            <div>
-              <label 
-                htmlFor="target-s11"
-                style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#e5e7eb'
-                }}
-              >
-                Target S11 (dB)
-              </label>
-              <input
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="target-s11">Target S11 (dB)</Label>
+              <Input
                 id="target-s11"
                 type="number"
                 value={targetS11}
                 onChange={handleS11Change}
-                min="-60"
-                max="0"
-                step="0.1"
+                min={-60}
+                max={0}
+                step={0.1}
                 disabled={isOptimizing}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: '#1e1e2e',
-                  border: '1px solid #374151',
-                  borderRadius: '4px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease',
-                  ...(isOptimizing && {
-                    opacity: '0.6',
-                    cursor: 'not-allowed'
-                  })
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#6366f1';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#374151';
-                }}
               />
             </div>
 
-            <div>
-              <label 
-                htmlFor="optimization-method"
-                style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#e5e7eb'
-                }}
-              >
-                Optimization Method
-              </label>
-              <select
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="optimization-method">Optimization Method</Label>
+              <Select
                 id="optimization-method"
                 value={method}
                 onChange={handleMethodChange}
                 disabled={isOptimizing}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: '#1e1e2e',
-                  border: '1px solid #374151',
-                  borderRadius: '4px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  outline: 'none',
-                  cursor: isOptimizing ? 'not-allowed' : 'pointer',
-                  ...(isOptimizing && {
-                    opacity: '0.6'
-                  })
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#6366f1';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#374151';
-                }}
               >
                 <option value="gradient">Gradient Descent</option>
                 <option value="random">Random Search</option>
                 <option value="bayesian">Bayesian Optimization</option>
-              </select>
+              </Select>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div className="flex gap-3 items-center">
             {!isOptimizing ? (
-              <button
-                type="submit"
-                style={{
-                  background: '#6366f1',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease',
-                  minWidth: '120px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#5855eb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#6366f1';
-                }}
-              >
+              <Button type="submit" className="bg-accent hover:bg-accent-hover text-white">
                 Start Optimization
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                onClick={handleStopOptimization}
-                style={{
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease',
-                  minWidth: '120px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#ef4444';
-                }}
-              >
+              <Button type="button" variant="destructive" onClick={handleStopOptimization}>
                 Stop Optimization
-              </button>
+              </Button>
             )}
 
             {isOptimizing && (
-              <div style={{ flex: 1, minWidth: '200px' }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '4px'
-                }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>Progress</span>
-                  <span style={{ fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' }}>
-                    {progress.toFixed(1)}%
-                  </span>
+              <div className="flex-1 min-w-[120px]">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[11px] text-text-muted">Progress</span>
+                  <span className="text-[11px] text-text-muted tabular-nums">{progress.toFixed(1)}%</span>
                 </div>
-                <div style={{
-                  width: '100%',
-                  height: '6px',
-                  background: '#374151',
-                  borderRadius: '3px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${progress}%`,
-                    height: '100%',
-                    background: '#6366f1',
-                    transition: 'width 0.3s ease'
-                  }} />
+                <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
               </div>
             )}
@@ -338,193 +163,66 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
       </div>
 
       {bestResult && (
-        <div style={{
-          background: '#1e1e2e',
-          border: '1px solid #374151',
-          borderRadius: '6px',
-          padding: '16px',
-          marginBottom: '20px'
-        }}>
-          <h4 style={{
-            margin: '0 0 12px 0',
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#10b981'
-          }}>
-            Best Result
-          </h4>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: '12px',
-            fontSize: '14px'
-          }}>
-            <div>
-              <span style={{ color: '#9ca3af' }}>Frequency: </span>
-              <span style={{ color: '#ffffff', fontFamily: 'monospace' }}>
-                {formatFrequency(bestResult.frequency)}
-              </span>
+        <Card className="mb-5">
+          <CardHeader>
+            <CardTitle className="text-success">Best Result</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-text-muted">Frequency: </span>
+                <span className="text-text tabular-nums">{formatFrequency(bestResult.frequency)}</span>
+              </div>
+              <div>
+                <span className="text-text-muted">S11: </span>
+                <span className="text-success tabular-nums font-semibold">{formatS11(bestResult.s11)}</span>
+              </div>
+              <div>
+                <span className="text-text-muted">Length: </span>
+                <span className="text-text tabular-nums">{bestResult.length.toFixed(3)}m</span>
+              </div>
+              <div>
+                <span className="text-text-muted">Radius: </span>
+                <span className="text-text tabular-nums">{(bestResult.radius * 1000).toFixed(2)}mm</span>
+              </div>
             </div>
-            <div>
-              <span style={{ color: '#9ca3af' }}>S11: </span>
-              <span style={{ color: '#10b981', fontFamily: 'monospace', fontWeight: '600' }}>
-                {formatS11(bestResult.s11)}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: '#9ca3af' }}>Length: </span>
-              <span style={{ color: '#ffffff', fontFamily: 'monospace' }}>
-                {bestResult.length.toFixed(3)}m
-              </span>
-            </div>
-            <div>
-              <span style={{ color: '#9ca3af' }}>Radius: </span>
-              <span style={{ color: '#ffffff', fontFamily: 'monospace' }}>
-                {(bestResult.radius * 1000).toFixed(2)}mm
-              </span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {results.length > 0 && (
         <div>
-          <h4 style={{
-            margin: '0 0 12px 0',
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#ffffff'
-          }}>
-            Optimization Results ({results.length} iterations)
+          <h4 className="text-xs font-semibold text-text mb-3">
+            Results ({results.length} iterations)
           </h4>
-          
-          <div style={{
-            background: '#1e1e2e',
-            border: '1px solid #374151',
-            borderRadius: '6px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              maxHeight: '300px',
-              overflowY: 'auto'
-            }}>
-              <table style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                fontSize: '13px'
-              }}>
-                <thead>
-                  <tr style={{ background: '#374151' }}>
-                    <th style={{
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#e5e7eb',
-                      borderBottom: '1px solid #4b5563'
-                    }}>
-                      #
-                    </th>
-                    <th style={{
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#e5e7eb',
-                      borderBottom: '1px solid #4b5563'
-                    }}>
-                      Frequency
-                    </th>
-                    <th style={{
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#e5e7eb',
-                      borderBottom: '1px solid #4b5563'
-                    }}>
-                      Length (m)
-                    </th>
-                    <th style={{
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#e5e7eb',
-                      borderBottom: '1px solid #4b5563'
-                    }}>
-                      Radius (mm)
-                    </th>
-                    <th style={{
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#e5e7eb',
-                      borderBottom: '1px solid #4b5563'
-                    }}>
-                      S11 (dB)
-                    </th>
-                    <th style={{
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#e5e7eb',
-                      borderBottom: '1px solid #4b5563'
-                    }}>
-                      Time
-                    </th>
+
+          <div className="bg-surface border border-border rounded-lg overflow-hidden">
+            <div className="max-h-[200px] overflow-y-auto">
+              <table className="w-full text-[11px]">
+                <thead className="text-text-muted uppercase tracking-wider border-b border-border sticky top-0 bg-surface">
+                  <tr>
+                    <th className="py-2 px-2 text-left">#</th>
+                    <th className="py-2 px-2 text-left">Freq</th>
+                    <th className="py-2 px-2 text-left">Length</th>
+                    <th className="py-2 px-2 text-left">S11</th>
+                    <th className="py-2 px-2 text-left">Time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.slice().reverse().map((result, index) => {
+                  {results.slice().reverse().map((result) => {
                     const isBest = result === bestResult;
                     return (
-                      <tr 
+                      <tr
                         key={result.iteration}
-                        style={{
-                          background: isBest ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                          borderBottom: index < results.length - 1 ? '1px solid #374151' : 'none'
-                        }}
+                        className={`border-b border-border/50 ${isBest ? 'bg-success/5' : 'hover:bg-surface-hover'}`}
                       >
-                        <td style={{
-                          padding: '8px 12px',
-                          color: '#9ca3af',
-                          fontFamily: 'monospace'
-                        }}>
-                          {result.iteration}
-                        </td>
-                        <td style={{
-                          padding: '8px 12px',
-                          color: '#ffffff',
-                          fontFamily: 'monospace'
-                        }}>
-                          {formatFrequency(result.frequency)}
-                        </td>
-                        <td style={{
-                          padding: '8px 12px',
-                          color: '#ffffff',
-                          fontFamily: 'monospace'
-                        }}>
-                          {result.length.toFixed(4)}
-                        </td>
-                        <td style={{
-                          padding: '8px 12px',
-                          color: '#ffffff',
-                          fontFamily: 'monospace'
-                        }}>
-                          {(result.radius * 1000).toFixed(3)}
-                        </td>
-                        <td style={{
-                          padding: '8px 12px',
-                          color: isBest ? '#10b981' : (result.s11 < targetS11 ? '#10b981' : '#ffffff'),
-                          fontFamily: 'monospace',
-                          fontWeight: isBest ? '600' : '400'
-                        }}>
+                        <td className="py-1.5 px-2 text-text-muted tabular-nums">{result.iteration}</td>
+                        <td className="py-1.5 px-2 text-text tabular-nums">{formatFrequency(result.frequency)}</td>
+                        <td className="py-1.5 px-2 text-text tabular-nums">{result.length.toFixed(4)}m</td>
+                        <td className={`py-1.5 px-2 tabular-nums ${isBest ? 'text-success font-semibold' : result.s11 < targetS11 ? 'text-success' : 'text-text'}`}>
                           {formatS11(result.s11)}
                         </td>
-                        <td style={{
-                          padding: '8px 12px',
-                          color: '#9ca3af',
-                          fontFamily: 'monospace'
-                        }}>
-                          {formatTimestamp(result.timestamp)}
-                        </td>
+                        <td className="py-1.5 px-2 text-text-muted tabular-nums">{formatTimestamp(result.timestamp)}</td>
                       </tr>
                     );
                   })}

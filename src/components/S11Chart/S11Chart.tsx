@@ -1,6 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { FC } from 'react';
-import './S11Chart.css';
 
 interface S11DataPoint {
   frequency: number;
@@ -14,11 +13,11 @@ interface S11ChartProps {
   className?: string;
 }
 
-const S11Chart: FC<S11ChartProps> = ({ 
-  data, 
-  simulationData, 
-  touchstoneData, 
-  className 
+const S11Chart: FC<S11ChartProps> = ({
+  data,
+  simulationData,
+  touchstoneData,
+  className
 }) => {
   const formatTooltip = (value: number, name: string) => {
     if (name.includes('s11')) {
@@ -28,69 +27,74 @@ const S11Chart: FC<S11ChartProps> = ({
   };
 
   const formatXAxis = (tickItem: number) => {
-    if (tickItem >= 1000) {
-      return `${(tickItem / 1000).toFixed(1)}G`;
-    }
+    if (tickItem >= 1000) return `${(tickItem / 1000).toFixed(1)}G`;
     return `${tickItem}M`;
   };
 
   return (
-    <div className={`s11-chart ${className || ''}`}>
-      <div className="s11-chart-header">
-        <h3>S11 Return Loss</h3>
-      </div>
+    <div className={`flex flex-col flex-1 ${className || ''}`}>
+      <h3 className="text-sm font-semibold text-text mb-3">S11 Return Loss</h3>
       <ResponsiveContainer width="100%" height={400}>
         <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis 
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" />
+          <XAxis
             dataKey="frequency"
             type="number"
             scale="linear"
             domain={['dataMin', 'dataMax']}
             tickFormatter={formatXAxis}
-            stroke="#666"
+            stroke="#555"
+            tick={{ fill: '#666', fontSize: 11 }}
           />
-          <YAxis 
+          <YAxis
             domain={[-40, 0]}
-            label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft' }}
-            stroke="#666"
+            label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#666' }}
+            stroke="#555"
+            tick={{ fill: '#666', fontSize: 11 }}
           />
-          <Tooltip 
+          <Tooltip
             formatter={formatTooltip}
             labelFormatter={(value) => `${formatXAxis(Number(value))}Hz`}
+            contentStyle={{
+              background: '#1a1a28',
+              border: '1px solid #2a2a3e',
+              borderRadius: '6px',
+              color: '#e0e0e0',
+              fontSize: '12px',
+            }}
           />
-          <Legend />
-          
+          <Legend wrapperStyle={{ color: '#888', fontSize: '12px' }} />
+
           {data.length > 0 && (
             <Line
               data={data}
               type="monotone"
               dataKey="s11_db"
-              stroke="#2196F3"
+              stroke="#6366f1"
               strokeWidth={2}
               dot={false}
               name="Current Simulation"
             />
           )}
-          
+
           {simulationData && simulationData.length > 0 && (
             <Line
               data={simulationData}
               type="monotone"
               dataKey="s11_db"
-              stroke="#4CAF50"
+              stroke="#22c55e"
               strokeWidth={2}
               dot={false}
               name="Previous Simulation"
             />
           )}
-          
+
           {touchstoneData && touchstoneData.length > 0 && (
             <Line
               data={touchstoneData}
               type="monotone"
               dataKey="s11_db"
-              stroke="#FF9800"
+              stroke="#f59e0b"
               strokeWidth={2}
               dot={false}
               name="Touchstone Import"

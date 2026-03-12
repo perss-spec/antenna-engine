@@ -1,55 +1,78 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-interface TabsContextType {
-  value: string
-  onChange: (value: string) => void
-}
-
-const TabsContext = React.createContext<TabsContextType>({ value: "", onChange: () => {} })
-
-function Tabs({ value, onValueChange, children, className, ...props }: {
+interface TabsContextValue {
   value: string
   onValueChange: (value: string) => void
-  children: React.ReactNode
-  className?: string
-} & React.HTMLAttributes<HTMLDivElement>) {
+}
+
+const TabsContext = React.createContext<TabsContextValue>({ value: "", onValueChange: () => {} })
+
+interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string
+  onValueChange: (value: string) => void
+}
+
+function Tabs({ value, onValueChange, className, ...props }: TabsProps) {
   return (
-    <TabsContext.Provider value={{ value, onChange: onValueChange }}>
-      <div className={cn("", className)} {...props}>{children}</div>
+    <TabsContext.Provider value={{ value, onValueChange }}>
+      <div className={cn("flex flex-col", className)} {...props} />
     </TabsContext.Provider>
   )
 }
 
-function TabsList({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("inline-flex h-9 items-center justify-center rounded-lg bg-background p-1 text-text-muted", className)} {...props}>
-      {children}
-    </div>
-  )
-}
-
-function TabsTrigger({ value, className, children, ...props }: { value: string } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const ctx = React.useContext(TabsContext)
-  return (
-    <button
+const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-all",
-        ctx.value === value ? "bg-surface text-text shadow-sm" : "text-text-dim hover:text-text-muted",
+        "inline-flex items-center gap-1 rounded-lg bg-surface p-1 border border-border",
         className
       )}
-      onClick={() => ctx.onChange(value)}
       {...props}
-    >
-      {children}
-    </button>
+    />
   )
+)
+TabsList.displayName = "TabsList"
+
+interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  value: string
 }
 
-function TabsContent({ value, className, children, ...props }: { value: string } & React.HTMLAttributes<HTMLDivElement>) {
-  const ctx = React.useContext(TabsContext)
-  if (ctx.value !== value) return null
-  return <div className={cn("mt-2", className)} {...props}>{children}</div>
+const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
+  ({ className, value, ...props }, ref) => {
+    const ctx = React.useContext(TabsContext)
+    const isActive = ctx.value === value
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+          isActive
+            ? "bg-accent text-white shadow-sm"
+            : "text-text-muted hover:text-text hover:bg-surface-hover",
+          className
+        )}
+        onClick={() => ctx.onValueChange(value)}
+        {...props}
+      />
+    )
+  }
+)
+TabsTrigger.displayName = "TabsTrigger"
+
+interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string
 }
+
+const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
+  ({ className, value, ...props }, ref) => {
+    const ctx = React.useContext(TabsContext)
+    if (ctx.value !== value) return null
+    return <div ref={ref} className={cn("mt-4", className)} {...props} />
+  }
+)
+TabsContent.displayName = "TabsContent"
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }

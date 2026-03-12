@@ -1,6 +1,11 @@
 import { useState, useCallback } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
-import './AntennaForm.css';
+import { Radio } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface AntennaParameters {
   frequency: number;
@@ -30,10 +35,10 @@ const AntennaForm: FC<AntennaFormProps> = ({
   const handleInputChange = useCallback((field: keyof AntennaParameters) => (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const value = event.target.type === 'number' 
+    const value = event.target.type === 'number'
       ? parseFloat(event.target.value) || 0
       : event.target.value;
-    
+
     const updatedParams = { ...localParams, [field]: value };
     setLocalParams(updatedParams);
     onParametersChange(updatedParams);
@@ -45,74 +50,72 @@ const AntennaForm: FC<AntennaFormProps> = ({
   }, [localParams, onSubmit]);
 
   return (
-    <div className={`antenna-form ${className || ''}`}>
-      <div className="antenna-form-header">
-        <h3>Dipole Antenna Parameters</h3>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="antenna-form-content">
-        <div className="form-group">
-          <label htmlFor="frequency">Frequency (MHz)</label>
-          <input
+    <div className={cn('flex flex-col gap-3', className)}>
+      <h3 className="text-sm font-semibold text-text">Dipole Antenna Parameters</h3>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="frequency">Frequency (MHz)</Label>
+          <Input
             id="frequency"
             type="number"
             value={localParams.frequency}
             onChange={handleInputChange('frequency')}
-            min="1"
-            max="10000"
-            step="0.1"
+            min={1}
+            max={10000}
+            step={0.1}
             disabled={isSimulating}
             required
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="length">Length (mm)</label>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="length">Length (mm)</Label>
+          <Input
             id="length"
             type="number"
             value={localParams.length}
             onChange={handleInputChange('length')}
-            min="0.1"
-            max="1000"
-            step="0.1"
+            min={0.1}
+            max={1000}
+            step={0.1}
             disabled={isSimulating}
             required
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="radius">Wire Radius (mm)</label>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="radius">Wire Radius (mm)</Label>
+          <Input
             id="radius"
             type="number"
             value={localParams.radius}
             onChange={handleInputChange('radius')}
-            min="0.01"
-            max="10"
-            step="0.01"
+            min={0.01}
+            max={10}
+            step={0.01}
             disabled={isSimulating}
             required
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="height">Height Above Ground (mm)</label>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="height">Height Above Ground (mm)</Label>
+          <Input
             id="height"
             type="number"
             value={localParams.height}
             onChange={handleInputChange('height')}
-            min="0"
-            max="10000"
-            step="1"
+            min={0}
+            max={10000}
+            step={1}
             disabled={isSimulating}
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="material">Material</label>
-          <select
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="material">Material</Label>
+          <Select
             id="material"
             value={localParams.material}
             onChange={handleInputChange('material')}
@@ -123,18 +126,23 @@ const AntennaForm: FC<AntennaFormProps> = ({
             <option value="aluminum">Aluminum</option>
             <option value="silver">Silver</option>
             <option value="brass">Brass</option>
-          </select>
+          </Select>
         </div>
 
-        <div className="form-actions">
-          <button 
-            type="submit" 
-            disabled={isSimulating}
-            className="btn-primary"
-          >
-            {isSimulating ? 'Simulating...' : 'Run Simulation'}
-          </button>
-        </div>
+        <Button
+          type="submit"
+          disabled={isSimulating}
+          className="w-full bg-gradient-to-r from-accent to-accent-hover hover:opacity-90 text-white"
+        >
+          {isSimulating ? (
+            'Simulating...'
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              <Radio className="size-4" />
+              Run Simulation
+            </span>
+          )}
+        </Button>
       </form>
     </div>
   );

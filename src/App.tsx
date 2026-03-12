@@ -1,8 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { Activity, Radio, Zap, Signal } from 'lucide-react';
 import AntennaForm from './components/AntennaForm/AntennaForm';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
 import OptimizationPanel from './components/OptimizationPanel/OptimizationPanel';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 const invoke = isTauri
@@ -72,144 +76,6 @@ interface OptimizationParams {
   method: 'gradient' | 'random' | 'bayesian';
 }
 
-const styles = {
-  app: {
-    display: 'flex',
-    height: '100vh',
-    background: '#0a0a0f',
-    color: '#e0e0e0',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    overflow: 'hidden',
-  } as const,
-  sidebar: {
-    width: '340px',
-    background: '#12121a',
-    borderRight: '1px solid #1e1e2e',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    overflow: 'auto',
-  } as const,
-  logo: {
-    padding: '20px 24px',
-    borderBottom: '1px solid #1e1e2e',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  } as const,
-  logoIcon: {
-    width: '36px',
-    height: '36px',
-    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-    borderRadius: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-  } as const,
-  logoText: {
-    fontSize: '16px',
-    fontWeight: 700,
-    color: '#fff',
-    letterSpacing: '-0.5px',
-  } as const,
-  logoSub: {
-    fontSize: '11px',
-    color: '#666',
-    marginTop: '2px',
-  } as const,
-  main: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    overflow: 'auto',
-  } as const,
-  topbar: {
-    padding: '12px 24px',
-    borderBottom: '1px solid #1e1e2e',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: '#0e0e15',
-  } as const,
-  badge: (color: string) => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '4px 10px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: 500,
-    background: `${color}15`,
-    color: color,
-    border: `1px solid ${color}30`,
-  }),
-  content: {
-    flex: 1,
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '20px',
-  } as const,
-  statsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '12px',
-  } as const,
-  statCard: {
-    background: '#12121a',
-    border: '1px solid #1e1e2e',
-    borderRadius: '8px',
-    padding: '16px',
-  } as const,
-  statLabel: {
-    fontSize: '12px',
-    color: '#666',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
-  } as const,
-  statValue: (color: string) => ({
-    fontSize: '24px',
-    fontWeight: 700,
-    color: color,
-    marginTop: '4px',
-    fontVariantNumeric: 'tabular-nums',
-  }),
-  chartsRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    flex: 1,
-    minHeight: '400px',
-  } as const,
-  chartContainer: {
-    background: '#12121a',
-    border: '1px solid #1e1e2e',
-    borderRadius: '8px',
-    padding: '20px',
-    minHeight: '400px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-  } as const,
-  smithContainer: {
-    background: '#12121a',
-    border: '1px solid #1e1e2e',
-    borderRadius: '8px',
-    padding: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as const,
-  emptyState: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '16px',
-    color: '#444',
-  } as const,
-};
-
 function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [chartData, setChartData] = useState<S11DataPoint[]>([]);
@@ -217,8 +83,8 @@ function App() {
   const [summary, setSummary] = useState<{ resonantFreq: number; minS11: number; bandwidth: number } | null>(null);
   const [simTime, setSimTime] = useState<number | null>(null);
   const [impedanceData, setImpedanceData] = useState<{ real: number[]; imag: number[]; freq: number[] }>({ real: [], imag: [], freq: [] });
+  const [activeTab, setActiveTab] = useState('s-parameters');
 
-  // Optimization state
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
   const [optimizationResults, setOptimizationResults] = useState<OptimizationResult[]>([]);
@@ -301,7 +167,6 @@ function App() {
     for (let step = 0; step < totalSteps; step++) {
       if (optimizationAbortRef.current) break;
 
-      // Perturb parameters: random walk around current best
       const bestS11SoFar = results.length > 0
         ? Math.min(...results.map(r => r.s11))
         : 0;
@@ -334,7 +199,6 @@ function App() {
         setOptimizationResults([...results]);
         setOptimizationProgress(((step + 1) / totalSteps) * 100);
 
-        // Update main view with best result so far
         const best = results.reduce((a, b) => a.s11 < b.s11 ? a : b);
         if (optResult === best) {
           const data: S11DataPoint[] = result.frequencies.map((f: number, i: number) => ({
@@ -366,36 +230,6 @@ function App() {
     setIsOptimizing(false);
   }, []);
 
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0a0a0f; overflow: hidden; }
-      ::-webkit-scrollbar { width: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-      .antenna-form { background: transparent !important; box-shadow: none !important; padding: 16px 24px !important; margin: 0 !important; border-radius: 0 !important; }
-      .antenna-form-header { border-color: #1e1e2e !important; }
-      .antenna-form-header h3 { color: #e0e0e0 !important; font-size: 14px !important; }
-      .form-group label { color: #888 !important; font-size: 12px !important; text-transform: uppercase; letter-spacing: 0.5px; }
-      .form-group input, .form-group select { background: #1a1a28 !important; border: 1px solid #2a2a3e !important; color: #e0e0e0 !important; border-radius: 6px !important; padding: 10px 12px !important; }
-      .form-group input:focus, .form-group select:focus { border-color: #6366f1 !important; box-shadow: 0 0 0 2px rgba(99,102,241,0.2) !important; }
-      .form-group input:disabled, .form-group select:disabled { background: #111 !important; color: #555 !important; }
-      .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; border-radius: 6px !important; padding: 12px 24px !important; font-weight: 600 !important; letter-spacing: 0.3px; width: 100%; }
-      .btn-primary:hover:not(:disabled) { filter: brightness(1.1); background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
-      .form-actions { border-color: #1e1e2e !important; }
-      .s11-chart { background: transparent !important; }
-      .s11-chart-header h3 { color: #e0e0e0 !important; font-size: 14px !important; margin-bottom: 12px; }
-      .recharts-cartesian-grid line { stroke: #1e1e2e !important; }
-      .recharts-text { fill: #666 !important; }
-      .recharts-tooltip-wrapper .recharts-default-tooltip { background: #1a1a28 !important; border: 1px solid #2a2a3e !important; border-radius: 6px !important; }
-      .recharts-legend-item-text { color: #888 !important; }
-      select option { background: #1a1a28; color: #e0e0e0; }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
-
   const formatFreq = (hz: number) => {
     if (hz >= 1e9) return `${(hz / 1e9).toFixed(2)} GHz`;
     if (hz >= 1e6) return `${(hz / 1e6).toFixed(2)} MHz`;
@@ -408,22 +242,30 @@ function App() {
   })() : null;
 
   return (
-    <div style={styles.app}>
-      <div style={styles.sidebar}>
-        <div style={styles.logo}>
-          <div style={styles.logoIcon}>P</div>
+    <div className="flex h-screen bg-background text-text overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-80 bg-surface border-r border-border flex flex-col overflow-auto">
+        {/* Logo */}
+        <div className="px-6 py-5 border-b border-border flex items-center gap-3">
+          <div className="w-9 h-9 bg-gradient-to-br from-accent to-accent-hover rounded-lg flex items-center justify-center text-lg font-bold text-white">
+            P
+          </div>
           <div>
-            <div style={styles.logoText}>PROMIN</div>
-            <div style={styles.logoSub}>Antenna Studio v0.1</div>
+            <div className="text-base font-bold text-white tracking-tight">PROMIN</div>
+            <div className="text-[11px] text-text-dim mt-0.5">Antenna Studio v0.1</div>
           </div>
         </div>
+
+        {/* Antenna Form */}
         <AntennaForm
           parameters={params}
           onParametersChange={setParams}
           onSubmit={handleSubmit}
           isSimulating={isSimulating}
         />
-        <div style={{ borderTop: '1px solid #1e1e2e', padding: '0' }}>
+
+        {/* Optimization Panel */}
+        <div className="border-t border-border">
           <OptimizationPanel
             onStartOptimization={handleStartOptimization}
             onStopOptimization={handleStopOptimization}
@@ -432,8 +274,10 @@ function App() {
             results={optimizationResults}
           />
         </div>
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #1e1e2e', marginTop: 'auto' }}>
-          <div style={{ fontSize: '11px', color: '#444' }}>
+
+        {/* Solver Info */}
+        <div className="px-6 py-4 border-t border-border mt-auto">
+          <div className="text-[11px] text-text-dim leading-relaxed">
             Solver: Method of Moments (MoM)
             <br />Engine: Rust + WebGPU
             <br />{isTauri ? 'Mode: Native (Tauri)' : 'Mode: Browser Preview'}
@@ -441,65 +285,118 @@ function App() {
         </div>
       </div>
 
-      <div style={styles.main}>
-        <div style={styles.topbar}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>Simulation Results</span>
+      {/* Main */}
+      <div className="flex-1 flex flex-col overflow-auto">
+        {/* Top Bar */}
+        <div className="px-6 py-3 border-b border-border flex items-center justify-between bg-[#0e0e15]">
+          <div className="flex gap-2 items-center">
+            <span className="text-sm font-semibold">Simulation Results</span>
             {isSimulating && (
-              <span style={styles.badge('#f59e0b')}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1s infinite' }} />
+              <Badge variant="warning">
+                <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                 Running...
-              </span>
+              </Badge>
             )}
             {isOptimizing && (
-              <span style={styles.badge('#8b5cf6')}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', animation: 'pulse 1s infinite' }} />
+              <Badge variant="purple">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
                 Optimizing...
-              </span>
+              </Badge>
             )}
             {summary && !isSimulating && !isOptimizing && (
-              <span style={styles.badge('#22c55e')}>Complete</span>
+              <Badge variant="success">Complete</Badge>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#666' }}>
+          <div className="flex gap-3 text-xs text-text-dim">
             {simTime && <span>Time: {simTime}ms</span>}
             <span>Points: {chartData.length || '-'}</span>
           </div>
         </div>
 
-        <div style={styles.content}>
+        {/* Content */}
+        <div className="flex-1 p-6 flex flex-col gap-5">
           {error && (
-            <div style={{ padding: '12px 16px', background: '#2d1215', border: '1px solid #5c2126', borderRadius: '8px', color: '#f87171', fontSize: '13px' }}>
+            <div className="px-4 py-3 bg-error/10 border border-error/30 rounded-lg text-error text-[13px]">
               {error}
             </div>
           )}
 
           {summary ? (
-            <>
-              <div style={styles.statsRow}>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>Resonant Freq</div>
-                  <div style={styles.statValue('#6366f1')}>{formatFreq(summary.resonantFreq)}</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>Min S11</div>
-                  <div style={styles.statValue('#22c55e')}>{summary.minS11.toFixed(1)} dB</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>VSWR</div>
-                  <div style={styles.statValue('#f59e0b')}>{vswr}:1</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>BW (-10dB)</div>
-                  <div style={styles.statValue('#06b6d4')}>{formatFreq(summary.bandwidth)}</div>
-                </div>
-              </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <TabsList>
+                <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
+                <TabsTrigger value="impedance">Impedance</TabsTrigger>
+                <TabsTrigger value="optimization">Optimization</TabsTrigger>
+              </TabsList>
 
-              <div style={styles.chartsRow}>
-                <div style={styles.chartContainer}>
+              <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-5">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-4 gap-3">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5 text-accent" />
+                        Resonant Freq
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-accent tabular-nums">
+                        {formatFreq(summary.resonantFreq)}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-success" />
+                        Min S11
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-success tabular-nums">
+                        {summary.minS11.toFixed(1)} dB
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-warning" />
+                        VSWR
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-warning tabular-nums">
+                        {vswr}:1
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-1.5">
+                        <Signal className="w-3.5 h-3.5 text-info" />
+                        BW (-10dB)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-info tabular-nums">
+                        {formatFreq(summary.bandwidth)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* S11 Chart */}
+                <div className="bg-surface border border-border rounded-lg p-5 flex-1 min-h-[400px] flex flex-col">
                   <S11Chart data={chartData} />
                 </div>
-                <div style={styles.smithContainer}>
+              </TabsContent>
+
+              <TabsContent value="impedance" className="flex-1 flex flex-col">
+                <div className="bg-surface border border-border rounded-lg p-5 flex-1 flex items-center justify-center">
                   <SmithChart
                     impedanceReal={impedanceData.real}
                     impedanceImag={impedanceData.imag}
@@ -509,10 +406,20 @@ function App() {
                     title="Smith Chart"
                   />
                 </div>
-              </div>
-            </>
+              </TabsContent>
+
+              <TabsContent value="optimization" className="flex-1 flex flex-col">
+                <OptimizationPanel
+                  onStartOptimization={handleStartOptimization}
+                  onStopOptimization={handleStopOptimization}
+                  isOptimizing={isOptimizing}
+                  progress={optimizationProgress}
+                  results={optimizationResults}
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
-            <div style={styles.emptyState}>
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-text-dim">
               <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
                 <rect x="8" y="40" width="4" height="16" rx="2" fill="#1e1e2e" />
                 <rect x="16" y="28" width="4" height="28" rx="2" fill="#1e1e2e" />
@@ -522,8 +429,8 @@ function App() {
                 <rect x="48" y="28" width="4" height="28" rx="2" fill="#1e1e2e" />
                 <rect x="56" y="40" width="4" height="16" rx="2" fill="#1e1e2e" />
               </svg>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#555' }}>No Simulation Data</div>
-              <div style={{ fontSize: '13px', maxWidth: '300px', textAlign: 'center', lineHeight: 1.5 }}>
+              <div className="text-base font-semibold text-text-dim">No Simulation Data</div>
+              <div className="text-[13px] max-w-[300px] text-center leading-relaxed">
                 Configure antenna parameters and click "Run Simulation" to see S11 return loss results.
               </div>
             </div>
