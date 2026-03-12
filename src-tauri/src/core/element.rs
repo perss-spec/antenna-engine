@@ -8,6 +8,7 @@ use crate::core::types::{AntennaError, Result};
 pub enum AntennaElement {
     Dipole(DipoleParams),
     Patch(PatchParams),
+    Qfh(QfhParams),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,6 +27,17 @@ pub struct PatchParams {
     pub length: f64,
     pub substrate_height: f64,
     pub substrate_er: f64,
+    pub center: Point3D,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QfhParams {
+    pub frequency: f64,
+    pub turns: f64,
+    pub diameter: f64,
+    pub height: f64,
+    pub wire_radius: f64,
     pub center: Point3D,
 }
 
@@ -72,6 +84,21 @@ impl AntennaElement {
                 }
                 Ok(())
             }
+            AntennaElement::Qfh(p) => {
+                if p.frequency <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("QFH frequency must be positive".into()));
+                }
+                if p.turns <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("QFH turns must be positive".into()));
+                }
+                if p.diameter <= 0.0 || p.height <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("QFH dimensions must be positive".into()));
+                }
+                if p.wire_radius <= 0.0 {
+                    return Err(AntennaError::InvalidGeometry("QFH wire radius must be positive".into()));
+                }
+                Ok(())
+            }
         }
     }
 
@@ -80,6 +107,7 @@ impl AntennaElement {
         match self {
             AntennaElement::Dipole(p) => generate_dipole_mesh(p, resolution),
             AntennaElement::Patch(p) => generate_patch_mesh(p, resolution),
+            AntennaElement::Qfh(p) => generate_qfh_mesh(p, resolution),
         }
     }
 
@@ -87,6 +115,7 @@ impl AntennaElement {
         match self {
             AntennaElement::Dipole(_) => "dipole",
             AntennaElement::Patch(_) => "patch",
+            AntennaElement::Qfh(_) => "qfh",
         }
     }
 }
@@ -144,6 +173,34 @@ fn generate_patch_mesh(p: &PatchParams, resolution: f64) -> Result<Mesh> {
         vertices,
         triangles,
         segments: Vec::new(),
+    })
+}
+
+fn generate_qfh_mesh(p: &QfhParams, resolution: f64) -> Result<Mesh> {
+    let circumference = std::f64::consts::PI * p.diameter;
+    let wire_length = ((circumference * p.turns).powi(2) + p.height.powi(2)).sqrt();
+    let n_seg = ((wire_length / resolution).ceil() as usize).max(20);
+    let mut vertices = Vec::with_capacity(n_seg + 1);
+    let mut segments = Vec::with_capacity(n_seg);
+    let r = p.diameter / 2.0;
+
+    for i in 0..=n_seg {
+        let t = i as f64 / n_seg as f64;
+        let angle = 2.0 * std::f64::consts::PI * p.turns * t;
+        let x = p.center.x + r * angle.cos();
+        let y = p.center.y + r * angle.sin();
+        let z = p.center.z + p.height * (t - 0.5);
+        vertices.push(Point3D::new(x, y, z));
+    }
+
+    for i in 0..n_seg {
+        segments.push(Segment { start: i, end: i + 1 });
+    }
+
+    Ok(Mesh {
+        vertices,
+        triangles: Vec::new(),
+        segments,
     })
 }
 
