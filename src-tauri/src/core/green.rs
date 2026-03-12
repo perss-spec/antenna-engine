@@ -1,7 +1,6 @@
 use crate::core::geometry::Point3D;
 use crate::core::constants::{ETA0, PI};
 use num_complex::Complex64;
-use std::f64::consts::E;
 
 pub struct GreenFunction {
     k: f64, // Wave number
