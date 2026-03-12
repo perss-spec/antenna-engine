@@ -1,63 +1,51 @@
-"""Surrogate models for approximating antenna simulation results."""
-
 import torch
 import torch.nn as nn
-import numpy as np
-from typing import List, Optional
+from typing import List
 
 
-class S11SurrogateModel(nn.Module):
+class SurrogateMLP(nn.Module):
     """
-    A surrogate model to predict S11 parameters for an antenna.
+    A Multi-Layer Perceptron (MLP) surrogate model to approximate antenna simulations.
 
-    This model uses a Multi-Layer Perceptron (MLP) to approximate the
-    results of an FDTD simulation. It takes normalized antenna design
-    parameters as input and predicts the complex S11 values across a
-    range of frequencies.
+    This model takes a set of normalized antenna parameters as input and predicts
+    the S11 scattering parameter curve over a range of frequencies.
+
+    The output is a flattened tensor of interleaved real and imaginary parts of the
+    S11 curve, compatible with the AntennaS11Dataset loader.
+    For N frequency points, the output size is 2*N, with the structure:
+    [re_1, im_1, re_2, im_2, ..., re_N, im_N]
     """
 
     def __init__(
         self,
         input_dim: int,
-        output_freq_points: int,
-        hidden_layers: List[int] = [256, 512, 256],
-        dropout_rate: float = 0.1,
+        output_dim: int,  # Should be 2 * num_frequency_points
+        hidden_dim: int = 256,
+        n_hidden_layers: int = 3,  # As per user story
     ):
         """
-        Initializes the S11SurrogateModel.
+        Initializes the MLP model.
 
         Args:
-            input_dim (int): The number of input features (normalized antenna parameters).
-            output_freq_points (int): The number of frequency points for the S11 output.
-            hidden_layers (List[int]): A list of integers specifying the size of each hidden layer.
-            dropout_rate (float): The dropout rate to use for regularization.
+            input_dim: The number of input antenna parameters.
+            output_dim: The size of the output vector (2 * num_frequency_points).
+            hidden_dim: The number of units in each hidden layer.
+            n_hidden_layers: The number of hidden layers.
         """
         super().__init__()
-
-        if not isinstance(input_dim, int) or input_dim <= 0:
-            raise ValueError("input_dim must be a positive integer.")
-        if not isinstance(output_freq_points, int) or output_freq_points <= 0:
-            raise ValueError("output_freq_points must be a positive integer.")
-        if not isinstance(hidden_layers, list) or not all(isinstance(i, int) and i > 0 for i in hidden_layers):
-            raise ValueError("hidden_layers must be a list of positive integers.")
+        if output_dim % 2 != 0 or output_dim == 0:
+            raise ValueError("output_dim must be a positive even number.")
 
         self.input_dim = input_dim
-        self.output_freq_points = output_freq_points
-        self.hidden_layers_config = hidden_layers
-        self.dropout_rate = dropout_rate
+        self.output_dim = output_dim
 
-        layers = []
-        current_dim = input_dim
-        for hidden_dim in hidden_layers:
-            layers.append(nn.Linear(current_dim, hidden_dim))
-            layers.append(nn.ReLU())
-            if dropout_rate > 0:
-                layers.append(nn.Dropout(dropout_rate))
-            current_dim = hidden_dim
+        layers: List[nn.Module] = [nn.Linear(input_dim, hidden_dim), nn.ReLU()]
 
-        # Output layer predicts real and imaginary parts for each frequency point
-        self.output_dim = 2 * output_freq_points
-        layers.append(nn.Linear(current_dim, self.output_dim))
+        for _ in range(n_hidden_layers):
+            layers.extend([nn.Linear(hidden_dim, hidden_dim), nn.ReLU()])
+
+        # Final output layer
+        layers.append(nn.Linear(hidden_dim, output_dim))
 
         self.network = nn.Sequential(*layers)
 
@@ -66,49 +54,29 @@ class S11SurrogateModel(nn.Module):
         Performs the forward pass of the model.
 
         Args:
-            x (torch.Tensor): The input tensor of shape (batch_size, input_dim).
+            x: A tensor of shape (batch_size, input_dim) containing
+               normalized antenna parameters.
 
         Returns:
-            torch.Tensor: The output tensor of shape (batch_size, 2 * output_freq_points),
-                          representing the concatenated real and imaginary parts of S11.
+            A tensor of shape (batch_size, output_dim) representing the
+            flattened interleaved real and imaginary parts of the S11 curve.
         """
         return self.network(x)
 
-    def predict_s11_complex(self, x: torch.Tensor) -> torch.Tensor:
+    def export_onnx(self, path: str):
         """
-        Predicts S11 as a complex tensor.
+        Exports the model to ONNX format for use with ONNX Runtime.
 
         Args:
-            x (torch.Tensor): The input tensor of shape (batch_size, input_dim).
-
-        Returns:
-            torch.Tensor: The complex S11 output tensor of shape (batch_size, output_freq_points).
+            path: The file path to save the .onnx model.
         """
-        self.eval()  # Set the model to evaluation mode
-        with torch.no_grad():
-            output = self.forward(x)
-            real_part = output[:, :self.output_freq_points]
-            imag_part = output[:, self.output_freq_points:]
-            return torch.complex(real_part, imag_part)
+        # Create a dummy input tensor with the correct shape for tracing.
+        dummy_input = torch.randn(1, self.input_dim, device=next(self.parameters()).device)
 
-    def export_onnx(self, path: str, dummy_input: Optional[torch.Tensor] = None):
-        """
-        Exports the model to ONNX format.
+        # Set the model to evaluation mode (important for layers like dropout, batchnorm)
+        self.eval()
 
-        Args:
-            path (str): The path to save the .onnx file.
-            dummy_input (Optional[torch.Tensor]): A dummy input tensor for tracing.
-                If None, a default tensor of shape (1, input_dim) is created.
-        """
-        if dummy_input is None:
-            # Create a dummy input with a dynamic batch size axis
-            dummy_input = torch.randn(1, self.input_dim, requires_grad=True)
-
-        self.eval()  # Set the model to evaluation mode for export
-
-        # Define dynamic axes for variable batch size
-        dynamic_axes = {'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
-
+        print(f"Exporting model to ONNX at {path}...")
         torch.onnx.export(
             self,
             dummy_input,
@@ -116,7 +84,11 @@ class S11SurrogateModel(nn.Module):
             export_params=True,
             opset_version=14,  # A reasonably modern opset version
             do_constant_folding=True,
-            input_names=['input'],
-            output_names=['output'],
-            dynamic_axes=dynamic_axes
+            input_names=['antenna_params'],
+            output_names=['s11_real_imag_interleaved'],
+            dynamic_axes={
+                'antenna_params': {0: 'batch_size'},
+                's11_real_imag_interleaved': {0: 'batch_size'},
+            },
         )
+        print("Export complete.")

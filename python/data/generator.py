@@ -1,66 +1,96 @@
 import json
-import numpy as np
-import random
+import argparse
 from pathlib import Path
-from typing import Dict, List, Any
 
-def generate_mock_data(
-    output_path: str,
-    num_samples: int,
-    param_config: Dict[str, Dict[str, float]],
-    num_freq_points: int
-) -> None:
+import numpy as np
+
+# Reuse the existing mock solver and Pydantic models for consistency
+from antenna_ml.data.generator import run_mock_solver, DipoleParameters
+
+
+def generate_s11_dataset(
+    num_simulations: int,
+    output_path: Path,
+    param_ranges: dict,
+    freq_range: tuple[float, float],
+    num_freq_points: int,
+):
     """
-    Generates a mock dataset in JSON Lines format for training surrogate models.
-
-    This simulates the output of an FDTD solver.
+    Generates a dataset by running multiple mock simulations and saving them
+    to a JSON Lines file, conforming to the SimulationResult schema.
 
     Args:
-        output_path (str): Path to the output .jsonl file.
-        num_samples (int): The number of simulation samples to generate.
-        param_config (Dict[str, Dict[str, float]]): A dictionary defining the parameters
-            and their ranges. Example:
-            {
-                "length": {"min": 0.05, "max": 0.15},
-                "width": {"min": 0.005, "max": 0.015}
-            }
-        num_freq_points (int): The number of frequency points for the S11 curve.
+        num_simulations: The number of data points to generate.
+        output_path: Path to the output .jsonl file.
+        param_ranges: A dictionary defining the min/max for each parameter.
+                      Example: {"length": (0.05, 0.15), "radius": (0.001, 0.005)}
+        freq_range: A tuple (start_freq_hz, end_freq_hz).
+        num_freq_points: The number of frequency points to simulate.
     """
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    print(f"Generating {num_simulations} simulation results to {output_path}...")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w') as f:
-        for _ in range(num_samples):
+    with open(output_path, "w") as f:
+        freq_points = np.linspace(freq_range[0], freq_range[1], num_freq_points)
+
+        for i in range(num_simulations):
             # 1. Generate random parameters within the specified ranges
             params = {
-                name: random.uniform(p_range["min"], p_range["max"])
-                for name, p_range in param_config.items()
+                key: np.random.uniform(low=v_min, high=v_max)
+                for key, (v_min, v_max) in param_ranges.items()
             }
+            dipole_params = DipoleParameters(**params)
 
-            # 2. Generate a plausible but fake S11 curve
-            primary_param = next(iter(params.values()))
-            resonant_freq = 1.0 / (2 * primary_param) # Fake physics
-            freqs = np.linspace(resonant_freq * 0.5, resonant_freq * 1.5, num_freq_points)
-            
-            q_factor = 20.0
-            s11_mag_db = -20 * np.log10(1 + (q_factor**2) * ((freqs / resonant_freq) - 1)**2)
-            s11_mag_db = np.clip(s11_mag_db, -40, 0)
-            s11_mag_db += np.random.normal(0, 0.5, size=s11_mag_db.shape)
+            # 2. Run the mock solver
+            sim_output = run_mock_solver(dipole_params, freq_points)
 
-            s11_mag_linear = 10**(s11_mag_db / 20.0)
-            s11_phase = np.random.uniform(-np.pi, np.pi, size=num_freq_points)
-            
-            s11_real = s11_mag_linear * np.cos(s11_phase)
-            s11_imag = s11_mag_linear * np.sin(s11_phase)
-            
-            s11_interleaved = np.ravel(np.column_stack((s11_real, s11_imag))).tolist()
+            # 3. Convert S11 output to the format expected by SimulationResult
+            # The solver returns List[Tuple[float, float]], but the dataset schema
+            # expects List[ComplexNumber], which serializes to List[Dict[str, float]].
+            s11_for_json = [{"real": r, "imag": i} for r, i in sim_output.s11]
 
-            # 3. Generate placeholder far-field data
-            far_field: List[Any] = []
-
-            # 4. Write to file as a JSON line
+            # 4. Create the final record and write to JSONL file
             record = {
-                "params": params,
-                "s11": s11_interleaved,
-                "far_field": far_field
+                "params": sim_output.params.model_dump(),
+                "s11": s11_for_json,
+                "far_field": sim_output.far_field,  # Keep as empty list
             }
-            f.write(json.dumps(record) + '\n')
+            f.write(json.dumps(record) + "\n")
+
+            if (i + 1) % 100 == 0:
+                print(f"  ...generated {i+1}/{num_simulations} samples.")
+
+    print("Dataset generation complete.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate mock antenna simulation data.")
+    parser.add_argument(
+        "--num-samples",
+        type=int,
+        default=1000,
+        help="Number of simulation samples to generate.",
+    )
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        default="data/generated/dipole_s11_dataset.jsonl",
+        help="Path to the output JSON Lines file.",
+    )
+    args = parser.parse_args()
+
+    # Default parameter and frequency configuration
+    PARAM_RANGES = {
+        "length": (0.05, 0.15),  # meters, for frequencies around 1-3 GHz
+        "radius": (0.001, 0.005), # meters
+    }
+    FREQ_RANGE = (1e9, 4e9)  # 1-4 GHz
+    NUM_FREQ_POINTS = 101
+
+    generate_s11_dataset(
+        num_simulations=args.num_samples,
+        output_path=Path(args.output_file),
+        param_ranges=PARAM_RANGES,
+        freq_range=FREQ_RANGE,
+        num_freq_points=NUM_FREQ_POINTS,
+    )
