@@ -1,97 +1,98 @@
-import numpy as np
 import pytest
+import torch
+import numpy as np
 
 from antenna_ml.optimizer import AntennaOptimizer
+from antenna_ml.data_models import OptimizationResult
+from models.base import BaseSurrogateModel
 
-# --- Mock Surrogate Model for a Dipole Antenna ---
-# This mock simulates a simple dipole where the resonant frequency is inversely
-# proportional to its length. We design it so that a known length gives the
-# best S11 at our target frequency.
+# The optimal length we want the optimizer to find in our test
+TARGET_OPTIMAL_LENGTH = 0.062
 
-# Constants for the mock model
-TARGET_FREQ_MHZ = 3000.0
-OPTIMAL_LENGTH = 0.047  # meters, chosen as the 'true' optimal length for 3GHz
-C_FACTOR = TARGET_FREQ_MHZ * OPTIMAL_LENGTH  # A constant to define resonance
+# The target frequency for optimization
+TARGET_FREQ_GHZ = 2.45
 
-
-def mock_surrogate_model(params: np.ndarray) -> np.ndarray:
-    """A mock surrogate model for a single-parameter (length) dipole.
-
-    Args:
-        params: A numpy array of shape (batch_size, 1) where the column is length.
-
-    Returns:
-        A numpy array of shape (batch_size, num_freqs) representing S11 dB.
+class MockDipoleSurrogate(BaseSurrogateModel):
     """
-    length = params[:, 0]
-    freqs = np.linspace(2000, 4000, 101).reshape(1, -1)
-
-    # Resonant frequency is inversely proportional to length
-    resonant_freq = C_FACTOR / length.reshape(-1, 1)
-
-    # Simple quadratic model for S11 notch: S11(f) = A*(f - f_res)^2 + S11_min
-    # This gives a parabolic notch at the resonant frequency.
-    s11_min = -30.0  # dB
-    q_factor = 0.001 # Controls the width of the notch
-    s11_db = q_factor * (freqs - resonant_freq) ** 2 + s11_min
-
-    return s11_db
-
-
-def test_optimizer_initialization():
-    """Test the initialization of the AntennaOptimizer."""
-    freqs = np.linspace(2000, 4000, 101)
-    optimizer = AntennaOptimizer(
-        surrogate_model=mock_surrogate_model,
-        param_names=["length"],
-        freq_mhz=freqs,
-        target_freq_mhz=TARGET_FREQ_MHZ,
-        bounds=[(0.03, 0.06)],
-    )
-    assert optimizer.target_freq_idx == np.argmin(np.abs(freqs - TARGET_FREQ_MHZ))
-    assert optimizer.param_names == ["length"]
-
-
-def test_optimizer_value_error():
-    """Test that a ValueError is raised for mismatched params and bounds."""
-    with pytest.raises(ValueError):
-        AntennaOptimizer(
-            surrogate_model=mock_surrogate_model,
-            param_names=["length", "radius"], # 2 params
-            freq_mhz=np.linspace(2000, 4000, 101),
-            target_freq_mhz=TARGET_FREQ_MHZ,
-            bounds=[(0.03, 0.06)], # 1 bound
+    A mock surrogate model for a dipole antenna for testing the optimizer.
+    The model's performance (S11) is a simple quadratic function of the length,
+    with a known minimum at TARGET_OPTIMAL_LENGTH.
+    """
+    def __init__(self):
+        param_mean = torch.tensor([0.06])
+        param_std = torch.tensor([0.01])
+        freq_ghz = torch.linspace(2.0, 3.0, 101)
+        
+        super().__init__(
+            param_names=['length'],
+            param_mean=param_mean,
+            param_std=param_std,
+            freq_ghz=freq_ghz
         )
 
-def test_dipole_length_optimization():
-    """Test the full optimization process for a dipole's length."""
-    freqs = np.linspace(2000, 4000, 101)
-    param_names = ["length"]
-    bounds = [(0.03, 0.06)]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Mock forward pass.
+        x is a normalized tensor of shape (batch_size, 1).
+        """
+        length = x * self.param_std + self.param_mean
+        
+        k = 5e5
+        s11_min_db = -30.0
+        base_s11 = s11_min_db + k * (length - TARGET_OPTIMAL_LENGTH)**2
+        
+        resonant_freq = TARGET_FREQ_GHZ * TARGET_OPTIMAL_LENGTH / length
+        
+        freq_ghz_grid = self.freq_ghz.unsqueeze(0)
+        
+        s11_curve = base_s11 + 1e3 * (freq_ghz_grid - resonant_freq)**2
+        
+        s11_curve = torch.clamp(s11_curve, max=0.0)
+        
+        return s11_curve
 
-    optimizer = AntennaOptimizer(
-        surrogate_model=mock_surrogate_model,
-        param_names=param_names,
-        freq_mhz=freqs,
-        target_freq_mhz=TARGET_FREQ_MHZ,
-        bounds=bounds,
-    )
+    def export_onnx(self, path: str):
+        pass
 
-    # Initial guess, intentionally off from the optimal value
-    x0 = np.array([0.04])
+@pytest.fixture
+def mock_dipole_model() -> MockDipoleSurrogate:
+    """Pytest fixture to provide a mock model instance."""
+    return MockDipoleSurrogate()
 
-    best_params, min_s11, result = optimizer.optimize(x0)
+def test_optimizer_initialization(mock_dipole_model):
+    """Test that the optimizer initializes correctly."""
+    optimizer = AntennaOptimizer(model=mock_dipole_model, target_freq_ghz=TARGET_FREQ_GHZ)
+    assert optimizer.model is mock_dipole_model
+    assert optimizer.target_freq_ghz == TARGET_FREQ_GHZ
 
-    assert result.success, f"Optimization failed: {result.message}"
+def test_optimizer_raises_with_wrong_model_type():
+    """Test that a TypeError is raised if the model is not a BaseSurrogateModel."""
+    with pytest.raises(TypeError):
+        AntennaOptimizer(model=object(), target_freq_ghz=2.4)
 
-    # Check that the optimizer found the known optimal length
-    assert "length" in best_params
-    found_length = best_params["length"]
-    assert np.isclose(
-        found_length, OPTIMAL_LENGTH, atol=1e-5
-    ), f"Expected length {OPTIMAL_LENGTH}, but found {found_length}"
+def test_optimize_dipole_length_finds_minimum(mock_dipole_model):
+    """
+    Test the core functionality: can the optimizer find the known optimal length?
+    """
+    optimizer = AntennaOptimizer(model=mock_dipole_model, target_freq_ghz=TARGET_FREQ_GHZ)
+    
+    bounds = (0.05, 0.07)
+    
+    result = optimizer.optimize_dipole_length(bounds=bounds)
+    
+    assert isinstance(result, OptimizationResult)
+    
+    optimal_length = result.optimal_params['length']
+    assert optimal_length == pytest.approx(TARGET_OPTIMAL_LENGTH, abs=1e-5)
+    
+    assert result.objective_value == pytest.approx(-30.0, abs=1e-3)
 
-    # Check that the minimum S11 value is close to the model's minimum
-    assert np.isclose(
-        min_s11, -30.0, atol=1e-5
-    ), f"Expected min S11 of -30.0 dB, but got {min_s11}"
+def test_objective_function_evaluation(mock_dipole_model):
+    """Test the objective function directly to ensure it returns expected values."""
+    optimizer = AntennaOptimizer(model=mock_dipole_model, target_freq_ghz=TARGET_FREQ_GHZ)
+    
+    val_at_optimum = optimizer._objective_func_single_param(TARGET_OPTIMAL_LENGTH, 'length')
+    assert val_at_optimum == pytest.approx(-30.0, abs=1e-3)
+    
+    val_off_optimum = optimizer._objective_func_single_param(TARGET_OPTIMAL_LENGTH + 0.005, 'length')
+    assert val_off_optimum > -30.0

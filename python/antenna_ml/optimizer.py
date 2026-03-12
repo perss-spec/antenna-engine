@@ -1,81 +1,95 @@
-from typing import Callable, List, Tuple, Dict
-
 import numpy as np
-from scipy.optimize import minimize, OptimizeResult
+from scipy.optimize import minimize_scalar
+from scipy.interpolate import interp1d
+from typing import Dict, Tuple
 
+from antenna_ml.data_models import OptimizationResult
+from models.base import BaseSurrogateModel
 
 class AntennaOptimizer:
-    """Optimizes antenna parameters using a surrogate model.
-
-    This class uses scipy.optimize.minimize to find the set of parameters
-    that minimizes the S11 magnitude at a given target frequency.
+    """
+    Optimizes antenna parameters using a surrogate model to achieve a target performance.
     """
 
-    def __init__(
-        self,
-        surrogate_model: Callable[[np.ndarray], np.ndarray],
-        param_names: List[str],
-        freq_mhz: np.ndarray,
-        target_freq_mhz: float,
-        bounds: List[Tuple[float, float]],
-    ):
-        """Initializes the AntennaOptimizer.
-
-        Args:
-            surrogate_model: A callable (the surrogate model) that takes a numpy
-                array of parameter values and returns a numpy array of S11 dB values.
-            param_names: A list of parameter names corresponding to the input
-                of the surrogate model.
-            freq_mhz: A numpy array of frequency points (in MHz) for the S11 curve.
-            target_freq_mhz: The target frequency (in MHz) for optimization.
-            bounds: A list of (min, max) tuples for each parameter.
+    def __init__(self, model: BaseSurrogateModel, target_freq_ghz: float):
         """
-        if len(param_names) != len(bounds):
-            raise ValueError("Length of param_names must match length of bounds.")
-
-        self.surrogate_model = surrogate_model
-        self.param_names = param_names
-        self.freq_mhz = freq_mhz
-        self.target_freq_mhz = target_freq_mhz
-        self.bounds = bounds
-
-        # Find the index of the frequency closest to the target frequency
-        self.target_freq_idx = np.argmin(np.abs(self.freq_mhz - self.target_freq_mhz))
-        actual_freq = self.freq_mhz[self.target_freq_idx]
-        if not np.isclose(actual_freq, self.target_freq_mhz, atol=1e-1):
-            print(
-                f"Warning: Target frequency {self.target_freq_mhz} MHz not in frequency list. "
-                f"Using closest frequency: {actual_freq} MHz."
-            )
-
-    def _objective_function(self, params: np.ndarray) -> float:
-        """Objective function to be minimized (S11 magnitude at target frequency)."""
-        # Scipy optimizer might pass a 1D array, ensure it's 2D for model input
-        params_reshaped = params.reshape(1, -1)
-        s11_db = self.surrogate_model(params_reshaped)
-        s11_at_target_freq = s11_db[0, self.target_freq_idx]
-        return float(s11_at_target_freq)
-
-    def optimize(
-        self, x0: np.ndarray, method: str = "L-BFGS-B"
-    ) -> Tuple[Dict[str, float], float, OptimizeResult]:
-        """Runs the optimization process.
+        Initializes the optimizer.
 
         Args:
-            x0: Initial guess for the parameters.
-            method: Optimization method to use, compatible with bounds (e.g., 'L-BFGS-B').
+            model: A trained surrogate model instance that conforms to BaseSurrogateModel.
+            target_freq_ghz: The target frequency in GHz for optimization.
+        """
+        if not isinstance(model, BaseSurrogateModel):
+            raise TypeError("model must be an instance of BaseSurrogateModel")
+        
+        self.model = model
+        self.target_freq_ghz = target_freq_ghz
+
+    def _objective_func_single_param(self, param_value: float, param_name: str) -> float:
+        """
+        Objective function for a single parameter optimization.
+        It predicts the S11 curve and returns the S11 value at the target frequency.
+        """
+        # Create the parameter dictionary for the model
+        params = {param_name: param_value}
+        
+        # Predict S11 using the surrogate model
+        freqs_ghz, s11_db = self.model.predict(params)
+        
+        freqs_ghz_np = freqs_ghz.cpu().numpy()
+        s11_db_np = s11_db.cpu().numpy()
+
+        if not (freqs_ghz_np.min() <= self.target_freq_ghz <= freqs_ghz_np.max()):
+            return 100.0
+
+        interp_func = interp1d(
+            freqs_ghz_np, 
+            s11_db_np, 
+            kind='linear', 
+            bounds_error=False, 
+            fill_value=0.0
+        )
+        
+        s11_at_target = interp_func(self.target_freq_ghz)
+        
+        return float(s11_at_target)
+
+    def optimize_dipole_length(
+        self, 
+        bounds: Tuple[float, float], 
+        method: str = 'bounded', 
+        **kwargs
+    ) -> OptimizationResult:
+        """
+        Optimizes the 'length' parameter of a dipole antenna.
+
+        Args:
+            bounds: A tuple (min_length, max_length) for the search.
+            method: The optimization method for `scipy.optimize.minimize_scalar`.
+            **kwargs: Additional arguments passed to `minimize_scalar`.
 
         Returns:
-            A tuple containing:
-            - A dictionary of the best parameters found.
-            - The minimum S11 value (dB) achieved at the target frequency.
-            - The full optimization result object from scipy.
+            An OptimizationResult object with the optimal length and S11 value.
         """
-        result = minimize(
-            self._objective_function, x0, method=method, bounds=self.bounds
+        if 'length' not in self.model.param_names:
+            raise ValueError("The provided model is not a dipole model ('length' parameter is missing).")
+        if len(self.model.param_names) > 1:
+            print(f"Warning: Model has multiple parameters: {self.model.param_names}. "
+                  f"This method only optimizes 'length'. Others are not being set.")
+
+        objective = lambda length: self._objective_func_single_param(length, 'length')
+
+        result = minimize_scalar(
+            objective,
+            bounds=bounds,
+            method=method,
+            options=kwargs
         )
 
-        best_params_dict = {name: val for name, val in zip(self.param_names, result.x)}
-        min_s11_val = result.fun
+        if not result.success:
+            print(f"Warning: Optimization may not have succeeded. Message: {result.message}")
 
-        return best_params_dict, min_s11_val, result
+        return OptimizationResult(
+            optimal_params={'length': result.x},
+            objective_value=result.fun
+        )
