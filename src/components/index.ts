@@ -6,3 +6,7 @@ export { ResultsTable } from './ResultsTable/ResultsTable';
 export { default as FrequencyPresets } from './FrequencyPresets/FrequencyPresets';
 export { default as SimulationHistory } from './SimulationHistory/SimulationHistory';
 export type { HistoryItem } from './SimulationHistory/SimulationHistory';
+export { default as ExportPanel } from './ExportPanel/ExportPanel';
+export type { ExportPanelProps } from './ExportPanel/ExportPanel';
+export { default as StatCard } from './StatCard/StatCard';
+export type { StatCardProps } from './StatCard/StatCard';
