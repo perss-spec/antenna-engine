@@ -2,71 +2,81 @@ import torch
 import torch.nn as nn
 from typing import List
 
+
 class SurrogateMLP(nn.Module):
     """
-    A simple Multi-Layer Perceptron (MLP) to act as a surrogate model for
-    antenna FDTD simulations.
+    A Multi-Layer Perceptron (MLP) to act as a surrogate model for FDTD simulations.
 
-    It predicts S11 curves from a set of antenna geometric parameters.
+    This model approximates complex simulation results (e.g., S11 parameters or gain patterns)
+    from a set of normalized antenna design parameters.
     """
-    def __init__(self, input_size: int, hidden_size: int, output_size: int, num_hidden_layers: int = 3):
+
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        hidden_layers: int = 4,
+        hidden_dim: int = 256,
+    ):
         """
         Initializes the SurrogateMLP model.
 
         Args:
-            input_size (int): The number of input antenna parameters.
-            hidden_size (int): The number of neurons in each hidden layer.
-            output_size (int): The number of output values. For S11, this is
-                               num_frequency_points * 2 (real and imaginary parts).
-            num_hidden_layers (int): The number of hidden layers.
+            input_dim: The number of input parameters (e.g., antenna geometry).
+            output_dim: The number of output values (e.g., S11 frequency samples).
+            hidden_layers: The number of hidden layers in the MLP.
+            hidden_dim: The number of neurons in each hidden layer.
         """
         super().__init__()
-        self.input_size = input_size
-        self.output_size = output_size
+        self.input_dim = input_dim
+        self.output_dim = output_dim
 
-        layers: List[nn.Module] = [nn.Linear(input_size, hidden_size), nn.ReLU()]
+        layers: List[nn.Module] = [
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU()
+        ]
 
-        for _ in range(num_hidden_layers - 1):
-            layers.extend([nn.Linear(hidden_size, hidden_size), nn.ReLU()])
+        for _ in range(hidden_layers - 1):
+            layers.append(nn.Linear(hidden_dim, hidden_dim))
+            layers.append(nn.ReLU())
 
-        layers.append(nn.Linear(hidden_size, output_size))
+        layers.append(nn.Linear(hidden_dim, output_dim))
 
-        self.network = nn.Sequential(*layers)
+        self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Performs a forward pass through the network.
 
         Args:
-            x (torch.Tensor): A batch of input parameters, shape (batch_size, input_size).
+            x: Input tensor of shape (batch_size, input_dim).
 
         Returns:
-            torch.Tensor: The predicted S11 curves, shape (batch_size, output_size).
+            Output tensor of shape (batch_size, output_dim).
         """
-        return self.network(x)
+        return self.model(x)
 
-    def export_onnx(self, path: str, batch_size: int = 1):
+    def export_onnx(self, file_path: str):
         """
-        Exports the model to ONNX format.
+        Exports the model to ONNX format for use with ONNX Runtime in Rust.
 
         Args:
-            path (str): The path to save the .onnx file.
-            batch_size (int): The batch size for the dummy input.
+            file_path: The path to save the .onnx file.
         """
-        self.eval()  # Set the model to evaluation mode
-        dummy_input = torch.randn(batch_size, self.input_size, requires_grad=True)
-        
+        self.eval()  # Set the model to evaluation mode for consistent export
+        dummy_input = torch.randn(1, self.input_dim, requires_grad=False)
+
         torch.onnx.export(
             self,
             dummy_input,
-            path,
+            file_path,
             export_params=True,
-            opset_version=14, # A reasonably modern opset
+            opset_version=14,  # A reasonably modern and supported opset
             do_constant_folding=True,
-            input_names=['params'],
-            output_names=['s11_raw'],
+            input_names=['input_params'],
+            output_names=['output_values'],
             dynamic_axes={
-                'params': {0: 'batch_size'},
-                's11_raw': {0: 'batch_size'}
-            }
+                'input_params': {0: 'batch_size'},
+                'output_values': {0: 'batch_size'},
+            },
         )

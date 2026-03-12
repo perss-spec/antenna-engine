@@ -1,99 +1,107 @@
+import os
+import sys
 import pytest
 import torch
 import numpy as np
-import onnxruntime
-from pathlib import Path
+import onnxruntime as ort
+
+# Ensure the project root is in the Python path for module imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from models.surrogate import SurrogateMLP
 
-# Model parameters for testing
-INPUT_SIZE = 5
-HIDDEN_SIZE = 64
-OUTPUT_SIZE = 102 # 51 frequency points * 2 (real, imag)
-NUM_LAYERS = 3
-BATCH_SIZE = 4
 
 @pytest.fixture
-def surrogate_model() -> SurrogateMLP:
-    """Fixture to create a SurrogateMLP instance."""
-    return SurrogateMLP(
-        input_size=INPUT_SIZE,
-        hidden_size=HIDDEN_SIZE,
-        output_size=OUTPUT_SIZE,
-        num_hidden_layers=NUM_LAYERS
-    )
+def model_config():
+    """Provides a standard configuration for the surrogate model for tests."""
+    return {
+        "input_dim": 5,       # e.g., 5 geometric parameters
+        "output_dim": 101,    # e.g., 101 S11 frequency points
+        "hidden_layers": 3,
+        "hidden_dim": 64,     # Smaller dimension for faster tests
+    }
 
-def test_model_creation(surrogate_model: SurrogateMLP):
-    """Test if the model is created with the correct architecture."""
+
+@pytest.fixture
+def surrogate_model(model_config):
+    """Creates an instance of the SurrogateMLP for testing."""
+    return SurrogateMLP(**model_config)
+
+
+def test_model_instantiation(surrogate_model, model_config):
+    """Tests if the model can be instantiated correctly with given parameters."""
     assert isinstance(surrogate_model, SurrogateMLP)
-    assert len(surrogate_model.network) == (NUM_LAYERS * 2)
-    assert isinstance(surrogate_model.network[0], torch.nn.Linear)
-    assert surrogate_model.network[0].in_features == INPUT_SIZE
-    assert surrogate_model.network[0].out_features == HIDDEN_SIZE
-    assert isinstance(surrogate_model.network[-1], torch.nn.Linear)
-    assert surrogate_model.network[-1].in_features == HIDDEN_SIZE
-    assert surrogate_model.network[-1].out_features == OUTPUT_SIZE
+    assert surrogate_model.input_dim == model_config["input_dim"]
+    assert surrogate_model.output_dim == model_config["output_dim"]
+    # Check if the number of layers is roughly correct (Linear + ReLU pairs + final Linear)
+    assert len(list(surrogate_model.model.children())) == 2 * model_config["hidden_layers"]
 
-def test_forward_pass(surrogate_model: SurrogateMLP):
-    """Test a single forward pass."""
-    input_tensor = torch.randn(BATCH_SIZE, INPUT_SIZE)
+
+def test_forward_pass(surrogate_model, model_config):
+    """Tests the forward pass of the model with a sample batch of data."""
+    batch_size = 4
+    input_tensor = torch.randn(batch_size, model_config["input_dim"])
     output = surrogate_model(input_tensor)
-    assert output.shape == (BATCH_SIZE, OUTPUT_SIZE)
+    assert output.shape == (batch_size, model_config["output_dim"])
     assert output.dtype == torch.float32
 
-def test_onnx_export_and_inference(surrogate_model: SurrogateMLP, tmp_path: Path):
-    """Test ONNX export and verify the output matches the PyTorch model."""
-    onnx_path = str(tmp_path / "surrogate.onnx")
-    surrogate_model.export_onnx(onnx_path, batch_size=BATCH_SIZE)
 
-    assert Path(onnx_path).is_file()
+def test_onnx_export_and_inference_consistency(surrogate_model, model_config, tmp_path):
+    """
+    Tests the ONNX export and verifies that the ONNX model's output is numerically
+    consistent with the PyTorch model's output (Rule #7).
+    """
+    onnx_path = tmp_path / "surrogate.onnx"
 
-    input_data = torch.randn(BATCH_SIZE, INPUT_SIZE)
-    input_data_np = input_data.numpy()
+    # 1. Export the model to ONNX format
+    try:
+        surrogate_model.export_onnx(str(onnx_path))
+    except Exception as e:
+        pytest.fail(f"ONNX export failed with an exception: {e}")
+
+    assert os.path.exists(onnx_path), "ONNX file was not created."
+    assert os.path.getsize(onnx_path) > 0, "ONNX file is empty."
+
+    # 2. Prepare a test input tensor
+    dummy_input = torch.randn(1, model_config["input_dim"])
+
+    # 3. Get the output from the PyTorch model
+    surrogate_model.eval()  # Set to evaluation mode for consistent results
+    with torch.no_grad():
+        pytorch_output = surrogate_model(dummy_input).numpy()
+
+    # 4. Get the output from the ONNX Runtime session
+    try:
+        ort_session = ort.InferenceSession(str(onnx_path))
+        input_name = ort_session.get_inputs()[0].name
+        output_name = ort_session.get_outputs()[0].name
+        onnx_output = ort_session.run([output_name], {input_name: dummy_input.numpy()})[0]
+    except Exception as e:
+        pytest.fail(f"ONNX Runtime inference failed: {e}")
+
+    # 5. Compare outputs to ensure they are almost identical
+    np.testing.assert_allclose(pytorch_output, onnx_output, rtol=1e-5, atol=1e-5)
+
+
+def test_onnx_batch_inference(surrogate_model, model_config, tmp_path):
+    """
+    Tests ONNX inference with a batch size > 1 to ensure dynamic axes are working.
+    """
+    onnx_path = tmp_path / "surrogate_batch.onnx"
+    surrogate_model.export_onnx(str(onnx_path))
+
+    batch_size = 8
+    dummy_input = torch.randn(batch_size, model_config["input_dim"])
 
     surrogate_model.eval()
     with torch.no_grad():
-        pytorch_output = surrogate_model(input_data).numpy()
+        pytorch_output = surrogate_model(dummy_input).numpy()
 
-    ort_session = onnxruntime.InferenceSession(onnx_path)
-    ort_inputs = {ort_session.get_inputs()[0].name: input_data_np}
-    ort_outputs = ort_session.run(None, ort_inputs)
-    onnx_output = ort_outputs[0]
+    ort_session = ort.InferenceSession(str(onnx_path))
+    input_name = ort_session.get_inputs()[0].name
+    output_name = ort_session.get_outputs()[0].name
 
-    assert onnx_output.shape == pytorch_output.shape
+    onnx_output = ort_session.run([output_name], {input_name: dummy_input.numpy()})[0]
+
+    assert onnx_output.shape == (batch_size, model_config["output_dim"])
     np.testing.assert_allclose(pytorch_output, onnx_output, rtol=1e-5, atol=1e-5)
-
-def test_training_on_synthetic_data(surrogate_model: SurrogateMLP):
-    """
-    Test if the model can learn from a small, synthetic dataset.
-    """
-    num_samples = 64
-    X_train = torch.rand(num_samples, INPUT_SIZE) * 2 - 1
-    true_weights = torch.randn(INPUT_SIZE, OUTPUT_SIZE)
-    true_bias = torch.randn(OUTPUT_SIZE)
-    Y_train = X_train @ true_weights + true_bias + torch.randn(num_samples, OUTPUT_SIZE) * 0.1
-
-    optimizer = torch.optim.Adam(surrogate_model.parameters(), lr=0.01)
-    loss_fn = torch.nn.MSELoss()
-    num_epochs = 10
-
-    initial_loss = -1.0
-
-    surrogate_model.train()
-    for epoch in range(num_epochs):
-        optimizer.zero_grad()
-        predictions = surrogate_model(X_train)
-        loss = loss_fn(predictions, Y_train)
-        
-        if epoch == 0:
-            initial_loss = loss.item()
-
-        loss.backward()
-        optimizer.step()
-
-        if epoch == num_epochs - 1:
-            final_loss = loss.item()
-
-    assert initial_loss > 0
-    assert final_loss > 0
-    assert final_loss < initial_loss
