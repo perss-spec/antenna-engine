@@ -141,6 +141,16 @@ export interface Solution {
   simulationResults?: SimulationResults;
 }
 
+// Single-frequency S-parameter result (matches Rust SParameterResult)
+export interface SParameterResult {
+  frequency: number;
+  s11Re: number;
+  s11Im: number;
+  vswr: number;
+  inputImpedanceRe: number;
+  inputImpedanceIm: number;
+}
+
 // Utility functions for working with complex numbers
 export const complexMagnitude = (c: Complex): number =>
   Math.sqrt(c.real * c.real + c.imag * c.imag);
