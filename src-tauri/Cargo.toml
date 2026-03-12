@@ -11,6 +11,9 @@ ndarray = "0.16"
 num-complex = { version = "0.4", features = ["serde"] }
 rayon = "1.10"
 tokio = { version = "1", features = ["full"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+ort = "2.0.0-rc.12"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
