@@ -1,0 +1,13 @@
+.antenna-view {
+  position: relative;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+
+.antenna-view canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
