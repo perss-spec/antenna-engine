@@ -12,6 +12,7 @@ import ExportPanel from './components/ExportPanel/ExportPanel';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { LandingPage } from '@/components/landing/LandingPage';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 const invoke = isTauri
@@ -82,6 +83,7 @@ interface OptimizationParams {
 }
 
 function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const [isSimulating, setIsSimulating] = useState(false);
   const [chartData, setChartData] = useState<S11DataPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +247,10 @@ function App() {
     const s11lin = Math.pow(10, summary.minS11 / 20);
     return ((1 + s11lin) / (1 - s11lin)).toFixed(2);
   })() : null;
+
+  if (showLanding) {
+    return <LandingPage onLaunch={() => setShowLanding(false)} />;
+  }
 
   return (
     <div className="flex h-screen bg-background text-text overflow-hidden">
