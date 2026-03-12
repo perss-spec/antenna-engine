@@ -4,6 +4,10 @@ import AntennaForm from './components/AntennaForm/AntennaForm';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
 import OptimizationPanel from './components/OptimizationPanel/OptimizationPanel';
+import FrequencyPresets from './components/FrequencyPresets/FrequencyPresets';
+import SimulationHistory from './components/SimulationHistory/SimulationHistory';
+import type { HistoryItem } from './components/SimulationHistory/SimulationHistory';
+import AntennaViewport from './viewport/AntennaViewport';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -264,6 +268,14 @@ function App() {
           isSimulating={isSimulating}
         />
 
+        {/* Frequency Presets */}
+        <div className="px-6 py-3 border-t border-border">
+          <FrequencyPresets
+            onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
+            disabled={isSimulating || isOptimizing}
+          />
+        </div>
+
         {/* Optimization Panel */}
         <div className="border-t border-border">
           <OptimizationPanel
@@ -326,7 +338,9 @@ function App() {
               <TabsList>
                 <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
                 <TabsTrigger value="impedance">Impedance</TabsTrigger>
+                <TabsTrigger value="3d-view">3D View</TabsTrigger>
                 <TabsTrigger value="optimization">Optimization</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
 
               <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-5">
@@ -408,6 +422,17 @@ function App() {
                 </div>
               </TabsContent>
 
+              <TabsContent value="3d-view" className="flex-1 flex flex-col">
+                <div className="bg-surface border border-border rounded-lg flex-1 min-h-[400px] overflow-hidden">
+                  <AntennaViewport
+                    length={params.length / 1000}
+                    frequency={params.frequency * 1e6}
+                    radius={params.radius / 1000}
+                    className="h-full"
+                  />
+                </div>
+              </TabsContent>
+
               <TabsContent value="optimization" className="flex-1 flex flex-col">
                 <OptimizationPanel
                   onStartOptimization={handleStartOptimization}
@@ -415,6 +440,16 @@ function App() {
                   isOptimizing={isOptimizing}
                   progress={optimizationProgress}
                   results={optimizationResults}
+                />
+              </TabsContent>
+
+              <TabsContent value="history" className="flex-1 flex flex-col">
+                <SimulationHistory
+                  onLoadHistory={(item: HistoryItem) => {
+                    setParams(item.parameters);
+                    handleSubmit(item.parameters);
+                  }}
+                  className="flex-1"
                 />
               </TabsContent>
             </Tabs>
