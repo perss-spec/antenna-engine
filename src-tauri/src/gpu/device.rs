@@ -1,186 +1,116 @@
-//! GPU device management and initialization
-
+use wgpu::{Adapter, Device, Queue, Instance, RequestAdapterOptions, DeviceDescriptor, Features, Limits};
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
-/// GPU device wrapper with error handling
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GpuDevice {
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    adapter_info: wgpu::AdapterInfo,
-}
-
-/// GPU-specific errors
-#[derive(Debug, thiserror::Error)]
-pub enum GpuError {
-    #[error("No suitable GPU adapter found")]
-    NoSuitableAdapter,
-    #[error("Failed to request device: {0}")]
-    DeviceRequest(#[from] wgpu::RequestDeviceError),
-    #[error("Buffer creation failed: {0}")]
-    BufferCreation(String),
-    #[error("Shader compilation failed: {0}")]
-    ShaderCompilation(String),
-    #[error("Compute pipeline creation failed: {0}")]
-    PipelineCreation(String),
-    #[error("Buffer mapping failed: {0}")]
-    BufferMapping(String),
-    #[error("GPU operation timeout")]
-    Timeout,
+    pub device: Arc<Device>,
+    pub queue: Arc<Queue>,
+    pub adapter: Arc<Adapter>,
+    pub device_id: usize,
 }
 
 impl GpuDevice {
-    /// Initialize GPU device with compute shader support
-    pub async fn new() -> Result<Self, GpuError> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+    pub async fn new(device_id: usize) -> Option<Self> {
+        let instance = Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
 
         let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
+            .request_adapter(&RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: None,
                 force_fallback_adapter: false,
             })
-            .await
-            .ok_or(GpuError::NoSuitableAdapter)?;
-
-        let adapter_info = adapter.get_info();
-        eprintln!("GPU: {} ({:?})", adapter_info.name, adapter_info.backend);
+            .await?;
 
         let (device, queue) = adapter
             .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("PROMIN GPU Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                &DeviceDescriptor {
+                    label: Some(&format!("GPU Device {}", device_id)),
+                    required_features: Features::empty(),
+                    required_limits: Limits::default(),
                     memory_hints: wgpu::MemoryHints::Performance,
                 },
                 None,
             )
-            .await?;
+            .await
+            .ok()?;
 
-        Ok(Self {
-            device,
-            queue,
-            adapter_info,
+        Some(Self {
+            device: Arc::new(device),
+            queue: Arc::new(queue),
+            adapter: Arc::new(adapter),
+            device_id,
         })
     }
 
-    /// Get adapter information
-    pub fn adapter_info(&self) -> &wgpu::AdapterInfo {
-        &self.adapter_info
+    pub fn info(&self) -> wgpu::AdapterInfo {
+        self.adapter.get_info()
     }
+}
 
-    /// Get device limits
-    pub fn limits(&self) -> wgpu::Limits {
-        self.device.limits()
-    }
+#[derive(Debug)]
+pub struct MultiGpuManager {
+    devices: Vec<GpuDevice>,
+}
 
-    /// Create buffer from data
-    pub fn create_buffer_init<T: bytemuck::Pod>(
-        &self,
-        label: &str,
-        data: &[T],
-        usage: wgpu::BufferUsages,
-    ) -> Result<wgpu::Buffer, GpuError> {
-        let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: bytemuck::cast_slice(data),
-            usage,
-        });
-        Ok(buffer)
-    }
-
-    /// Create empty buffer
-    pub fn create_buffer(
-        &self,
-        label: &str,
-        size: u64,
-        usage: wgpu::BufferUsages,
-    ) -> Result<wgpu::Buffer, GpuError> {
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size,
-            usage,
-            mapped_at_creation: false,
-        });
-        Ok(buffer)
-    }
-
-    /// Create compute pipeline from WGSL source
-    pub fn create_compute_pipeline(
-        &self,
-        label: &str,
-        shader_source: &str,
-        entry_point: &str,
-    ) -> Result<wgpu::ComputePipeline, GpuError> {
-        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(&format!("{} Shader", label)),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-        });
-
-        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(label),
-            layout: None,
-            module: &shader,
-            entry_point: Some(entry_point),
-            compilation_options: Default::default(),
-            cache: None,
-        });
-
-        Ok(pipeline)
-    }
-
-    /// Submit compute work and wait for completion
-    pub fn submit_and_wait(&self, encoder: wgpu::CommandEncoder) -> Result<(), GpuError> {
-        let submission_index = self.queue.submit(std::iter::once(encoder.finish()));
+impl MultiGpuManager {
+    pub async fn new() -> Self {
+        let mut devices = Vec::new();
         
-        // Poll device until work is complete
-        self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission_index));
+        // Try to initialize multiple GPU devices
+        for device_id in 0..4 { // Try up to 4 GPUs
+            if let Some(device) = GpuDevice::new(device_id).await {
+                eprintln!("Initialized GPU {}: {:?}", device_id, device.info().name);
+                devices.push(device);
+            } else {
+                break; // No more GPUs available
+            }
+        }
         
-        Ok(())
+        if devices.is_empty() {
+            eprintln!("Warning: No GPU devices available, falling back to CPU");
+        } else {
+            eprintln!("Found {} GPU device(s)", devices.len());
+        }
+        
+        Self { devices }
     }
-
-    /// Read buffer data back to CPU
-    pub async fn read_buffer<T: bytemuck::Pod + Clone>(
-        &self,
-        buffer: &wgpu::Buffer,
-        size: u64,
-    ) -> Result<Vec<T>, GpuError> {
-        let staging_buffer = self.create_buffer(
-            "Staging Buffer",
-            size,
-            wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-        )?;
-
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Read Buffer Encoder"),
-        });
-
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, size);
-        self.submit_and_wait(encoder)?;
-
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = tokio::sync::oneshot::channel();
-        
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-
-        self.device.poll(wgpu::Maintain::Wait);
-        
-        receiver.await
-            .map_err(|_| GpuError::BufferMapping("Channel closed".to_string()))?
-            .map_err(|e| GpuError::BufferMapping(format!("Map failed: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<T> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
-
-        Ok(result)
+    
+    pub fn device_count(&self) -> usize {
+        self.devices.len()
     }
+    
+    pub fn get_device(&self, index: usize) -> Option<&GpuDevice> {
+        self.devices.get(index)
+    }
+    
+    pub fn has_gpu(&self) -> bool {
+        !self.devices.is_empty()
+    }
+    
+    pub fn devices(&self) -> &[GpuDevice] {
+        &self.devices
+    }
+}
+
+// Singleton for global GPU manager
+static mut GPU_MANAGER: Option<MultiGpuManager> = None;
+static mut GPU_MANAGER_INIT: std::sync::Once = std::sync::Once::new();
+
+pub async fn get_gpu_manager() -> &'static MultiGpuManager {
+    unsafe {
+        GPU_MANAGER_INIT.call_once(|| {
+            // This is a bit hacky but necessary for static initialization
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let manager = rt.block_on(MultiGpuManager::new());
+            GPU_MANAGER = Some(manager);
+        });
+        GPU_MANAGER.as_ref().unwrap()
+    }
+}
+
+pub fn try_get_gpu_manager() -> Option<&'static MultiGpuManager> {
+    unsafe { GPU_MANAGER.as_ref() }
 }
