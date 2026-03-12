@@ -1,4 +1,5 @@
 pub mod core;
+pub mod gpu;
 mod bridge;
 
 pub fn run() {
