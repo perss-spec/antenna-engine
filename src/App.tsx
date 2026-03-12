@@ -8,6 +8,7 @@ import FrequencyPresets from './components/FrequencyPresets/FrequencyPresets';
 import SimulationHistory from './components/SimulationHistory/SimulationHistory';
 import type { HistoryItem } from './components/SimulationHistory/SimulationHistory';
 import AntennaViewport from './viewport/AntennaViewport';
+import ExportPanel from './components/ExportPanel/ExportPanel';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -319,9 +320,26 @@ function App() {
               <Badge variant="success">Complete</Badge>
             )}
           </div>
-          <div className="flex gap-3 text-xs text-text-dim">
+          <div className="flex gap-3 items-center text-xs text-text-dim">
             {simTime && <span>Time: {simTime}ms</span>}
             <span>Points: {chartData.length || '-'}</span>
+            {chartData.length > 0 && (
+              <ExportPanel
+                frequencies={impedanceData.freq}
+                s11Db={chartData.map(d => d.s11_db)}
+                s11Real={impedanceData.real.map((_, i) => {
+                  const s11lin = Math.pow(10, chartData[i]?.s11_db / 20);
+                  return s11lin * Math.cos(0);
+                })}
+                s11Imag={impedanceData.real.map((_, i) => {
+                  const s11lin = Math.pow(10, chartData[i]?.s11_db / 20);
+                  return s11lin * Math.sin(0);
+                })}
+                impedanceReal={impedanceData.real}
+                impedanceImag={impedanceData.imag}
+                disabled={isSimulating}
+              />
+            )}
           </div>
         </div>
 
