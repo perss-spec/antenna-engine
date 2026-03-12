@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Antenna Engine — Pipeline Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0e17; --surface: #131a2b; --border: #1e2a42;
+    --text: #c9d1d9; --dim: #6b7685; --accent: #58a6ff;
+    --ok: #3fb950; --warn: #d29922; --err: #f85149; --idle: #484f58;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
+
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 18px; font-weight: 600; }
+  h1 span { color: var(--accent); }
+  .meta { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--dim); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .dot.live { background: var(--ok); animation: pulse 2s infinite; }
+  .dot.off { background: var(--err); }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .grid { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+
+  /* Left panel — pipeline phases */
+  .phases { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .phases h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .phase { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .phase:last-child { border-bottom: none; }
+  .phase-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .phase-icon.idle { background: #1c2333; color: var(--idle); }
+  .phase-icon.active { background: #0d2847; color: var(--accent); }
+  .phase-icon.done { background: #0d2d1b; color: var(--ok); }
+  .phase-icon.error { background: #2d1114; color: var(--err); }
+  .phase-name { font-size: 13px; flex: 1; }
+  .phase-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 600; }
+  .badge-idle { background: #1c2333; color: var(--idle); }
+  .badge-active { background: #0d2847; color: var(--accent); }
+  .badge-done { background: #0d2d1b; color: var(--ok); }
+  .badge-error { background: #2d1114; color: var(--err); }
+
+  /* Right panel — team cards */
+  .teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-content: start; }
+  .team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; transition: border-color .3s; }
+  .team-card.active { border-color: var(--accent); }
+  .team-card.done { border-color: var(--ok); }
+  .team-card.error { border-color: var(--err); }
+  .team-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .team-name { font-size: 14px; font-weight: 600; }
+  .team-model { font-size: 10px; color: var(--dim); }
+  .team-status { font-size: 12px; margin-bottom: 8px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
+  .progress-fill.idle { width: 0%; background: var(--idle); }
+  .progress-fill.pending { width: 10%; background: var(--idle); }
+  .progress-fill.active { width: 60%; background: var(--accent); animation: progress-pulse 1.5s infinite; }
+  .progress-fill.done { width: 100%; background: var(--ok); }
+  .progress-fill.error { width: 100%; background: var(--err); }
+  @keyframes progress-pulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
+  .team-branch { font-size: 10px; color: var(--dim); margin-top: 8px; }
+  .team-commit { font-size: 10px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Bottom — log */
+  .log-panel { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 4px; max-height: 180px; overflow-y: auto; }
+  .log-panel h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .log-entry { font-size: 11px; padding: 2px 0; color: var(--dim); }
+  .log-entry .ts { color: var(--idle); margin-right: 8px; }
+  .log-entry.info { color: var(--text); }
+  .log-entry.ok { color: var(--ok); }
+  .log-entry.err { color: var(--err); }
+
+  /* Run ID banner */
+  .run-banner { display: none; background: #0d2847; border: 1px solid #1a3a5c; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: var(--accent); margin-bottom: 16px; }
+  .run-banner.visible { display: flex; gap: 16px; align-items: center; }
+
+  .cost { font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ <span>AI Antenna Engine</span> — Pipeline</h1>
+  <div class="meta">
+    <span><span class="dot live" id="conn-dot"></span> <span id="conn-label">Connecting...</span></span>
+    <span id="poll-info">Poll: 3s</span>
+    <span id="uptime"></span>
+  </div>
+</header>
+
+<div class="run-banner" id="run-banner">
+  <span>Run: <strong id="run-id">—</strong></span>
+  <span>Phase: <strong id="run-phase">—</strong></span>
+  <span>Started: <strong id="run-started">—</strong></span>
+</div>
+
+<div class="grid">
+  <div class="phases">
+    <h2>Pipeline Phases</h2>
+    <div class="phase" data-phase="pm">
+      <div class="phase-icon idle" id="ph-pm-icon">1</div>
+      <span class="phase-name">Project Manager</span>
+      <span class="phase-badge badge-idle" id="ph-pm-badge">idle</span>
+    </div>
+    <div class="phase" data-phase="architect">
+      <div class="phase-icon idle" id="ph-arch-icon">2</div>
+      <span class="phase-name">Architect</span>
+      <span class="phase-badge badge-idle" id="ph-arch-badge">idle</span>
+    </div>
+    <div class="phase" data-phase="teams">
+      <div class="phase-icon idle" id="ph-teams-icon">3</div>
+      <span class="phase-name">Teams (5 parallel)</span>
+      <span class="phase-badge badge-idle" id="ph-teams-badge">idle</span>
+    </div>
+    <div class="phase" data-phase="review">
+      <div class="phase-icon idle" id="ph-review-icon">4</div>
+      <span class="phase-name">Review</span>
+      <span class="phase-badge badge-idle" id="ph-review-badge">idle</span>
+    </div>
+    <div class="phase" data-phase="integrate">
+      <div class="phase-icon idle" id="ph-int-icon">5</div>
+      <span class="phase-name">Integrate</span>
+      <span class="phase-badge badge-idle" id="ph-int-badge">idle</span>
+    </div>
+    <div class="phase" data-phase="done">
+      <div class="phase-icon idle" id="ph-done-icon">✓</div>
+      <span class="phase-name">Complete</span>
+      <span class="phase-badge badge-idle" id="ph-done-badge">idle</span>
+    </div>
+  </div>
+
+  <div class="teams" id="teams-grid"></div>
+
+  <div class="log-panel">
+    <h2>Activity Log</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+const API = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  ? `http://${location.hostname}:5678/webhook/ae/status`
+  : 'http://10.0.10.210:5678/webhook/ae/status';
+
+const POLL_MS = 3000;
+const TEAMS = [
+  { key: 'core',  name: 'Rust Core',  model: 'Opus 4',      icon: '🦀' },
+  { key: 'ui',    name: 'UI',         model: 'Sonnet 4',    icon: '🎨' },
+  { key: 'aiml',  name: 'AI / ML',    model: 'Gemini 2.5',  icon: '🧠' },
+  { key: 'gpu',   name: 'GPU',        model: 'DeepSeek V3', icon: '⚡' },
+  { key: '3d',    name: '3D Viewport', model: 'Sonnet 4',   icon: '🔮' },
+];
+
+const PHASE_ORDER = ['pm', 'architect', 'teams', 'review', 'integrate', 'done'];
+const PHASE_MAP = {
+  pm: 'ph-pm', architect: 'ph-arch', teams: 'ph-teams',
+  review: 'ph-review', integrate: 'ph-int', done: 'ph-done',
+  review_failed: 'ph-review',
+};
+
+let prevState = null;
+let logs = [];
+
+function initTeamCards() {
+  const grid = document.getElementById('teams-grid');
+  grid.innerHTML = TEAMS.map(t => `
+    <div class="team-card" id="card-${t.key}">
+      <div class="team-header">
+        <span class="team-name">${t.icon} ${t.name}</span>
+        <span class="team-model">${t.model}</span>
+      </div>
+      <div class="team-status" id="status-${t.key}">idle</div>
+      <div class="progress-bar"><div class="progress-fill idle" id="bar-${t.key}"></div></div>
+      <div class="team-branch" id="branch-${t.key}">—</div>
+      <div class="team-commit" id="commit-${t.key}">—</div>
+    </div>
+  `).join('');
+}
+
+function addLog(msg, level = 'info') {
+  const ts = new Date().toLocaleTimeString();
+  logs.unshift({ ts, msg, level });
+  if (logs.length > 50) logs.pop();
+  const el = document.getElementById('log');
+  el.innerHTML = logs.map(l =>
+    `<div class="log-entry ${l.level}"><span class="ts">${l.ts}</span>${l.msg}</div>`
+  ).join('');
+}
+
+function updatePhases(currentPhase) {
+  const idx = PHASE_ORDER.indexOf(currentPhase === 'review_failed' ? 'review' : (currentPhase || ''));
+  PHASE_ORDER.forEach((p, i) => {
+    const prefix = PHASE_MAP[p];
+    const icon = document.getElementById(`${prefix}-icon`);
+    const badge = document.getElementById(`${prefix}-badge`);
+    let cls, label;
+    if (currentPhase === 'done' || (idx >= 0 && i < idx)) {
+      cls = 'done'; label = 'done';
+    } else if (i === idx) {
+      if (currentPhase === 'review_failed') { cls = 'error'; label = 'failed'; }
+      else { cls = 'active'; label = 'active'; }
+    } else {
+      cls = 'idle'; label = 'idle';
+    }
+    icon.className = `phase-icon ${cls}`;
+    badge.className = `phase-badge badge-${cls}`;
+    badge.textContent = label;
+  });
+}
+
+function updateTeams(teams) {
+  if (!teams) return;
+  for (const t of TEAMS) {
+    const data = teams[t.key];
+    if (!data) continue;
+    const card = document.getElementById(`card-${t.key}`);
+    const status = document.getElementById(`status-${t.key}`);
+    const bar = document.getElementById(`bar-${t.key}`);
+    const branch = document.getElementById(`branch-${t.key}`);
+    const commit = document.getElementById(`commit-${t.key}`);
+
+    const s = data.status || 'idle';
+    card.className = `team-card ${s === 'running' ? 'active' : s === 'completed' ? 'done' : s === 'error' ? 'error' : ''}`;
+    status.textContent = s;
+    bar.className = `progress-fill ${s === 'running' ? 'active' : s === 'completed' ? 'done' : s === 'error' ? 'error' : s === 'pending' ? 'pending' : 'idle'}`;
+    branch.textContent = data.branch || '—';
+    commit.textContent = data.last_commit ? `Last: ${data.last_commit.substring(0, 8)}` : 'No commits yet';
+  }
+}
+
+async function poll() {
+  const dot = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  try {
+    const r = await fetch(API, { signal: AbortSignal.timeout(5000) });
+    const state = await r.json();
+
+    dot.className = 'dot live';
+    label.textContent = 'Connected';
+
+    // Detect changes
+    const prev = JSON.stringify(prevState);
+    const curr = JSON.stringify(state);
+    if (prev !== curr && prevState) {
+      if (prevState.current_phase !== state.current_phase) {
+        addLog(`Phase changed: ${prevState.current_phase || 'idle'} → ${state.current_phase || 'idle'}`, 'info');
+      }
+      if (prevState.status !== state.status) {
+        addLog(`Status: ${state.status}`, state.status === 'completed' ? 'ok' : state.status === 'error' ? 'err' : 'info');
+      }
+      for (const t of TEAMS) {
+        const oldS = prevState.teams?.[t.key]?.status;
+        const newS = state.teams?.[t.key]?.status;
+        if (oldS !== newS) {
+          addLog(`${t.name}: ${oldS || 'idle'} → ${newS}`, newS === 'completed' ? 'ok' : newS === 'error' ? 'err' : 'info');
+        }
+      }
+    }
+    prevState = state;
+
+    // Update banner
+    const banner = document.getElementById('run-banner');
+    if (state.run_id) {
+      banner.className = 'run-banner visible';
+      document.getElementById('run-id').textContent = state.run_id;
+      document.getElementById('run-phase').textContent = state.current_phase || '—';
+      document.getElementById('run-started').textContent = state.started_at ? new Date(state.started_at).toLocaleTimeString() : '—';
+    } else {
+      banner.className = 'run-banner';
+    }
+
+    updatePhases(state.current_phase);
+    updateTeams(state.teams);
+
+  } catch (e) {
+    dot.className = 'dot off';
+    label.textContent = 'Offline';
+  }
+}
+
+initTeamCards();
+addLog('Dashboard started, polling ' + API);
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
