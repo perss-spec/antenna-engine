@@ -134,7 +134,7 @@ pub fn simulate_antenna(request: SimulateRequest) -> Result<SimulateResponse, St
             reference_impedance,
         };
 
-        let solver = MomSolver::new(&element, &sim_params).map_err(|e| e.to_string())?;
+        let mut solver = MomSolver::new(&element, &sim_params).map_err(|e| e.to_string())?;
         let result = solver.solve(&sim_params).map_err(|e| e.to_string())?;
 
         let sp: &SParameterResult = result
