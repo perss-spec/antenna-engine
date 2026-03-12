@@ -8,6 +8,7 @@
 //! - Batch simulation and parameter sweeps
 //! - Dataset export functionality
 //! - Parameter space coverage analysis
+//! - Surrogate model inference for fast predictions
 
 pub mod types;
 pub mod geometry;
@@ -23,6 +24,7 @@ pub mod touchstone;
 pub mod batch;
 pub mod export;
 pub mod coverage;
+pub mod inference;
 
 // Re-export commonly used types
 pub use types::{Result, AntennaError};
@@ -33,6 +35,7 @@ pub use field::{ElectricField, FieldResult, NearFieldSample, FarFieldSample};
 pub use batch::{BatchSimulator, BatchConfig, BatchResult, ParameterSweep, ScaleType};
 pub use export::{DatasetExporter, ExportConfig, ExportFormat};
 pub use coverage::{CoverageAnalyzer, CoverageConfig, CoverageResult};
+pub use inference::{SurrogatePredictor, PredictionInput, PredictionResult};
 
 // Physical constants
 pub const C0: f64 = 299_792_458.0; // Speed of light in vacuum (m/s)
@@ -60,6 +63,7 @@ mod tests {
         let _element = AntennaElement::new_dipole(0.15, 0.001);
         let _simulator = BatchSimulator::new();
         let _config = ExportConfig::default();
+        let _predictor = SurrogatePredictor::new();
         
         // Test passes if no panics occur
         assert!(true);
