@@ -79,85 +79,92 @@ def generate_dataset(
     num_freq_points: int,
 ):
     """
-    Generates a dataset by running multiple mock simulations.
+    Generates a dataset by running multiple mock simulations and saving them
+    to a JSON Lines file.
 
     Args:
         num_simulations: The number of data points to generate.
         output_path: Path to the output .jsonl file.
-        param_ranges: A dictionary defining the sampling range for each parameter.
-        freq_range: The (start, end) frequency range in Hz.
-        num_freq_points: The number of frequency points to sample.
+        param_ranges: A dictionary defining the sampling range for each param.
+        freq_range: A tuple (min_freq, max_freq) in Hz.
+        num_freq_points: The number of frequency points in the sweep.
     """
     print(f"Generating {num_simulations} simulations...")
-    print(f"Saving dataset to {output_path}")
+    print(f"Output file: {output_path}")
+    print(f"Parameter ranges: {param_ranges}")
+    print(f"Frequency range: {freq_range[0]/1e9:.2f} GHz to {freq_range[1]/1e9:.2f} GHz ({num_freq_points} points)")
 
+    # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     freq_points = np.linspace(freq_range[0], freq_range[1], num_freq_points)
 
-    param_keys = list(param_ranges.keys())
-    d = len(param_keys)
-    lows = np.array([param_ranges[k][0] for k in param_keys])
-    highs = np.array([param_ranges[k][1] for k in param_keys])
-
-    try:
-        from scipy.stats import qmc
-        sampler = qmc.LatinHypercube(d=d)
-        sample_points = sampler.random(n=num_simulations)
-        scaled_samples = qmc.scale(sample_points, lows, highs)
-        print("Using Latin Hypercube Sampling for parameter generation.")
-    except ImportError:
-        print("Warning: scipy not found. Falling back to random sampling. "
-              "Install scipy for better parameter space coverage (`pip install scipy`).")
-        sample_points = np.random.rand(num_simulations, d)
-        scaled_samples = lows + sample_points * (highs - lows)
-
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         for i in range(num_simulations):
-            param_values = scaled_samples[i]
-            params_dict = {key: val for key, val in zip(param_keys, param_values)}
+            # Use uniform random sampling. For better coverage, Latin Hypercube Sampling could be used.
+            sampled_params = {
+                key: np.random.uniform(low=low, high=high)
+                for key, (low, high) in param_ranges.items()
+            }
             
-            dipole_params = DipoleParameters(**params_dict)
+            dipole_params = DipoleParameters(**sampled_params)
 
-            result = run_mock_solver(dipole_params, freq_points)
+            # Run the mock simulation
+            sim_output = run_mock_solver(dipole_params, freq_points)
 
-            f.write(result.model_dump_json() + '\n')
+            # Write the result as a JSON line, conforming to the project's data format
+            f.write(sim_output.model_dump_json() + "\n")
 
-            if (i + 1) % 20 == 0 or (i + 1) == num_simulations:
+            if (i + 1) % 100 == 0 or (i + 1) == num_simulations:
                 print(f"  ... generated {i + 1}/{num_simulations} samples")
+    
+    print(f"\nDataset generation complete. Data saved to {output_path}")
 
-    print("Dataset generation complete.")
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Generate training data for antenna surrogate models.")
+def main():
+    """Main function to run the data generator from the command line."""
+    parser = argparse.ArgumentParser(
+        description="Generate mock simulation data for dipole antennas in JSONL format.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument(
         "-n", "--num-simulations",
         type=int,
-        default=200,
-        help="Number of simulations to run (default: 200)."
+        default=500,
+        help="Number of simulations to generate."
     )
     parser.add_argument(
-        "-o", "--output",
-        type=str,
-        default="python/data/dipole_dataset.jsonl",
-        help="Output file path for the JSON Lines dataset."
+        "-o", "--output-path",
+        type=Path,
+        default=Path("datasets/dipole_s11_dataset.jsonl"),
+        help="Path to the output JSONL file."
+    )
+    parser.add_argument(
+        "--num-freq-points",
+        type=int,
+        default=101,
+        help="Number of frequency points for the S11 curve."
     )
     args = parser.parse_args()
 
-    # Example: a dipole for ~1-2 GHz applications
-    DIPOLE_PARAM_RANGES = {
-        "length": (0.07, 0.15),  # meters, for resonance around 1-2 GHz
-        "radius": (0.0005, 0.002), # meters (0.5mm to 2mm)
+    # Define parameter ranges. These are based on a center frequency of 1.5 GHz (lambda=0.2m)
+    # as a reasonable starting point.
+    # Length: 0.1 to 2.0 wavelengths -> 0.02m to 0.4m
+    # Radius: 0.001 to 0.05 wavelengths -> 0.0002m to 0.01m
+    param_ranges = {
+        "length": (0.02, 0.4),
+        "radius": (0.0002, 0.01),
     }
 
-    FREQ_RANGE_HZ = (1e9, 3e9) # 1 GHz to 3 GHz
-    NUM_FREQ_POINTS = 101
+    # Frequency range for the S11 curve, from 100 MHz to 3 GHz.
+    freq_range = (100e6, 3e9)
 
     generate_dataset(
         num_simulations=args.num_simulations,
-        output_path=Path(args.output),
-        param_ranges=DIPOLE_PARAM_RANGES,
-        freq_range=FREQ_RANGE_HZ,
-        num_freq_points=NUM_FREQ_POINTS,
+        output_path=args.output_path,
+        param_ranges=param_ranges,
+        freq_range=freq_range,
+        num_freq_points=args.num_freq_points,
     )
+
+if __name__ == "__main__":
+    main()
