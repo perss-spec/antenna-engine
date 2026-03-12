@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from typing import Dict, Any
 
-from models.surrogate import SurrogateMLP
+from models.surrogate import SurrogateAntennaModel as SurrogateMLP
 
 def train_model(
     model: SurrogateMLP,
