@@ -10,3 +10,5 @@ export { default as ExportPanel } from './ExportPanel/ExportPanel';
 export type { ExportPanelProps } from './ExportPanel/ExportPanel';
 export { default as StatCard } from './StatCard/StatCard';
 export type { StatCardProps } from './StatCard/StatCard';
+export { default as ColorPalette } from './ColorPalette/ColorPalette';
+export { default as KeyboardShortcuts } from './KeyboardShortcuts/KeyboardShortcuts';
