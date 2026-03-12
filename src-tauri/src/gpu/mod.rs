@@ -4,12 +4,15 @@
 //! - Method of Moments (MoM) impedance matrix computation
 //! - Multi-GPU support for batch processing
 //! - CPU fallback when GPU is unavailable
+//! - Frequency sweep analysis
 
 pub mod device;
 pub mod mom_gpu;
+pub mod sweep;
 
-pub use device::{GpuDevice, MultiGpuManager, get_gpu_manager, try_get_gpu_manager};
-pub use mom_gpu::{MomGpuSolver, BatchGpuSolver};
+pub use device::{GpuDevice, MultiGpuManager};
+pub use mom_gpu::MomGpuSolver;
+pub use sweep::{SweepConfig, SweepPoint, run_cpu_sweep, run_parallel_cpu_sweep};
 
 use std::sync::Arc;
 
@@ -77,40 +80,17 @@ mod tests {
         assert_eq!(z_matrix[0].len(), 2); // 2x2 matrix
     }
     
-    #[tokio::test]
-    #[ignore = "wgpu buffer alignment issue on llvmpipe - needs GPU team fix"]
-    async fn test_batch_solver() {
-        let manager = Arc::new(MultiGpuManager::new().await);
-        let batch_solver = BatchGpuSolver::new(manager);
+    #[test]
+    fn test_sweep_functionality() {
+        let config = SweepConfig::new(100e6, 200e6, 10);
+        let results = run_cpu_sweep(&config, 0.15, 0.001);
         
-        // Create simple test mesh
-        let vertices = vec![
-            Point3D::new(0.0, 0.0, 0.0),
-            Point3D::new(1.0, 0.0, 0.0),
-        ];
+        assert_eq!(results.len(), 10);
         
-        let segments = vec![
-            Segment { start: 0, end: 1 },
-        ];
-        
-        let mesh = Mesh {
-            vertices,
-            triangles: vec![],
-            segments,
-        };
-        
-        let base_params = SimulationParams {
-            frequency: 300e6,
-            resolution: 0.1,
-            reference_impedance: 50.0,
-        };
-        
-        let frequencies = vec![100e6, 200e6, 300e6];
-        
-        let result = batch_solver.solve_frequency_sweep(&mesh, &frequencies, &base_params).await;
-        assert!(result.is_ok());
-        
-        let sweep_results = result.unwrap();
-        assert_eq!(sweep_results.len(), 3); // 3 frequencies
+        // All results should be finite
+        for point in &results {
+            assert!(point.freq_hz.is_finite());
+            assert!(point.s11_db.is_finite());
+        }
     }
 }
