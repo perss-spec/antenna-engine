@@ -1,6 +1,12 @@
-use wgpu::{Device, Queue, BindGroupLayout, ComputePipeline, ShaderModule, Buffer, CommandEncoder};
+use wgpu::util::DeviceExt;
 use bytemuck::{Pod, Zeroable};
-use crate::types::FieldPoint;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+pub struct FieldPoint {
+    pub position: [f32; 3],
+    pub value: f32,
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
@@ -12,10 +18,10 @@ struct GpuFieldPoint {
 }
 
 pub struct FieldCalculator {
-    device: Device,
-    queue: Queue,
-    pipeline: ComputePipeline,
-    bind_group_layout: BindGroupLayout,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl FieldCalculator {
@@ -29,8 +35,9 @@ impl FieldCalculator {
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::empty(),
-                limits: wgpu::Limits::downlevel_defaults(),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+                memory_hints: Default::default(),
             },
             None,
         ).await.map_err(|e| format!("Failed to create device: {}", e))?;
@@ -76,7 +83,9 @@ impl FieldCalculator {
             label: Some("Field Compute Pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "main",
+            entry_point: Some("main"),
+            compilation_options: Default::default(),
+            cache: None,
         });
 
         Ok(Self {
@@ -88,15 +97,23 @@ impl FieldCalculator {
     }
 
     pub fn calculate_fields(&self, sources: &[FieldPoint], targets: &mut [FieldPoint]) -> Result<(), String> {
+        let gpu_sources: Vec<GpuFieldPoint> = sources.iter().map(|p| GpuFieldPoint {
+            x: p.position[0], y: p.position[1], z: p.position[2], value: p.value,
+        }).collect();
+
+        let gpu_targets: Vec<GpuFieldPoint> = targets.iter().map(|p| GpuFieldPoint {
+            x: p.position[0], y: p.position[1], z: p.position[2], value: p.value,
+        }).collect();
+
         let source_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Source Buffer"),
-            contents: bytemuck::cast_slice(sources),
+            contents: bytemuck::cast_slice(&gpu_sources),
             usage: wgpu::BufferUsages::STORAGE,
         });
 
         let target_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Target Buffer"),
-            contents: bytemuck::cast_slice(targets),
+            contents: bytemuck::cast_slice(&gpu_targets),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         });
 
@@ -122,6 +139,7 @@ impl FieldCalculator {
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Field Compute Pass"),
+                timestamp_writes: None,
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
@@ -153,18 +171,29 @@ impl FieldCalculator {
         self.device.poll(wgpu::Maintain::Wait);
 
         let data = buffer_slice.get_mapped_range();
-        let result = bytemuck::cast_slice(&data).to_vec();
+        let gpu_results: &[GpuFieldPoint] = bytemuck::cast_slice(&data);
+        for (i, target) in targets.iter_mut().enumerate() {
+            target.position = [gpu_results[i].x, gpu_results[i].y, gpu_results[i].z];
+            target.value = gpu_results[i].value;
+        }
         drop(data);
         staging_buffer.unmap();
 
-        for (i, target) in targets.iter_mut().enumerate() {
-            let gpu_point: GpuFieldPoint = bytemuck::pod_read_unaligned(&result[i * std::mem::size_of::<GpuFieldPoint>()..]);
-            *target = FieldPoint {
-                position: [gpu_point.x, gpu_point.y, gpu_point.z],
-                value: gpu_point.value,
-            };
-        }
+        Ok(())
+    }
 
+    pub fn calculate_fields_cpu(sources: &[FieldPoint], targets: &mut [FieldPoint]) -> Result<(), String> {
+        for target in targets.iter_mut() {
+            let mut sum: f32 = 0.0;
+            for source in sources.iter() {
+                let dx = target.position[0] - source.position[0];
+                let dy = target.position[1] - source.position[1];
+                let dz = target.position[2] - source.position[2];
+                let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+                sum += source.value / (distance + 1e-6);
+            }
+            target.value = sum;
+        }
         Ok(())
     }
 }
@@ -172,7 +201,6 @@ impl FieldCalculator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::FieldPoint;
 
     #[test]
     fn test_cpu_fallback() {
@@ -186,26 +214,7 @@ mod tests {
             value: 0.0,
         }];
 
-        // This test should pass even without GPU
         assert!(FieldCalculator::calculate_fields_cpu(&sources, &mut targets).is_ok());
         assert!(targets[0].value != 0.0);
-    }
-
-    impl FieldCalculator {
-        fn calculate_fields_cpu(sources: &[FieldPoint], targets: &mut [FieldPoint]) -> Result<(), String> {
-            // Simple CPU fallback implementation
-            for target in targets.iter_mut() {
-                let mut sum = 0.0;
-                for source in sources.iter() {
-                    let dx = target.position[0] - source.position[0];
-                    let dy = target.position[1] - source.position[1];
-                    let dz = target.position[2] - source.position[2];
-                    let distance = (dx*dx + dy*dy + dz*dz).sqrt();
-                    sum += source.value / (distance + 1e-6);
-                }
-                target.value = sum;
-            }
-            Ok(())
-        }
     }
 }

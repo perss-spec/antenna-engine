@@ -11,6 +11,8 @@ ndarray = "0.16"
 num-complex = { version = "0.4", features = ["serde"] }
 rayon = "1.10"
 tokio = { version = "1", features = ["full"] }
+wgpu = "24"
+bytemuck = { version = "1", features = ["derive"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
