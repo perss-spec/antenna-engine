@@ -1,5 +1,6 @@
 use crate::core::geometry::Point3D;
-use crate::core::constants::{ETA0, PI};
+use crate::core::ETA0;
+use std::f64::consts::PI;
 use num_complex::Complex64;
 
 pub struct GreenFunction {

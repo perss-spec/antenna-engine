@@ -3,7 +3,7 @@
 use crate::core::{
     geometry::{Point3D, Segment, Mesh},
     solver::{SimulationParams, SParameterResult},
-    constants::{C0, MU0, EPS0},
+    C0, MU0, EPS0,
     AntennaError, Result,
 };
 use crate::gpu::{GpuDevice, GpuError};
