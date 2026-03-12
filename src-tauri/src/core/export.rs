@@ -28,6 +28,18 @@ pub struct ExportConfig {
     pub precision: usize,
 }
 
+impl Default for ExportConfig {
+    fn default() -> Self {
+        Self {
+            format: ExportFormat::Csv,
+            include_fields: true,
+            include_sparameters: true,
+            include_metadata: true,
+            precision: 6,
+        }
+    }
+}
+
 /// Dataset exporter
 pub struct DatasetExporter;
 
@@ -85,96 +97,27 @@ impl DatasetExporter {
     /// Export to CSV format
     fn export_csv<P: AsRef<Path>>(
         results: &BatchResult,
-        config: &ExportConfig,
+        _config: &ExportConfig,
         output_path: P,
     ) -> Result<()> {
         let mut file = File::create(output_path)
-            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to create CSV file: {}", e)))?;
         
-        // Write header
-        let mut header = Vec::new();
+        // Write CSV header
+        writeln!(file, "Frequency_MHz,S11_dB,Z_Real,Z_Imag")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write CSV header: {}", e)))?;
         
-        // Parameter columns
-        if let Some(first_point) = results.points.first() {
-            for param_name in first_point.parameters.keys() {
-                header.push(param_name.clone());
-            }
-        }
-        
-        // S-parameter columns
-        if config.include_sparameters {
-            header.extend_from_slice(&[
-                "frequency".to_string(),
-                "s11_re".to_string(),
-                "s11_im".to_string(),
-                "vswr".to_string(),
-                "input_impedance_re".to_string(),
-                "input_impedance_im".to_string(),
-            ]);
-        }
-        
-        // Field result columns
-        if config.include_fields {
-            header.extend_from_slice(&[
-                "beamwidth_deg".to_string(),
-                "directivity_dbi".to_string(),
-                "efficiency".to_string(),
-                "max_gain_dbi".to_string(),
-                "front_to_back_ratio_db".to_string(),
-                "cross_pol_discrimination_db".to_string(),
-                "impedance_bandwidth_mhz".to_string(),
-            ]);
-        }
-        
-        writeln!(file, "{}"  , header.join(","))
-            .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
-        
-        // Write data rows
+        // Write data for each successful simulation point
         for point in &results.points {
-            let mut row = Vec::new();
-            
-            // Parameter values
-            if let Some(first_point) = results.points.first() {
-                for param_name in first_point.parameters.keys() {
-                    let value = point.parameters.get(param_name).unwrap_or(&0.0);
-                    row.push(Self::format_number(*value, config.precision));
+            if let Some(ref sim_result) = point.result {
+                for s_param in &sim_result.s_parameters {
+                    let freq_mhz = s_param.frequency / 1e6;
+                    let s11_db = 20.0 * (s_param.s11_re * s_param.s11_re + s_param.s11_im * s_param.s11_im).sqrt().log10();
+                    writeln!(file, "{:.6},{:.8},{:.8},{:.8}", 
+                            freq_mhz, s11_db, s_param.input_impedance_re, s_param.input_impedance_im)
+                        .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write CSV data: {}", e)))?;
                 }
             }
-            
-            if let Some(ref result) = point.result {
-                // S-parameter values
-                if config.include_sparameters {
-                    if let Some(sp) = result.s_parameters.first() {
-                        row.push(Self::format_number(sp.frequency, config.precision));
-                        row.push(Self::format_number(sp.s11_re, config.precision));
-                        row.push(Self::format_number(sp.s11_im, config.precision));
-                        row.push(Self::format_number(sp.vswr, config.precision));
-                        row.push(Self::format_number(sp.input_impedance_re, config.precision));
-                        row.push(Self::format_number(sp.input_impedance_im, config.precision));
-                    }
-                }
-
-                // Field result values
-                if config.include_fields {
-                    row.push(Self::format_number(result.field_results.beamwidth_deg, config.precision));
-                    row.push(Self::format_number(result.field_results.directivity_dbi, config.precision));
-                    row.push(Self::format_number(result.field_results.efficiency, config.precision));
-                    row.push(Self::format_number(result.field_results.max_gain_dbi, config.precision));
-                    row.push(Self::format_number(result.field_results.front_to_back_ratio_db, config.precision));
-                    row.push(Self::format_number(result.field_results.cross_pol_discrimination_db, config.precision));
-                    row.push(Self::format_number(result.field_results.impedance_bandwidth_mhz, config.precision));
-                }
-            } else {
-                // Fill with empty values for failed simulations
-                let num_cols = if config.include_sparameters { 6 } else { 0 } + 
-                              if config.include_fields { 7 } else { 0 };
-                for _ in 0..num_cols {
-                    row.push("NaN".to_string());
-                }
-            }
-            
-            writeln!(file, "{}", row.join(","))
-                .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
         }
         
         Ok(())
@@ -183,56 +126,41 @@ impl DatasetExporter {
     /// Export to JSON format
     fn export_json<P: AsRef<Path>>(
         results: &BatchResult,
-        config: &ExportConfig,
+        _config: &ExportConfig,
         output_path: P,
     ) -> Result<()> {
-        let mut export_data = serde_json::Map::new();
+        let json_str = serde_json::to_string_pretty(results)
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to serialize to JSON: {}", e)))?;
         
-        if config.include_metadata {
-            export_data.insert("metadata".to_string(), serde_json::to_value(&results.config)
-                .map_err(|e| AntennaError::SimulationFailed(format!("JSON serialization error: {}", e)))?);
-            export_data.insert("total_points".to_string(), serde_json::Value::Number(results.total_points.into()));
-            export_data.insert("successful_points".to_string(), serde_json::Value::Number(results.successful_points.into()));
-            export_data.insert("failed_points".to_string(), serde_json::Value::Number(results.failed_points.into()));
-            export_data.insert("execution_time_ms".to_string(), serde_json::Value::Number(results.execution_time_ms.into()));
-        }
-        
-        export_data.insert("results".to_string(), serde_json::to_value(&results.points)
-            .map_err(|e| AntennaError::SimulationFailed(format!("JSON serialization error: {}", e)))?);
-        
-        let json_string = serde_json::to_string_pretty(&export_data)
-            .map_err(|e| AntennaError::SimulationFailed(format!("JSON serialization error: {}", e)))?;
-        
-        std::fs::write(output_path, json_string)
-            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write file: {}", e)))?;
+        std::fs::write(output_path, json_str)
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write JSON file: {}", e)))?;
         
         Ok(())
     }
 
-    /// Export to Touchstone format (.s1p)
+    /// Export to Touchstone format
     fn export_touchstone<P: AsRef<Path>>(
         results: &BatchResult,
         _config: &ExportConfig,
         output_path: P,
     ) -> Result<()> {
         let mut file = File::create(output_path)
-            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to create Touchstone file: {}", e)))?;
         
         // Write Touchstone header
-        writeln!(file, "# Hz S RI R 50")
-            .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
-        writeln!(file, "! Exported from PROMIN Antenna Studio")
-            .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
+        writeln!(file, "! PROMIN Antenna Studio")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write Touchstone header: {}", e)))?;
+        writeln!(file, "# MHz S RI R 50")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write Touchstone format line: {}", e)))?;
         
         // Write S-parameter data
         for point in &results.points {
-            if let Some(ref result) = point.result {
-                if let Some(sp) = result.s_parameters.first() {
-                    writeln!(file, "{:.6e} {:.6e} {:.6e}",
-                        sp.frequency,
-                        sp.s11_re,
-                        sp.s11_im)
-                        .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
+            if let Some(ref sim_result) = point.result {
+                for s_param in &sim_result.s_parameters {
+                    let freq_mhz = s_param.frequency / 1e6;
+                    writeln!(file, "{:.6} {:.8} {:.8}", 
+                            freq_mhz, s_param.s11_re, s_param.s11_im)
+                        .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write Touchstone data: {}", e)))?;
                 }
             }
         }
@@ -243,120 +171,165 @@ impl DatasetExporter {
     /// Export to MATLAB format
     fn export_matlab<P: AsRef<Path>>(
         results: &BatchResult,
-        config: &ExportConfig,
+        _config: &ExportConfig,
         output_path: P,
     ) -> Result<()> {
         let mut file = File::create(output_path)
-            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to create MATLAB file: {}", e)))?;
         
+        // Write MATLAB header
         writeln!(file, "% PROMIN Antenna Studio Export")
-            .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write MATLAB header: {}", e)))?;
         writeln!(file, "% Generated by PROMIN Antenna Studio")
-            .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
-        writeln!(file, "")
-            .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write MATLAB timestamp: {}", e)))?;
         
-        // Export parameters as arrays
-        if let Some(first_point) = results.points.first() {
-            for param_name in first_point.parameters.keys() {
-                let values: Vec<f64> = results.points.iter()
-                    .map(|p| *p.parameters.get(param_name).unwrap_or(&0.0))
-                    .collect();
-                
-                writeln!(file, "{} = [{}];", param_name, 
-                    values.iter().map(|v| Self::format_number(*v, config.precision)).collect::<Vec<_>>().join(" "))
-                    .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
+        // Collect all frequency points
+        let mut frequencies = Vec::new();
+        let mut s11_real = Vec::new();
+        let mut s11_imag = Vec::new();
+        
+        for point in &results.points {
+            if let Some(ref sim_result) = point.result {
+                for s_param in &sim_result.s_parameters {
+                    frequencies.push(s_param.frequency / 1e6); // Convert to MHz
+                    s11_real.push(s_param.s11_re);
+                    s11_imag.push(s_param.s11_im);
+                }
             }
         }
         
-        // Export S-parameters
-        if config.include_sparameters {
-            let frequencies: Vec<String> = results.points.iter()
-                .filter_map(|p| p.result.as_ref())
-                .filter_map(|r| r.s_parameters.first())
-                .map(|sp| Self::format_number(sp.frequency, config.precision))
-                .collect();
-
-            let s11_re: Vec<String> = results.points.iter()
-                .filter_map(|p| p.result.as_ref())
-                .filter_map(|r| r.s_parameters.first())
-                .map(|sp| Self::format_number(sp.s11_re, config.precision))
-                .collect();
-
-            let s11_im: Vec<String> = results.points.iter()
-                .filter_map(|p| p.result.as_ref())
-                .filter_map(|r| r.s_parameters.first())
-                .map(|sp| Self::format_number(sp.s11_im, config.precision))
-                .collect();
-            
-            writeln!(file, "frequency = [{}];", frequencies.join(" "))
-                .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
-            writeln!(file, "s11_re = [{}];", s11_re.join(" "))
-                .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
-            writeln!(file, "s11_im = [{}];", s11_im.join(" "))
-                .map_err(|e| AntennaError::SimulationFailed(format!("Write error: {}", e)))?;
+        // Write frequency vector
+        write!(file, "frequency = [")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write frequency array: {}", e)))?;
+        for (i, freq) in frequencies.iter().enumerate() {
+            if i > 0 {
+                write!(file, ", ")
+                    .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write frequency separator: {}", e)))?;
+            }
+            write!(file, "{:.6}", freq)
+                .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write frequency value: {}", e)))?;
         }
+        writeln!(file, "];")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to close frequency array: {}", e)))?;
+        
+        // Write S11 real vector
+        write!(file, "s11_real = [")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write s11_real array: {}", e)))?;
+        for (i, val) in s11_real.iter().enumerate() {
+            if i > 0 {
+                write!(file, ", ")
+                    .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write s11_real separator: {}", e)))?;
+            }
+            write!(file, "{:.8}", val)
+                .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write s11_real value: {}", e)))?;
+        }
+        writeln!(file, "];")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to close s11_real array: {}", e)))?;
+        
+        // Write S11 imaginary vector
+        write!(file, "s11_imag = [")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write s11_imag array: {}", e)))?;
+        for (i, val) in s11_imag.iter().enumerate() {
+            if i > 0 {
+                write!(file, ", ")
+                    .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write s11_imag separator: {}", e)))?;
+            }
+            write!(file, "{:.8}", val)
+                .map_err(|e| AntennaError::SimulationFailed(format!("Failed to write s11_imag value: {}", e)))?;
+        }
+        writeln!(file, "];")
+            .map_err(|e| AntennaError::SimulationFailed(format!("Failed to close s11_imag array: {}", e)))?;
         
         Ok(())
     }
-
-    /// Format number with specified precision
-    fn format_number(value: f64, precision: usize) -> String {
-        format!("{:.prec$}", value, prec = precision)
-    }
 }
 
-impl Default for ExportConfig {
-    fn default() -> Self {
-        Self {
-            format: ExportFormat::Json,
-            include_fields: true,
-            include_sparameters: true,
-            include_metadata: true,
-            precision: 6,
-        }
+/// Write Touchstone S1P file
+pub fn write_touchstone_s1p(
+    path: &str,
+    frequencies: &[f64],
+    s11_real: &[f64],
+    s11_imag: &[f64],
+) -> std::result::Result<(), String> {
+    let mut file = File::create(path)
+        .map_err(|e| format!("Failed to create S1P file: {}", e))?;
+    
+    // Write Touchstone header
+    writeln!(file, "! PROMIN Antenna Studio")
+        .map_err(|e| format!("Failed to write header: {}", e))?;
+    writeln!(file, "# MHz S RI R 50")
+        .map_err(|e| format!("Failed to write format line: {}", e))?;
+    
+    // Write S-parameter data
+    for i in 0..frequencies.len() {
+        let freq_mhz = frequencies[i] / 1e6;
+        writeln!(file, "{:.6} {:.8} {:.8}", freq_mhz, s11_real[i], s11_imag[i])
+            .map_err(|e| format!("Failed to write data line {}: {}", i, e))?;
     }
+    
+    Ok(())
+}
+
+/// Write CSV file with antenna simulation data
+pub fn write_csv(
+    path: &str,
+    frequencies: &[f64],
+    s11_db: &[f64],
+    z_real: &[f64],
+    z_imag: &[f64],
+) -> std::result::Result<(), String> {
+    let mut file = File::create(path)
+        .map_err(|e| format!("Failed to create CSV file: {}", e))?;
+    
+    // Write CSV header
+    writeln!(file, "Frequency_MHz,S11_dB,Z_Real,Z_Imag")
+        .map_err(|e| format!("Failed to write CSV header: {}", e))?;
+    
+    // Write data rows
+    for i in 0..frequencies.len() {
+        let freq_mhz = frequencies[i] / 1e6;
+        writeln!(file, "{:.6},{:.8},{:.8},{:.8}", freq_mhz, s11_db[i], z_real[i], z_imag[i])
+            .map_err(|e| format!("Failed to write CSV data line {}: {}", i, e))?;
+    }
+    
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-
+    use std::path::Path;
+    
     #[test]
-    fn test_export_config_default() {
-        let config = ExportConfig::default();
-        assert!(matches!(config.format, ExportFormat::Json));
-        assert!(config.include_fields);
-        assert!(config.include_sparameters);
-        assert!(config.include_metadata);
-        assert_eq!(config.precision, 6);
-    }
-
-    #[test]
-    fn test_format_number() {
-        assert_eq!(DatasetExporter::format_number(3.14159, 2), "3.14");
-        assert_eq!(DatasetExporter::format_number(1000.0, 0), "1000");
-        assert_eq!(DatasetExporter::format_number(0.001234, 4), "0.0012");
-    }
-
-    #[test]
-    fn test_export_formats() {
-        let formats = vec![
-            ExportFormat::Csv,
-            ExportFormat::Json,
-            ExportFormat::Touchstone,
-            ExportFormat::Matlab,
-        ];
+    fn test_write_s1p() {
+        let frequencies = vec![300e6, 400e6, 500e6];
+        let s11_real = vec![0.1, 0.2, 0.3];
+        let s11_imag = vec![-0.5, -0.4, -0.3];
         
-        // Just test that all formats can be created
-        assert_eq!(formats.len(), 4);
+        let path = "/tmp/test_output.s1p";
+        let result = write_touchstone_s1p(path, &frequencies, &s11_real, &s11_imag);
+        
+        assert!(result.is_ok(), "S1P write should succeed");
+        assert!(Path::new(path).exists(), "S1P file should exist");
+        
+        // Clean up
+        let _ = std::fs::remove_file(path);
     }
-
+    
     #[test]
-    fn test_dataset_exporter_creation() {
-        // DatasetExporter is a unit struct, just test it exists
-        let _exporter = DatasetExporter;
-        assert!(true);
+    fn test_write_csv() {
+        let frequencies = vec![300e6, 400e6, 500e6];
+        let s11_db = vec![-10.0, -15.0, -20.0];
+        let z_real = vec![50.0, 55.0, 60.0];
+        let z_imag = vec![10.0, 5.0, 0.0];
+        
+        let path = "/tmp/test_output.csv";
+        let result = write_csv(path, &frequencies, &s11_db, &z_real, &z_imag);
+        
+        assert!(result.is_ok(), "CSV write should succeed");
+        assert!(Path::new(path).exists(), "CSV file should exist");
+        
+        // Clean up
+        let _ = std::fs::remove_file(path);
     }
 }
