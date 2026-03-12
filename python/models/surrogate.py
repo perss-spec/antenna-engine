@@ -1,79 +1,72 @@
-"""
-Defines the PyTorch neural network model for antenna gain prediction
-and provides an inference function for use with PyO3.
-"""
 import torch
 import torch.nn as nn
-from pathlib import Path
+from typing import List
 
-from antenna_ml.types import AntennaParameters, GainPrediction
+class SurrogateMLP(nn.Module):
+    """
+    A simple Multi-Layer Perceptron (MLP) to act as a surrogate model for
+    antenna FDTD simulations.
 
-class SurrogateAntennaModel(nn.Module):
+    It predicts S11 curves from a set of antenna geometric parameters.
     """
-    A simple Multi-Layer Perceptron (MLP) to approximate antenna gain.
-    """
-    def __init__(self, input_size: int = 3, hidden_size: int = 64, output_size: int = 1):
+    def __init__(self, input_size: int, hidden_size: int, output_size: int, num_hidden_layers: int = 3):
+        """
+        Initializes the SurrogateMLP model.
+
+        Args:
+            input_size (int): The number of input antenna parameters.
+            hidden_size (int): The number of neurons in each hidden layer.
+            output_size (int): The number of output values. For S11, this is
+                               num_frequency_points * 2 (real and imaginary parts).
+            num_hidden_layers (int): The number of hidden layers.
+        """
         super().__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
-        )
+        self.input_size = input_size
+        self.output_size = output_size
+
+        layers: List[nn.Module] = [nn.Linear(input_size, hidden_size), nn.ReLU()]
+
+        for _ in range(num_hidden_layers - 1):
+            layers.extend([nn.Linear(hidden_size, hidden_size), nn.ReLU()])
+
+        layers.append(nn.Linear(hidden_size, output_size))
+
+        self.network = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Performs a forward pass through the network.
 
         Args:
-            x: Input tensor of shape (batch_size, input_size).
+            x (torch.Tensor): A batch of input parameters, shape (batch_size, input_size).
 
         Returns:
-            Output tensor of shape (batch_size, output_size).
+            torch.Tensor: The predicted S11 curves, shape (batch_size, output_size).
         """
-        return self.layers(x)
+        return self.network(x)
 
-def predict_gain(params: AntennaParameters, model_path: str) -> GainPrediction:
-    """
-    Loads a trained surrogate model and predicts antenna gain for the given parameters.
-    This function is designed to be called from Rust via PyO3.
+    def export_onnx(self, path: str, batch_size: int = 1):
+        """
+        Exports the model to ONNX format.
 
-    Args:
-        params: An AntennaParameters object with the antenna geometry.
-        model_path: Path to the saved PyTorch model state dictionary (.pth file).
-
-    Returns:
-        A GainPrediction object containing the predicted gain.
+        Args:
+            path (str): The path to save the .onnx file.
+            batch_size (int): The batch size for the dummy input.
+        """
+        self.eval()  # Set the model to evaluation mode
+        dummy_input = torch.randn(batch_size, self.input_size, requires_grad=True)
         
-    Raises:
-        FileNotFoundError: If the model file does not exist.
-        Exception: For other errors during model loading or inference.
-    """
-    model_file = Path(model_path)
-    if not model_file.exists():
-        raise FileNotFoundError(f"Model file not found at: {model_path}")
-
-    # Instantiate the model with the same architecture as during training
-    model = SurrogateAntennaModel(input_size=3, output_size=1)
-    
-    # Load the trained weights
-    # Use map_location to ensure it works on CPU-only machines
-    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-    
-    # Set the model to evaluation mode
-    model.eval()
-
-    # Prepare the input tensor
-    input_data = torch.tensor(
-        [[params.length, params.width, params.substrate_height]],
-        dtype=torch.float32
-    )
-
-    # Perform inference without calculating gradients
-    with torch.no_grad():
-        prediction = model(input_data)
-
-    predicted_gain = prediction.item()
-
-    return GainPrediction(gain_db=predicted_gain)
+        torch.onnx.export(
+            self,
+            dummy_input,
+            path,
+            export_params=True,
+            opset_version=14, # A reasonably modern opset
+            do_constant_folding=True,
+            input_names=['params'],
+            output_names=['s11_raw'],
+            dynamic_axes={
+                'params': {0: 'batch_size'},
+                's11_raw': {0: 'batch_size'}
+            }
+        )
