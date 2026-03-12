@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicbarker/tauri/HEAD/crates/tauri-cli/config.schema.json",
+  "productName": "antenna-engine",
+  "version": "0.1.0",
+  "identifier": "com.antenna-engine.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "title": "AI Antenna Engine",
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 800,
+        "resizable": true,
+        "width": 1200
+      }
+    ]
+  }
+}

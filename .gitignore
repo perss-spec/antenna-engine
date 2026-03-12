@@ -1,0 +1,10 @@
+target/
+node_modules/
+dist/
+.worktrees/
+__pycache__/
+*.pyc
+.ai-pipeline/state.json
+.ai-pipeline/sprints/*.json
+*.egg-info/
+.venv/
