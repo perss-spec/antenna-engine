@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Color } from 'three';
-import type { FieldData } from '../../types/antenna';
+import type { FieldData, Vec3 } from '../../types/antenna';
 
 export interface CurrentOverlayProps {
   fieldData: FieldData;
@@ -17,7 +17,7 @@ export function CurrentOverlay({ fieldData, opacity = 0.8 }: CurrentOverlayProps
     const maxMag = Math.max(...fieldData.magnitude);
     const range = maxMag - minMag;
     
-    fieldData.positions.forEach((pos, i: number) => {
+    fieldData.positions.forEach((pos: Vec3, i: number) => {
       positions.push(pos.x, pos.y, pos.z);
       
       // Map magnitude to color (blue = low, red = high)
@@ -39,15 +39,11 @@ export function CurrentOverlay({ fieldData, opacity = 0.8 }: CurrentOverlayProps
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          array={geometry.positions}
-          count={geometry.positions.length / 3}
-          itemSize={3}
+          args={[geometry.positions, 3]}
         />
         <bufferAttribute
           attach="attributes-color"
-          array={geometry.colors}
-          count={geometry.colors.length / 3}
-          itemSize={3}
+          args={[geometry.colors, 3]}
         />
       </bufferGeometry>
       <pointsMaterial

@@ -51,6 +51,24 @@ impl Point3D {
     pub fn sub(&self, other: &Point3D) -> Self {
         Self::new(self.x - other.x, self.y - other.y, self.z - other.z)
     }
+
+    pub fn normalize(&self) -> Self {
+        self.normalized()
+    }
+}
+
+impl std::ops::Sub for Point3D {
+    type Output = Point3D;
+    fn sub(self, rhs: Point3D) -> Point3D {
+        Point3D::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl std::ops::Sub for &Point3D {
+    type Output = Point3D;
+    fn sub(self, rhs: &Point3D) -> Point3D {
+        Point3D::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
 }
 
 /// Wire segment between two points
@@ -75,6 +93,10 @@ pub struct Mesh {
 }
 
 impl Mesh {
+    pub fn new() -> Self {
+        Self::empty()
+    }
+
     pub fn empty() -> Self {
         Self {
             vertices: Vec::new(),
@@ -90,6 +112,26 @@ impl Mesh {
     pub fn num_elements(&self) -> usize {
         self.triangles.len() + self.segments.len()
     }
+
+    pub fn bounds(&self) -> Bounds3D {
+        if self.vertices.is_empty() {
+            return Bounds3D {
+                min: Point3D::origin(),
+                max: Point3D::origin(),
+            };
+        }
+        let mut min = self.vertices[0];
+        let mut max = self.vertices[0];
+        for v in &self.vertices {
+            if v.x < min.x { min.x = v.x; }
+            if v.y < min.y { min.y = v.y; }
+            if v.z < min.z { min.z = v.z; }
+            if v.x > max.x { max.x = v.x; }
+            if v.y > max.y { max.y = v.y; }
+            if v.z > max.z { max.z = v.z; }
+        }
+        Bounds3D { min, max }
+    }
 }
 
 /// 3D bounding box
@@ -97,6 +139,24 @@ impl Mesh {
 pub struct Bounds3D {
     pub min: Point3D,
     pub max: Point3D,
+}
+
+impl Bounds3D {
+    pub fn center(&self) -> Point3D {
+        Point3D::new(
+            (self.min.x + self.max.x) / 2.0,
+            (self.min.y + self.max.y) / 2.0,
+            (self.min.z + self.max.z) / 2.0,
+        )
+    }
+
+    pub fn size(&self) -> Point3D {
+        Point3D::new(
+            self.max.x - self.min.x,
+            self.max.y - self.min.y,
+            self.max.z - self.min.z,
+        )
+    }
 }
 
 #[cfg(test)]

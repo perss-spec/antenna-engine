@@ -4,6 +4,7 @@ pub mod element;
 pub mod solver;
 pub mod field;
 pub mod green;
+pub mod constants;
 pub mod impedance;
 pub mod port;
 pub mod nf2ff;

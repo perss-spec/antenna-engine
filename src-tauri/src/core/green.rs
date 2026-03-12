@@ -3,11 +3,15 @@ use crate::core::constants::{ETA0, PI};
 use num_complex::Complex64;
 
 pub struct GreenFunction {
-    k: f64, // Wave number
+    pub k: f64, // Wave number
 }
 
 impl GreenFunction {
-    pub fn new(k: f64) -> Self {
+    pub fn new(wavelength: f64) -> Self {
+        Self { k: 2.0 * PI / wavelength }
+    }
+
+    pub fn from_k(k: f64) -> Self {
         Self { k }
     }
 
@@ -75,15 +79,15 @@ mod tests {
 
     #[test]
     fn test_green_function_creation() {
-        let k = 2.0 * PI / 1.0; // 1m wavelength
-        let green = GreenFunction::new(k);
+        let wavelength = 1.0; // 1m wavelength
+        let k = 2.0 * PI / wavelength;
+        let green = GreenFunction::new(wavelength);
         assert!((green.k - k).abs() < 1e-10);
     }
 
     #[test]
     fn test_free_space_green() {
-        let k = 2.0 * PI / 1.0;
-        let green = GreenFunction::new(k);
+        let green = GreenFunction::new(1.0);
         let p1 = Point3D::origin();
         let p2 = Point3D::new(1.0, 0.0, 0.0);
         let g = green.free_space(&p1, &p2);
@@ -92,8 +96,7 @@ mod tests {
 
     #[test]
     fn test_wire_impedance() {
-        let k = 2.0 * PI / 1.0;
-        let green = GreenFunction::new(k);
+        let green = GreenFunction::new(1.0);
         let p1 = Point3D::new(0.0, 0.0, -0.25);
         let p2 = Point3D::new(0.0, 0.0, 0.25);
         let z = green.wire_impedance(&p1, &p2, &p1, &p2, 0.001);

@@ -68,9 +68,10 @@ impl GpuMomSolver {
             }
         };
 
+        let use_gpu = gpu_device.is_some();
         Ok(Self {
             gpu_device,
-            use_gpu: gpu_device.is_some(),
+            use_gpu,
         })
     }
 
@@ -94,10 +95,11 @@ impl GpuMomSolver {
         eprintln!("Solving MoM system: {} segments at {:.2} MHz", num_segments, frequency / 1e6);
 
         // Fill impedance matrix
+        let cb_ref: Option<&dyn Fn(f32)> = progress_callback.as_ref().map(|b| b.as_ref() as &dyn Fn(f32));
         let z_matrix = if self.use_gpu && self.gpu_device.is_some() {
-            self.fill_impedance_matrix_gpu(mesh, frequency, progress_callback.as_deref()).await?
+            self.fill_impedance_matrix_gpu(mesh, frequency, cb_ref).await?
         } else {
-            self.fill_impedance_matrix_cpu(mesh, frequency, progress_callback.as_deref())
+            self.fill_impedance_matrix_cpu(mesh, frequency, cb_ref)
         };
 
         // Create excitation vector (voltage source at first segment)
@@ -249,29 +251,28 @@ impl GpuMomSolver {
     ) -> Vec<Vec<Complex64>> {
         let num_segments = mesh.segments.len();
         let mut z_matrix = vec![vec![Complex64::new(0.0, 0.0); num_segments]; num_segments];
-        
+
         let k = 2.0 * std::f64::consts::PI * frequency / C0;
         let eta = (MU0 / EPS0).sqrt();
-        
-        // Parallel computation using rayon
-        z_matrix.par_iter_mut().enumerate().for_each(|(i, row)| {
+
+        // Sequential computation (progress_callback is not Send+Sync)
+        for i in 0..num_segments {
             for j in 0..num_segments {
-                row[j] = self.compute_mutual_impedance(mesh, i, j, k, eta);
+                z_matrix[i][j] = self.compute_mutual_impedance(mesh, i, j, k, eta);
             }
-            
-            // Report progress periodically
-            if let Some(callback) = progress_callback {
+
+            if let Some(callback) = &progress_callback {
                 if i % 10 == 0 {
                     let progress = (i as f32) / (num_segments as f32);
                     callback(progress);
                 }
             }
-        });
-        
+        }
+
         if let Some(callback) = progress_callback {
             callback(1.0);
         }
-        
+
         z_matrix
     }
 
@@ -353,9 +354,11 @@ impl GpuMomSolver {
                 }
                 let factor = a[k][i] / a[i][i];
                 for j in i..n {
-                    a[k][j] -= factor * a[i][j];
+                    let val = a[i][j];
+                    a[k][j] -= factor * val;
                 }
-                b[k] -= factor * b[i];
+                let bval = b[i];
+                b[k] -= factor * bval;
             }
         }
 
@@ -364,7 +367,8 @@ impl GpuMomSolver {
         for i in (0..n).rev() {
             x[i] = b[i];
             for j in (i + 1)..n {
-                x[i] -= a[i][j] * x[j];
+                let xj = x[j];
+                x[i] -= a[i][j] * xj;
             }
             if a[i][i].norm() < 1e-10 {
                 return Err(AntennaError::SimulationFailed("Singular matrix".to_string()));

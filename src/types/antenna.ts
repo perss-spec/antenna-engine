@@ -203,6 +203,32 @@ export type AntennaError =
   | { type: 'ioError'; message: string }
   | { type: 'serializationError'; message: string };
 
+// Antenna element for 3D rendering
+export interface AntennaElement {
+  id: string;
+  type: 'wire' | 'patch' | 'qfh';
+  vertices: Vec3[];
+  radius?: number;
+  thickness?: number;
+  material?: string;
+}
+
+// Geometry container with elements and bounds
+export interface AntennaGeometry {
+  elements: AntennaElement[];
+  bounds: {
+    min: Vec3;
+    max: Vec3;
+  };
+}
+
+// Field data for current/field overlays
+export interface FieldData {
+  positions: Vec3[];
+  magnitude: number[];
+  phase?: number[];
+}
+
 // Additional types for UI
 export interface MeshData {
   vertices: Vec3[];

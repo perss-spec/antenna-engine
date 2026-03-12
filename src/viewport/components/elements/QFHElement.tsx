@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Vector3 as ThreeVec3, CatmullRomCurve3, TubeGeometry } from 'three';
-import type { AntennaElement } from '../../../types/antenna';
+import type { AntennaElement, Vec3 } from '../../../types/antenna';
 
 export interface QFHElementProps {
   element: AntennaElement;
@@ -15,7 +15,7 @@ export function QFHElement({ element, selected, showWireframe, onClick }: QFHEle
 
     // Convert vertices to Three.js Vector3
     const points = element.vertices.map(
-      vertex => new ThreeVec3(vertex.x, vertex.y, vertex.z)
+      (vertex: Vec3) => new ThreeVec3(vertex.x, vertex.y, vertex.z)
     );
 
     // Create smooth curve through points

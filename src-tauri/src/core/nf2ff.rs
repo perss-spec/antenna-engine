@@ -13,6 +13,27 @@ pub struct NearToFarFieldTransform {
     k: f64, // wave number
 }
 
+/// Alias used by solver — owns mesh/current references and delegates to NearToFarFieldTransform
+pub struct NearToFarField<'a> {
+    transform: NearToFarFieldTransform,
+    mesh: &'a Mesh,
+    current: &'a Array1<Complex64>,
+}
+
+impl<'a> NearToFarField<'a> {
+    pub fn new(mesh: &'a Mesh, current: &'a Array1<Complex64>, frequency: f64) -> Self {
+        Self {
+            transform: NearToFarFieldTransform::new(frequency),
+            mesh,
+            current,
+        }
+    }
+
+    pub fn calculate_pattern(&self) -> Result<FieldResult> {
+        self.transform.calculate_field_results(self.mesh, self.current)
+    }
+}
+
 impl NearToFarFieldTransform {
     pub fn new(frequency: f64) -> Self {
         let wavelength = C0 / frequency;

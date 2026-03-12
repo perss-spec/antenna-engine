@@ -33,7 +33,7 @@ pub enum GpuError {
 impl GpuDevice {
     /// Initialize GPU device with compute shader support
     pub async fn new() -> Result<Self, GpuError> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
