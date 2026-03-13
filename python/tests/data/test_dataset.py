@@ -110,16 +110,13 @@ def test_dataset_split_edge_cases(valid_dataset_file: Path):
     assert len(train) == 1
     assert len(val) == 9
 
-    # Dataset of 10, val_size=0.95 -> 9 val, 1 train. This will fail with default int() rounding.
-    # Let's test a case that would result in a zero-sized split
+    # Test a case that results in a zero-sized val split -> should raise
+    # 4 items, val_size=0.2 -> int(4*0.2) = 0 val -> error
     small_dataset = AntennaDataset(dataset.simulations[:4])
     with pytest.raises(ValueError, match="too small to create a valid split"):
-        small_dataset.split(val_size=0.8) # 4 * 0.8 = 3.2 -> 3 val, 1 train. OK
-        small_dataset.split(val_size=0.9) # 4 * 0.9 = 3.6 -> 3 val, 1 train. OK
+        small_dataset.split(val_size=0.2)
 
-    # A 5-item dataset with val_size=0.9 -> 4 val, 1 train. OK
-    # A 5-item dataset with val_size=0.99 -> 4 val, 1 train. OK
-    # Let's test the other way. val_size=0.1 -> 0 val, 5 train. This should fail.
+    # 5 items, val_size=0.1 -> int(5*0.1) = 0 val -> error
     five_item_dataset = AntennaDataset(dataset.simulations[:5])
     with pytest.raises(ValueError, match="too small to create a valid split"):
-        five_item_dataset.split(val_size=0.1) # 5 * 0.1 = 0.5 -> 0 val, 5 train. Fails.
+        five_item_dataset.split(val_size=0.1)

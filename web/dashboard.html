@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — PROMIN Antenna Studio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #6366f1;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --gray: #555;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* === NAV === */
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 0 32px;
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 4px; margin-left: 16px; }
+  .nav-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); background: rgba(99,102,241,0.1); }
+  .nav-links a.active { color: var(--accent); background: rgba(99,102,241,0.12); }
+  .nav-right { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+  .nav-right .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 2s infinite; }
+
+  /* === MAIN === */
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 32px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  section h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  /* === OVERVIEW CARDS === */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .card:hover {
+    border-color: rgba(99,102,241,0.4);
+    box-shadow: 0 0 20px rgba(99,102,241,0.08);
+  }
+  .card-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .card-value { font-size: 28px; font-weight: 700; }
+  .card-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  /* === TEAM GRID === */
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  .team-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .team-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--team-color);
+    opacity: 0.7;
+  }
+  .team-card:hover {
+    border-color: color-mix(in srgb, var(--team-color) 50%, transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--team-color) 15%, transparent);
+  }
+  .team-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .team-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--team-color) 15%, transparent);
+    color: var(--team-color);
+    flex-shrink: 0;
+  }
+  .team-icon svg { width: 18px; height: 18px; }
+  .team-name { font-size: 14px; font-weight: 600; }
+  .team-role { font-size: 11px; color: var(--text-dim); }
+  .team-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 0; }
+  .team-row span:first-child { color: var(--text-dim); }
+
+  /* === STATUS BADGE === */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-success { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-running { background: rgba(234,179,8,0.15); color: var(--yellow); animation: pulse 1.5s infinite; }
+  .badge-failed  { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-idle    { background: rgba(85,85,85,0.15); color: var(--gray); }
+
+  /* === PIPELINE FLOW === */
+  .pipeline-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 900px;
+    justify-content: center;
+  }
+  .pipe-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+  }
+  .pipe-box {
+    width: 80px; height: 40px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .pipe-box.status-success { border-color: var(--green); color: var(--green); background: rgba(34,197,94,0.06); }
+  .pipe-box.status-running { border-color: var(--yellow); color: var(--yellow); background: rgba(234,179,8,0.06); animation: pulse 1.5s infinite; }
+  .pipe-box.status-failed  { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.06); }
+  .pipe-box.status-idle    { border-color: var(--gray); color: var(--gray); }
+  .pipe-label { font-size: 10px; color: var(--text-dim); }
+
+  .pipe-arrow {
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--border);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .pipe-group {
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
+  .pipe-group .pipe-node .pipe-box { width: 64px; font-size: 10px; }
+
+  /* === TABLE === */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+  }
+  td {
+    padding: 10px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(30,30,46,0.5);
+  }
+  tr { transition: background 0.2s; }
+  tbody tr:hover { background: rgba(99,102,241,0.04); }
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; color: var(--text-dim); }
+
+  /* === ANIMATIONS === */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 1024px) {
+    .overview-grid { grid-template-columns: repeat(2, 1fr); }
+    .team-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .overview-grid { grid-template-columns: 1fr; }
+    .team-grid { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    nav { padding: 0 16px; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">PROMIN</a>
+  <div class="nav-links">
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="map.html">Map</a>
+  </div>
+  <div class="nav-right">
+    <span class="dot" id="statusDot"></span>
+    <span id="lastUpdated">—</span>
+  </div>
+</nav>
+
+<main>
+  <!-- Pipeline Overview -->
+  <section>
+    <h2>Pipeline Overview</h2>
+    <div class="overview-grid" id="overviewGrid"></div>
+  </section>
+
+  <!-- Team Status -->
+  <section>
+    <h2>Team Status</h2>
+    <div class="team-grid" id="teamGrid"></div>
+  </section>
+
+  <!-- Workflow Pipeline -->
+  <section>
+    <h2>Workflow Pipeline</h2>
+    <div class="pipeline-container">
+      <div class="pipeline" id="pipelineFlow"></div>
+    </div>
+  </section>
+
+  <!-- Recent Executions -->
+  <section>
+    <h2>Recent Executions</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Workflow</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Model</th>
+          </tr>
+        </thead>
+        <tbody id="execTable"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const ICONS = {
+  cpu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>`,
+  layout: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`,
+  box: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  zap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  brain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a5 5 0 015 5c0 1.1-.4 2.1-1 2.9.6.8 1 1.8 1 2.9a5 5 0 01-3.5 4.8A4.5 4.5 0 0112 22a4.5 4.5 0 01-1.5-4.4A5 5 0 017 12.8c0-1.1.4-2.1 1-2.9A5 5 0 017 7a5 5 0 015-5z"/><path d="M12 2v20"/><path d="M8 7h8"/><path d="M7.5 12h9"/><path d="M8.5 17h7"/></svg>`
+};
+
+const TEAMS = [
+  { id: 'core', name: 'Core', role: 'Rust Engine', icon: 'cpu',    color: '#f59e0b' },
+  { id: 'ui',   name: 'UI',   role: 'React',      icon: 'layout', color: '#6366f1' },
+  { id: '3d',   name: '3D',   role: 'Viewport',   icon: 'box',    color: '#06b6d4' },
+  { id: 'gpu',  name: 'GPU',  role: 'WebGPU',     icon: 'zap',    color: '#22c55e' },
+  { id: 'aiml', name: 'AI/ML',role: 'Python',      icon: 'brain',  color: '#8b5cf6' }
+];
+
+const PIPELINE_NODES = [
+  { id: 'trigger',   label: 'Trigger' },
+  { id: 'pm',        label: 'PM' },
+  { id: 'architect', label: 'Architect' },
+  { id: 'dispatch',  label: 'Dispatch' },
+  { id: 'parallel',  label: null, children: [
+    { id: 'p_core', label: 'Core' },
+    { id: 'p_ui',   label: 'UI' },
+    { id: 'p_3d',   label: '3D' },
+    { id: 'p_gpu',  label: 'GPU' },
+    { id: 'p_aiml', label: 'AI/ML' }
+  ]},
+  { id: 'review',    label: 'Review' },
+  { id: 'integrate', label: 'Integrate' }
+];
+
+function getMockData() {
+  return {
+    overview: {
+      sprints: 5,
+      sprintsSub: '46 tests passed',
+      lastStatus: 'success',
+      activeModel: 'Claude Opus 4',
+      modelSub: 'via n8n pipeline',
+      uptime: '4d 12h 37m',
+      uptimeSub: 'since sprint-001'
+    },
+    teams: {
+      core: { model: 'Opus 4',     status: 'success', commit: 'abc1234', files: 38 },
+      ui:   { model: 'v0-1.5-lg',  status: 'success', commit: 'def5678', files: 24 },
+      '3d': { model: 'Sonnet 4',   status: 'success', commit: '91a2b3c', files: 17 },
+      gpu:  { model: 'Opus 4',     status: 'running', commit: 'f4e5d6a', files: 12 },
+      aiml: { model: 'Sonnet 4',   status: 'success', commit: '7b8c9d0', files: 21 }
+    },
+    pipeline: {
+      trigger:   'success',
+      pm:        'success',
+      architect: 'success',
+      dispatch:  'success',
+      p_core:    'success',
+      p_ui:      'success',
+      p_3d:      'success',
+      p_gpu:     'running',
+      p_aiml:    'success',
+      review:    'idle',
+      integrate: 'idle'
+    },
+    executions: [
+      { time: '14:32:08', workflow: 'Integrate',        status: 'success', duration: '2m 14s',  model: 'Opus 4' },
+      { time: '14:29:51', workflow: 'Code Review',      status: 'success', duration: '1m 48s',  model: 'Opus 4' },
+      { time: '14:27:03', workflow: 'AI/ML Agent',      status: 'success', duration: '3m 22s',  model: 'Sonnet 4' },
+      { time: '14:26:58', workflow: '3D Agent',         status: 'success', duration: '2m 55s',  model: 'Sonnet 4' },
+      { time: '14:26:44', workflow: 'UI Agent',         status: 'success', duration: '4m 07s',  model: 'v0-1.5-lg' },
+      { time: '14:26:30', workflow: 'GPU Agent',        status: 'running', duration: '—',       model: 'Opus 4' },
+      { time: '14:26:15', workflow: 'Core Agent',       status: 'success', duration: '5m 31s',  model: 'Opus 4' },
+      { time: '14:20:42', workflow: 'Dispatch',         status: 'success', duration: '0m 12s',  model: '—' },
+      { time: '14:20:28', workflow: 'Architect',        status: 'success', duration: '1m 03s',  model: 'Opus 4' },
+      { time: '14:19:22', workflow: 'PM Sprint Plan',   status: 'success', duration: '0m 58s',  model: 'Opus 4' }
+    ]
+  };
+}
+
+function renderOverview(data) {
+  const el = document.getElementById('overviewGrid');
+  const statusClass = data.lastStatus === 'success' ? 'badge-success' : data.lastStatus === 'running' ? 'badge-running' : 'badge-failed';
+  el.innerHTML = `
+    <div class="card fade-in">
+      <div class="card-label">Sprints Completed</div>
+      <div class="card-value">${data.sprints}</div>
+      <div class="card-sub">${data.sprintsSub}</div>
+    </div>
+    <div class="card fade-in">
+      <div class="card-label">Last Sprint Status</div>
+      <div class="card-value"><span class="badge ${statusClass}">${data.lastStatus}</span></div>
+      <div class="card-sub">Sprint #${String(data.sprints).padStart(3,'0')}</div>
+    </div>
+    <div class="card fade-in">
+      <div class="card-label">Active Model</div>
+      <div class="card-value" style="font-size:22px">${data.activeModel}</div>
+      <div class="card-sub">${data.modelSub}</div>
+    </div>
+    <div class="card fade-in">
+      <div class="card-label">Uptime</div>
+      <div class="card-value" style="font-size:22px">${data.uptime}</div>
+      <div class="card-sub">${data.uptimeSub}</div>
+    </div>
+  `;
+}
+
+function renderTeams(data) {
+  const el = document.getElementById('teamGrid');
+  el.innerHTML = TEAMS.map(t => {
+    const d = data[t.id];
+    const statusClass = 'badge-' + d.status;
+    return `
+      <div class="team-card fade-in" style="--team-color:${t.color}">
+        <div class="team-header">
+          <div class="team-icon">${ICONS[t.icon]}</div>
+          <div>
+            <div class="team-name">${t.name}</div>
+            <div class="team-role">${t.role}</div>
+          </div>
+        </div>
+        <div class="team-row"><span>Model</span><span>${d.model}</span></div>
+        <div class="team-row"><span>Status</span><span class="badge ${statusClass}">${d.status}</span></div>
+        <div class="team-row"><span>Commit</span><span class="mono">${d.commit}</span></div>
+        <div class="team-row"><span>Files</span><span>${d.files}</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPipeline(data) {
+  const el = document.getElementById('pipelineFlow');
+  let html = '';
+  PIPELINE_NODES.forEach((node, i) => {
+    if (i > 0) html += `<div class="pipe-arrow">→</div>`;
+    if (node.children) {
+      html += `<div class="pipe-group">`;
+      node.children.forEach(c => {
+        const s = data[c.id] || 'idle';
+        html += `
+          <div class="pipe-node">
+            <div class="pipe-box status-${s}">${c.label}</div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    } else {
+      const s = data[node.id] || 'idle';
+      html += `
+        <div class="pipe-node">
+          <div class="pipe-box status-${s}">${node.label}</div>
+          <div class="pipe-label">${node.id}</div>
+        </div>
+      `;
+    }
+  });
+  el.innerHTML = html;
+}
+
+function renderExecTable(data) {
+  const el = document.getElementById('execTable');
+  el.innerHTML = data.map(row => {
+    const cls = 'badge-' + row.status;
+    return `
+      <tr class="fade-in">
+        <td class="mono">${row.time}</td>
+        <td>${row.workflow}</td>
+        <td><span class="badge ${cls}">${row.status}</span></td>
+        <td class="mono">${row.duration}</td>
+        <td>${row.model}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function updateTimestamp() {
+  const now = new Date();
+  const t = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+  document.getElementById('lastUpdated').textContent = 'Last updated: ' + t;
+}
+
+function renderAll(data) {
+  renderOverview(data.overview);
+  renderTeams(data.teams);
+  renderPipeline(data.pipeline);
+  renderExecTable(data.executions);
+  updateTimestamp();
+}
+
+async function fetchStatus() {
+  try {
+    const res = await fetch('http://localhost:5678/webhook/ae/status', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    document.getElementById('statusDot').style.background = '#22c55e';
+    renderAll(data);
+  } catch {
+    document.getElementById('statusDot').style.background = '#eab308';
+    renderAll(getMockData());
+  }
+}
+
+fetchStatus();
+setInterval(fetchStatus, 10000);
+</script>
+</body>
+</html>
