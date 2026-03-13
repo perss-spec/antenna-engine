@@ -1,0 +1,181 @@
+{
+  "id": "planar_patch_array",
+  "name": "Planar Patch Array",
+  "category": "array",
+  "description": "A planar array of microstrip patch antennas arranged in a regular grid pattern to achieve high gain and beam steering capabilities. The array combines multiple patch elements with controlled amplitude and phase distributions to form desired radiation patterns. Commonly used in phased array radar systems, satellite communications, and wireless base stations.",
+  "frequencyRange": {
+    "min": 1000000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 15,
+    "max": 35,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "2-5%",
+  "polarization": "linear",
+  "applications": [
+    "Phased array radar",
+    "Satellite communications",
+    "5G base stations",
+    "Point-to-point links",
+    "MIMO systems",
+    "Beamforming networks"
+  ],
+  "parameters": {
+    "patch_length": {
+      "name": "Patch Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Length of individual patch element",
+      "defaultFormula": "c/(2*f*sqrt(εr_eff))",
+      "range": {
+        "min": 0.001,
+        "max": 0.1
+      }
+    },
+    "patch_width": {
+      "name": "Patch Width",
+      "symbol": "W",
+      "unit": "m",
+      "description": "Width of individual patch element",
+      "defaultFormula": "c/(2*f)*sqrt(2/(εr+1))",
+      "range": {
+        "min": 0.001,
+        "max": 0.1
+      }
+    },
+    "element_spacing_x": {
+      "name": "Element Spacing X",
+      "symbol": "dx",
+      "unit": "m",
+      "description": "Spacing between elements in x-direction",
+      "defaultFormula": "0.5*c/f",
+      "range": {
+        "min": 0.001,
+        "max": 0.2
+      }
+    },
+    "element_spacing_y": {
+      "name": "Element Spacing Y",
+      "symbol": "dy",
+      "unit": "m",
+      "description": "Spacing between elements in y-direction",
+      "defaultFormula": "0.5*c/f",
+      "range": {
+        "min": 0.001,
+        "max": 0.2
+      }
+    },
+    "num_elements_x": {
+      "name": "Number of Elements X",
+      "symbol": "Nx",
+      "unit": "dimensionless",
+      "description": "Number of elements in x-direction",
+      "defaultFormula": "8",
+      "range": {
+        "min": 2,
+        "max": 64
+      }
+    },
+    "num_elements_y": {
+      "name": "Number of Elements Y",
+      "symbol": "Ny",
+      "unit": "dimensionless",
+      "description": "Number of elements in y-direction",
+      "defaultFormula": "8",
+      "range": {
+        "min": 2,
+        "max": 64
+      }
+    },
+    "substrate_thickness": {
+      "name": "Substrate Thickness",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Thickness of dielectric substrate",
+      "defaultFormula": "0.05*c/f",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "relative_permittivity": {
+      "name": "Relative Permittivity",
+      "symbol": "εr",
+      "unit": "dimensionless",
+      "description": "Relative permittivity of substrate material",
+      "defaultFormula": "2.2",
+      "range": {
+        "min": 1.5,
+        "max": 12
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining individual patch dimensions, optimizing element spacing, calculating feed network, and analyzing array performance including mutual coupling effects.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Individual Patch Dimensions",
+        "description": "Determine patch length and width for resonance at design frequency",
+        "formula": "L = c/(2*f*sqrt(εr_eff)), W = c/(2*f)*sqrt(2/(εr+1))"
+      },
+      {
+        "step": 2,
+        "title": "Determine Element Spacing",
+        "description": "Set element spacing to avoid grating lobes while considering mutual coupling",
+        "formula": "dx = dy = λ0/2 for broadside radiation, dx,dy < λ0/(1+sin(θmax))"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Array Factor",
+        "description": "Determine array factor for desired beam pattern and side lobe levels",
+        "formula": "AF = Σ(m=1 to Nx)Σ(n=1 to Ny) Amn*exp(j*(m*kx*dx + n*ky*dy + φmn))"
+      },
+      {
+        "step": 4,
+        "title": "Design Feed Network",
+        "description": "Design corporate feed network with proper amplitude and phase distribution",
+        "formula": "Zin = Z0*sqrt(N) for equal power division, phase shift = k0*d*sin(θ0)"
+      },
+      {
+        "step": 5,
+        "title": "Account for Mutual Coupling",
+        "description": "Calculate mutual coupling between adjacent elements and adjust impedance",
+        "formula": "Zin_coupled = Zin_isolated + ΣZmn, where Zmn is mutual impedance"
+      },
+      {
+        "step": 6,
+        "title": "Calculate Array Gain",
+        "description": "Determine total array gain including element gain and array factor",
+        "formula": "G_array = G_element * |AF_max|^2 * η_array"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "fr = c/(2*L*sqrt(εr_eff))",
+    "inputImpedance": "Zin = (Z11 + Z12*I2/I1 + Z13*I3/I1 + ... + Z1N*IN/I1)",
+    "gain": "G = G_element * Nx * Ny * η_array * |AF_normalized|^2",
+    "radiationPattern": "E(θ,φ) = E_element(θ,φ) * AF(θ,φ) = E_element(θ,φ) * Σ(m,n) Amn*exp(j*(m*kx*dx + n*ky*dy))",
+    "bandwidth": "BW = 2*|fr - f|/fr where |S11| < -10dB"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use method of moments with mutual coupling matrix Z = [Zmn] where Zmn includes self and mutual impedances between elements",
+    "radiationModel": "Multiply single element pattern by array factor, account for element pattern degradation due to coupling",
+    "keyAssumptions": [
+      "Infinite ground plane approximation",
+      "Thin substrate assumption",
+      "Negligible surface wave effects",
+      "Linear superposition of element patterns",
+      "Uniform substrate properties"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 12",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 11",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Chapter 14",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 7"
+  ]
+}
