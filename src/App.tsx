@@ -13,7 +13,8 @@ import type { HistoryItem } from './components/SimulationHistory/SimulationHisto
 import AntennaViewport from './viewport/AntennaViewport';
 import { RadiationPatternView } from './components/RadiationPatternView';
 import ExportPanel from './components/ExportPanel/ExportPanel';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+// Card components available if needed
+// import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LandingPage } from '@/components/landing/LandingPage';
@@ -594,31 +595,28 @@ function App() {
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-auto">
         {/* Top Bar */}
-        <div className="px-6 py-3 border-b border-border flex items-center justify-between bg-background">
+        <div className="px-5 py-2 border-b border-border/60 flex items-center justify-between bg-background shrink-0">
           <div className="flex gap-2 items-center">
-            <span className="text-sm font-semibold">Simulation Results</span>
+            <span className="text-[13px] font-semibold">Results</span>
             {isSimulating && (
               <Badge variant="warning">
                 <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
-                Running...
+                Running
               </Badge>
             )}
             {isOptimizing && (
               <Badge variant="purple">
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                Optimizing...
+                Optimizing
               </Badge>
             )}
             {summary && !isSimulating && !isOptimizing && (
-              <Badge variant="success">Complete</Badge>
+              <Badge variant="success">Done</Badge>
             )}
           </div>
-          <div className="flex gap-3 items-center text-xs text-text-dim">
-            {!isTauri && (
-              <span className="text-warning">Browser Preview</span>
-            )}
-            {simTime && <span>Time: {simTime}ms</span>}
-            <span>Points: {chartData.length || '-'}</span>
+          <div className="flex gap-3 items-center text-[11px] text-text-dim">
+            {simTime && <span className="tabular-nums">{simTime}ms</span>}
+            {chartData.length > 0 && <span className="tabular-nums">{chartData.length} pts</span>}
             {chartData.length > 0 && (
               <ExportPanel
                 frequencies={impedanceData.freq}
@@ -634,9 +632,9 @@ function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 flex flex-col gap-5">
+        <div className="flex-1 p-4 flex flex-col gap-3">
           {error && (
-            <div className="px-4 py-3 bg-error/10 border border-error/30 rounded-lg text-error text-[13px]">
+            <div className="px-3 py-2 bg-error/10 border border-error/30 rounded-lg text-error text-xs">
               {error}
             </div>
           )}
@@ -644,81 +642,54 @@ function App() {
           {summary ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
               <TabsList>
-                <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
+                <TabsTrigger value="s-parameters">S-Params</TabsTrigger>
                 <TabsTrigger value="impedance">Impedance</TabsTrigger>
                 <TabsTrigger value="3d-view">3D View</TabsTrigger>
                 <TabsTrigger value="radiation">Radiation</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-5">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-4 gap-3">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-1.5">
-                        <Radio className="w-3.5 h-3.5 text-accent" />
-                        Resonant Freq
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-accent tabular-nums">
-                        {formatFreq(summary.resonantFreq)}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-1.5">
-                        <Activity className="w-3.5 h-3.5 text-success" />
-                        Min S11
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-success tabular-nums">
-                        {summary.minS11.toFixed(1)} dB
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-1.5">
-                        <Zap className="w-3.5 h-3.5 text-warning" />
-                        VSWR
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-warning tabular-nums">
-                        {vswr}:1
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-1.5">
-                        <Signal className="w-3.5 h-3.5 text-info" />
-                        BW (-10dB)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-info tabular-nums">
-                        {formatFreq(summary.bandwidth)}
-                      </div>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-3">
+                {/* Stats — inline row */}
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+                    <Radio className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-text-muted">Resonant</div>
+                      <div className="text-sm font-bold text-accent tabular-nums leading-tight">{formatFreq(summary.resonantFreq)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+                    <Activity className="w-3.5 h-3.5 text-success shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-text-muted">Min S11</div>
+                      <div className="text-sm font-bold text-success tabular-nums leading-tight">{summary.minS11.toFixed(1)} dB</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+                    <Zap className="w-3.5 h-3.5 text-warning shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-text-muted">VSWR</div>
+                      <div className="text-sm font-bold text-warning tabular-nums leading-tight">{vswr}:1</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+                    <Signal className="w-3.5 h-3.5 text-info shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-text-muted">BW -10dB</div>
+                      <div className="text-sm font-bold text-info tabular-nums leading-tight">{formatFreq(summary.bandwidth)}</div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* S11 Chart */}
-                <div className="bg-surface border border-border rounded-lg p-5 flex-1 min-h-[400px] flex flex-col">
+                <div className="bg-surface border border-border rounded-lg p-4 flex-1 min-h-[350px] flex flex-col">
                   <S11Chart data={chartData} />
                 </div>
               </TabsContent>
 
               <TabsContent value="impedance" className="flex-1 flex flex-col">
-                <div className="bg-surface border border-border rounded-lg p-5 flex-1 flex items-center justify-center">
+                <div className="bg-surface border border-border rounded-lg p-4 flex-1 flex items-center justify-center">
                   <SmithChart
                     impedancePoints={impedanceData.real.map((re, i) => ({
                       re,
@@ -730,7 +701,7 @@ function App() {
               </TabsContent>
 
               <TabsContent value="3d-view" className="flex-1 flex flex-col">
-                <div className="bg-surface border border-border rounded-lg flex-1 min-h-[400px] overflow-hidden">
+                <div className="bg-surface border border-border rounded-lg flex-1 min-h-[350px] overflow-hidden">
                   <AntennaViewport
                     antennaType={params.antennaType}
                     length={params.length / 1000}
@@ -759,19 +730,24 @@ function App() {
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-text-dim">
-              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                <rect x="8" y="40" width="4" height="16" rx="2" fill="#1e1e2e" />
-                <rect x="16" y="28" width="4" height="28" rx="2" fill="#1e1e2e" />
-                <rect x="24" y="20" width="4" height="36" rx="2" fill="#2a2a3e" />
-                <rect x="32" y="8" width="4" height="48" rx="2" fill="#6366f1" opacity="0.5" />
-                <rect x="40" y="20" width="4" height="36" rx="2" fill="#2a2a3e" />
-                <rect x="48" y="28" width="4" height="28" rx="2" fill="#1e1e2e" />
-                <rect x="56" y="40" width="4" height="16" rx="2" fill="#1e1e2e" />
-              </svg>
-              <div className="text-base font-semibold text-text-dim">No Simulation Data</div>
-              <div className="text-[13px] max-w-[300px] text-center leading-relaxed">
-                Select an antenna type, configure parameters, and click "Run Simulation" to analyze S-parameters.
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 text-text-dim">
+              <div className="relative">
+                <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+                  <rect x="8" y="44" width="4" height="16" rx="2" fill="#1c1c2c" />
+                  <rect x="16" y="32" width="4" height="28" rx="2" fill="#1c1c2c" />
+                  <rect x="24" y="22" width="4" height="38" rx="2" fill="#282840" />
+                  <rect x="32" y="8" width="4" height="52" rx="2" fill="#6366f1" opacity="0.4" />
+                  <rect x="40" y="22" width="4" height="38" rx="2" fill="#282840" />
+                  <rect x="48" y="32" width="4" height="28" rx="2" fill="#1c1c2c" />
+                  <rect x="56" y="44" width="4" height="16" rx="2" fill="#1c1c2c" />
+                </svg>
+                <div className="absolute inset-0 bg-accent/5 blur-2xl rounded-full" />
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-text/60 mb-1">No Simulation Data</div>
+                <div className="text-[12px] text-text-dim max-w-[280px] leading-relaxed">
+                  Configure antenna parameters and run simulation
+                </div>
               </div>
             </div>
           )}

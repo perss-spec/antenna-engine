@@ -26,7 +26,7 @@ const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     <div
       ref={ref}
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg bg-surface p-1 border border-border",
+        "inline-flex items-center gap-0.5 rounded-lg bg-background/60 p-0.5 border border-border/50",
         className
       )}
       {...props}
@@ -48,9 +48,9 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
         ref={ref}
         type="button"
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-[11px] font-medium transition-all duration-150",
           isActive
-            ? "bg-accent text-white shadow-sm"
+            ? "bg-accent text-white shadow-sm shadow-accent/25"
             : "text-text-muted hover:text-text hover:bg-surface-hover",
           className
         )}
@@ -73,8 +73,8 @@ const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
     return (
       <div
         ref={ref}
-        className={cn("mt-4", className)}
-        style={{ animation: "fadeIn 0.2s ease-in" }}
+        className={cn("mt-3", className)}
+        style={{ animation: "fadeIn 0.15s ease-out" }}
         {...props}
       />
     )
