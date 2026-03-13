@@ -55,7 +55,6 @@ const categoryModels: Record<AntennaCategory, PatternModel> = {
   broadband: {
     baseGain: 4.0,
     fn: (theta, k, lambda) => {
-      // Frequency-independent: smooth pattern, moderate gain
       const L = lambda;
       const kL = k * L;
       const sinTheta = Math.sin(theta);
@@ -68,8 +67,7 @@ const categoryModels: Record<AntennaCategory, PatternModel> = {
   aperture: {
     baseGain: 15.0,
     fn: (theta, k, lambda) => {
-      // Aperture: pencil beam with cos^2 envelope
-      const D = lambda * 3; // aperture ~3λ
+      const D = lambda * 3;
       const u = k * D / 2 * Math.sin(theta);
       const af = sinc(u);
       const cosEnv = Math.pow(Math.cos(theta), 2);
@@ -79,7 +77,6 @@ const categoryModels: Record<AntennaCategory, PatternModel> = {
   array: {
     baseGain: 10.0,
     fn: (theta, k, lambda) => {
-      // Array factor for N=4 elements, d=λ/2
       const N = 4;
       const d = lambda / 2;
       const cosTheta = Math.cos(theta);
@@ -96,7 +93,6 @@ const categoryModels: Record<AntennaCategory, PatternModel> = {
   special: {
     baseGain: 3.0,
     fn: (theta) => {
-      // Generic cardioid-like pattern for special antennas
       const cosTheta = Math.cos(theta);
       const g = Math.pow(Math.max((1 + cosTheta) / 2, 1e-10), 1.5);
       return Math.max(3.0 + 10 * Math.log10(Math.max(g, 1e-10)), -40);
@@ -127,6 +123,13 @@ function generateFrequencyDependentPattern(antennaType: string, frequency: numbe
   }
 
   return { pattern, maxGain };
+}
+
+function getChartColor(index: number): string {
+  const el = document.documentElement;
+  const style = getComputedStyle(el);
+  const color = style.getPropertyValue(`--color-chart-${index}`).trim();
+  return color || ['#0ea5e9', '#22c55e', '#eab308', '#ef4444', '#a78bfa', '#f97316'][index - 1] || '#0ea5e9';
 }
 
 export function RadiationPatternView({ antennaType, frequency }: RadiationPatternViewProps) {
@@ -169,9 +172,9 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
     <div className="flex flex-col gap-3 flex-1">
       <div className="flex items-center justify-between">
         <div className="flex gap-2 items-center">
-          <span className="text-sm font-semibold">3D Radiation Pattern</span>
+          <span className="text-sm font-semibold text-text-primary">3D Radiation Pattern</span>
           {maxGain > -Infinity && (
-            <span className="text-xs text-text-dim">
+            <span className="text-xs text-text-dim font-mono">
               Max Gain: {maxGain.toFixed(1)} dBi
             </span>
           )}
@@ -199,7 +202,7 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
         {pattern ? (
           <Canvas
             camera={{ position: [2, 1.5, 2], fov: 50 }}
-            style={{ background: 'var(--color-surface, #1a1a1a)', width: '100%', height: '100%', minHeight: 400 }}
+            style={{ background: 'transparent', width: '100%', height: '100%', minHeight: 400 }}
           >
             <ambientLight intensity={0.4} />
             <directionalLight position={[10, 10, 5]} intensity={0.8} />
@@ -231,18 +234,18 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-text-dim">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: 'var(--chart-1, #3b82f6)' }} />
+          <div className="w-3 h-3 rounded" style={{ background: getChartColor(1) }} />
           <span>High Gain</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: 'var(--chart-2, #10b981)' }} />
+          <div className="w-3 h-3 rounded" style={{ background: getChartColor(2) }} />
           <span>Mid</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: 'var(--chart-3, #f59e0b)' }} />
+          <div className="w-3 h-3 rounded" style={{ background: getChartColor(3) }} />
           <span>Low Gain</span>
         </div>
-        <span className="ml-auto">Theta: 0-180, Phi: 0-360</span>
+        <span className="ml-auto font-mono">Theta: 0-180, Phi: 0-360</span>
       </div>
     </div>
   );

@@ -229,7 +229,7 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <Label htmlFor="mesh-density">Mesh Density</Label>
-              <Badge variant="info" className="text-xs">
+              <Badge variant="default" className="text-xs">
                 {getMeshDensityLabel(settings.simulation.meshDensity)}
               </Badge>
             </div>

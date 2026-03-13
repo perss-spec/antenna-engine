@@ -122,7 +122,7 @@ function AntennaScene({
             radius={radius}
             segments={20}
             showFeedPoint
-  
+
           />
         )}
 
@@ -236,15 +236,15 @@ export default function AntennaViewport({
 
   return (
     <div className={cn('relative w-full h-full', className)}>
-      {/* Viewport header */}
+      {/* Viewport header label */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center pointer-events-none">
-        <span className="mt-2 px-2 py-0.5 text-xs text-zinc-500 bg-zinc-900/60 rounded-md font-mono tracking-wide">
+        <span className="mt-2 text-[11px] tracking-wide font-mono text-text-muted bg-base/70 backdrop-blur px-3 py-1 rounded-lg">
           {label}
         </span>
       </div>
 
       {/* Toolbar */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 bg-zinc-900/80 backdrop-blur-sm border border-zinc-700/50 rounded-lg p-1.5">
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 bg-base/80 backdrop-blur-md border border-border/50 rounded-xl p-2">
         {/* View presets */}
         {VIEW_PRESETS.map((p) => (
           <button
@@ -252,27 +252,27 @@ export default function AntennaViewport({
             title={p.key.charAt(0).toUpperCase() + p.key.slice(1) + ' view'}
             onClick={() => handlePreset(p.key)}
             className={cn(
-              'h-8 w-8 flex items-center justify-center rounded transition-colors text-[10px] font-semibold font-mono',
+              'h-9 w-9 flex items-center justify-center rounded-lg transition-colors text-[11px] font-semibold font-mono',
               activePreset === p.key
-                ? 'bg-zinc-600 text-zinc-100'
-                : 'text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100'
+                ? 'bg-accent text-white'
+                : 'text-text-muted hover:bg-elevated hover:text-text-primary'
             )}
           >
             {p.label.slice(0, 1)}
           </button>
         ))}
 
-        <div className="h-px bg-zinc-700/60 mx-1" />
+        <div className="h-px bg-border mx-1 my-0.5" />
 
         {/* Wireframe toggle */}
         <button
           title="Toggle wireframe"
           onClick={() => setWireframe((v) => !v)}
           className={cn(
-            'h-8 w-8 flex items-center justify-center rounded transition-colors',
+            'h-9 w-9 flex items-center justify-center rounded-lg transition-colors',
             wireframe
-              ? 'bg-zinc-600 text-zinc-100'
-              : 'text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100'
+              ? 'bg-accent text-white'
+              : 'text-text-muted hover:bg-elevated hover:text-text-primary'
           )}
         >
           <Grid3x3 size={16} />
@@ -282,7 +282,7 @@ export default function AntennaViewport({
         <button
           title="Fit all (reset view)"
           onClick={handleFitAll}
-          className="h-8 w-8 flex items-center justify-center rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-lg text-text-muted hover:bg-elevated hover:text-text-primary transition-colors"
         >
           <Maximize size={16} />
         </button>

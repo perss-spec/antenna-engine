@@ -94,9 +94,9 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
             checked={range.enabled}
             onChange={e => setRange(r => ({ ...r, enabled: e.target.checked }))}
             disabled={isOptimizing}
-            className="w-3.5 h-3.5 accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+            className="w-4 h-4 accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
           />
-          <span className={`text-xs font-medium w-7 ${range.enabled ? 'text-text-muted' : 'text-text-dim/50'}`}>{label}</span>
+          <span className={`text-[12px] font-medium w-8 ${range.enabled ? 'text-text-muted' : 'text-text-dim/50'}`}>{label}</span>
         </div>
         <Input
           type="number"
@@ -104,7 +104,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
           onChange={e => setRange(r => ({ ...r, min: parseFloat(e.target.value) || 0 }))}
           disabled={isOptimizing || !range.enabled}
           placeholder="min"
-          className="h-9 text-sm disabled:opacity-40"
+          className="h-9 text-[13px] disabled:opacity-40"
         />
         <Input
           type="number"
@@ -112,7 +112,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
           onChange={e => setRange(r => ({ ...r, max: parseFloat(e.target.value) || 0 }))}
           disabled={isOptimizing || !range.enabled}
           placeholder="max"
-          className="h-9 text-sm disabled:opacity-40"
+          className="h-9 text-[13px] disabled:opacity-40"
         />
         <Input
           type="number"
@@ -120,61 +120,59 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
           onChange={e => setRange(r => ({ ...r, step: parseFloat(e.target.value) || 0 }))}
           disabled={isOptimizing || !range.enabled}
           placeholder="step"
-          className="h-9 text-sm disabled:opacity-40"
+          className="h-9 text-[13px] disabled:opacity-40"
         />
       </div>
     );
   }
 
   return (
-    <div className={`px-6 py-5 flex flex-col gap-7 ${className}`}>
-      <form onSubmit={handleStart} className="flex flex-col gap-7">
+    <div className={`px-5 py-5 flex flex-col gap-6 ${className}`}>
+      <form onSubmit={handleStart} className="flex flex-col gap-6">
 
         {/* Targets */}
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="target-frequency" className="text-sm font-medium text-text-muted">Freq (MHz)</Label>
-              <Input
-                id="target-frequency"
-                type="number"
-                value={targetFrequency}
-                onChange={handleFrequencyChange}
-                min={100}
-                max={10000}
-                step={1}
-                disabled={isOptimizing}
-                className="h-9 text-sm focus-visible:ring-accent/50"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="target-s11" className="text-sm font-medium text-text-muted">S11 (dB)</Label>
-              <Input
-                id="target-s11"
-                type="number"
-                value={targetS11}
-                onChange={handleS11Change}
-                min={-60}
-                max={0}
-                step={0.1}
-                disabled={isOptimizing}
-                className="h-9 text-sm focus-visible:ring-accent/50"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="opt-method" className="text-sm font-medium text-text-muted">Method</Label>
-              <Select
-                id="opt-method"
-                value={method}
-                onChange={handleMethodChange}
-                disabled={isOptimizing}
-                className="h-9 text-sm focus-visible:ring-accent/50"
-              >
-                <option value="gradient">Gradient</option>
-                <option value="random">Random</option>
-                <option value="nelder_mead">Nelder-Mead</option>
-              </Select>
-            </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="target-frequency" className="text-[13px] font-medium text-text-muted">Freq (MHz)</Label>
+            <Input
+              id="target-frequency"
+              type="number"
+              value={targetFrequency}
+              onChange={handleFrequencyChange}
+              min={100}
+              max={10000}
+              step={1}
+              disabled={isOptimizing}
+              className="h-9 text-[13px] focus-visible:ring-accent/50"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="target-s11" className="text-[13px] font-medium text-text-muted">S11 (dB)</Label>
+            <Input
+              id="target-s11"
+              type="number"
+              value={targetS11}
+              onChange={handleS11Change}
+              min={-60}
+              max={0}
+              step={0.1}
+              disabled={isOptimizing}
+              className="h-9 text-[13px] focus-visible:ring-accent/50"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="opt-method" className="text-[13px] font-medium text-text-muted">Method</Label>
+            <Select
+              id="opt-method"
+              value={method}
+              onChange={handleMethodChange}
+              disabled={isOptimizing}
+              className="h-9 text-[13px] focus-visible:ring-accent/50"
+            >
+              <option value="gradient">Gradient</option>
+              <option value="random">Random</option>
+              <option value="nelder_mead">Nelder-Mead</option>
+            </Select>
           </div>
         </div>
 
@@ -196,7 +194,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
           {!isOptimizing ? (
             <Button
               type="submit"
-              className="h-9 text-sm bg-accent hover:bg-accent-hover text-white px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+              className="h-9 text-[13px] bg-accent hover:bg-accent-hover text-white px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
             >
               Optimize
             </Button>
@@ -205,7 +203,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               type="button"
               variant="destructive"
               onClick={handleStop}
-              className="h-9 text-sm px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
+              className="h-9 text-[13px] px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
             >
               Stop
             </Button>
@@ -217,14 +215,14 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
                 <span>Progress</span>
                 <span className="tabular-nums">{progress.toFixed(0)}%</span>
               </div>
-              <div className="w-full h-1 bg-border rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
                 <div className="h-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }} />
               </div>
             </div>
           )}
 
           {bestResult && !isOptimizing && (
-            <span className="text-xs text-success tabular-nums ml-auto">
+            <span className="text-[11px] text-success font-medium tabular-nums ml-auto px-2.5 py-1 bg-success/10 rounded-md">
               Best: {bestResult.s11.toFixed(1)} dB
             </span>
           )}
@@ -232,9 +230,9 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
       </form>
 
       {results.length > 0 && (
-        <div className="bg-surface border border-border/50 rounded overflow-hidden">
+        <div className="bg-surface border border-border/50 rounded-lg overflow-hidden">
           <div className="max-h-[120px] overflow-y-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-[11px]">
               <thead className="text-text-dim uppercase tracking-wider border-b border-border/50 sticky top-0 bg-surface">
                 <tr>
                   <th className="py-2 px-3 text-left">#</th>
