@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import type { FC } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface S11DataPoint {
   frequency: number;
@@ -20,10 +20,31 @@ const S11Chart: FC<S11ChartProps> = ({
   touchstoneData,
   className
 }) => {
+  const [visibleLines, setVisibleLines] = useState({
+    current: true,
+    previous: true,
+    touchstone: true
+  });
+
   const minPoint = useMemo(() => {
     if (data.length === 0) return null;
     return data.reduce((min, p) => p.s11_db < min.s11_db ? p : min, data[0]);
   }, [data]);
+
+  const yAxisDomain = useMemo(() => {
+    const allData = [
+      ...(data || []),
+      ...(simulationData || []),
+      ...(touchstoneData || [])
+    ];
+    
+    if (allData.length === 0) return [-40, 0];
+    
+    const minValue = Math.min(...allData.map(d => d.s11_db));
+    const maxValue = Math.max(...allData.map(d => d.s11_db));
+    
+    return [minValue - 5, Math.max(maxValue + 2, 0)];
+  }, [data, simulationData, touchstoneData]);
 
   const formatTooltip = (value: number, name: string) => {
     if (name.includes('s11')) {
@@ -37,12 +58,61 @@ const S11Chart: FC<S11ChartProps> = ({
     return `${tickItem}M`;
   };
 
+  const handleLegendClick = (dataKey: string) => {
+    setVisibleLines(prev => ({
+      ...prev,
+      [dataKey]: !prev[dataKey as keyof typeof prev]
+    }));
+  };
+
+  const customLegend = (props: any) => {
+    const { payload } = props;
+    if (!payload) return null;
+
+    return (
+      <div className="flex justify-center gap-4 mt-2">
+        {payload.map((entry: any, index: number) => {
+          const dataKey = entry.dataKey === 's11_db' ? 
+            (entry.payload?.name === 'Current Simulation' ? 'current' :
+             entry.payload?.name === 'Previous Simulation' ? 'previous' : 'touchstone') :
+            'current';
+          
+          const isVisible = visibleLines[dataKey as keyof typeof visibleLines];
+          
+          return (
+            <div
+              key={`item-${index}`}
+              className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => handleLegendClick(dataKey)}
+            >
+              <div
+                className="w-3 h-0.5"
+                style={{
+                  backgroundColor: entry.color,
+                  opacity: isVisible ? 1 : 0.3
+                }}
+              />
+              <span
+                className="text-xs"
+                style={{
+                  color: isVisible ? '#888' : '#555'
+                }}
+              >
+                {entry.value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className={`flex flex-col flex-1 ${className || ''}`}>
       <h3 className="text-sm font-semibold text-text mb-3">S11 Return Loss</h3>
       <ResponsiveContainer width="100%" height={400}>
         <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" opacity={0.3} />
           <XAxis
             dataKey="frequency"
             type="number"
@@ -54,7 +124,7 @@ const S11Chart: FC<S11ChartProps> = ({
             label={{ value: 'Frequency (MHz)', position: 'insideBottom', offset: -10, fill: '#666', fontSize: 11 }}
           />
           <YAxis
-            domain={[-40, 0]}
+            domain={yAxisDomain}
             label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#666' }}
             stroke="#555"
             tick={{ fill: '#666', fontSize: 11 }}
@@ -70,7 +140,7 @@ const S11Chart: FC<S11ChartProps> = ({
               fontSize: '12px',
             }}
           />
-          <Legend wrapperStyle={{ color: '#888', fontSize: '12px' }} />
+          <Legend content={customLegend} />
 
           <ReferenceLine
             y={-10}
@@ -91,7 +161,7 @@ const S11Chart: FC<S11ChartProps> = ({
             />
           )}
 
-          {data.length > 0 && (
+          {data.length > 0 && visibleLines.current && (
             <Line
               data={data}
               type="monotone"
@@ -103,7 +173,7 @@ const S11Chart: FC<S11ChartProps> = ({
             />
           )}
 
-          {simulationData && simulationData.length > 0 && (
+          {simulationData && simulationData.length > 0 && visibleLines.previous && (
             <Line
               data={simulationData}
               type="monotone"
@@ -115,7 +185,7 @@ const S11Chart: FC<S11ChartProps> = ({
             />
           )}
 
-          {touchstoneData && touchstoneData.length > 0 && (
+          {touchstoneData && touchstoneData.length > 0 && visibleLines.touchstone && (
             <Line
               data={touchstoneData}
               type="monotone"
