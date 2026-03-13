@@ -12,6 +12,14 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ["three", "@react-three/fiber", "@react-three/drei"],
+          recharts: ["recharts"],
+        },
+      },
+    },
   },
   clearScreen: false,
   server: {
