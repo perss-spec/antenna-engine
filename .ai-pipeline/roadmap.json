@@ -2,236 +2,230 @@
   "project": "PROMIN Antenna Studio",
   "sprints": [
     {
-      "id": "sprint-11",
-      "name": "Yagi-Uda Foundation + Core Infrastructure",
-      "description": "Implement Yagi-Uda antenna geometry, improve near-field transforms, and establish core infrastructure for advanced features",
-      "tasks": [
-        {
-          "id": "S11-T1",
-          "team": "core",
-          "title": "Implement Yagi-Uda Array Antenna Geometry",
-          "description": "Create YagiUdaAntenna struct with driven element, directors array, and reflector. Include element spacing, lengths, and wire radius parameters. Generate mesh segments for each element.",
-          "acceptance_criteria": [
-            "YagiUdaAntenna generates 3-element array (reflector + driven + director) with configurable spacing",
-            "Element lengths follow standard Yagi design ratios (reflector 5% longer, director 5% shorter than driven)",
-            "Mesh generation produces correct wire segments for MoM solver input",
-            "Antenna impedance at driven element matches theoretical ~50Ω for optimized design"
-          ],
-          "dependencies": [],
-          "priority": "high",
-          "estimated_complexity": "high"
-        },
-        {
-          "id": "S11-T2",
-          "team": "core",
-          "title": "Near-Field to Far-Field Transform Improvements",
-          "description": "Enhance NF2FF calculations with better numerical integration, phase center correction, and coordinate system handling for array antennas",
-          "acceptance_criteria": [
-            "Far-field patterns show correct Yagi directivity (>8dBi forward gain)",
-            "Front-to-back ratio >15dB for standard 3-element Yagi",
-            "Phase center calculation accurate within 0.1λ for array geometries",
-            "Coordinate transform handles arbitrary antenna orientation"
-          ],
-          "dependencies": [
-            "S11-T1"
-          ],
-          "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S11-T3",
-          "team": "core",
-          "title": "Touchstone S2P File Export",
-          "description": "Implement S2P (2-port) Touchstone export for multi-port antennas and antenna arrays with mutual coupling data",
-          "acceptance_criteria": [
-            "S2P files export with correct frequency points and S-parameter matrix",
-            "File format complies with Touchstone v1.1 specification",
-            "Mutual coupling S21/S12 parameters accurate within 1dB vs reference",
-            "Export handles frequency sweep from 50MHz to 2GHz"
-          ],
-          "dependencies": [
-            "S11-T1"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S11-T4",
-          "team": "gpu",
-          "title": "WGPU Compute Shader Infrastructure Setup",
-          "description": "Set up WGPU compute pipeline infrastructure, buffer management, and shader compilation for impedance matrix calculations",
-          "acceptance_criteria": [
-            "WGPU device initialization succeeds on target platforms",
-            "Compute shader compilation pipeline established with error handling",
-            "Buffer allocation/deallocation for matrix data working",
-            "Basic compute dispatch executes without crashes"
-          ],
-          "dependencies": [
-            "S11-T1"
-          ],
-          "priority": "high",
-          "estimated_complexity": "high"
-        },
-        {
-          "id": "S11-T5",
-          "team": "aiml",
-          "title": "Training Data Infrastructure for Yagi Arrays",
-          "description": "Extend dataset generation to include Yagi-Uda parameter sweeps and establish data versioning system",
-          "acceptance_criteria": [
-            "Dataset includes 1000+ Yagi configurations (spacing, lengths, elements)",
-            "Parameter ranges cover practical Yagi designs (0.1λ to 0.3λ spacing)",
-            "Data versioning tracks dataset schema and generation parameters",
-            "Training data validation shows <5% corrupted samples"
-          ],
-          "dependencies": [
-            "S11-T1",
-            "S11-T2"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        }
-      ]
-    },
-    {
       "id": "sprint-12",
-      "name": "GPU Acceleration + 3D Visualization",
-      "description": "Implement WGPU compute shaders for impedance matrix and create advanced 3D visualization for Yagi arrays",
+      "name": "COMPILATION FIX & INTEGRATION",
+      "description": "Critical sprint to fix all compilation errors and ensure all tests pass. No new features - focus on making existing code compile and work together.",
       "tasks": [
         {
           "id": "S12-T1",
-          "team": "gpu",
-          "title": "WGSL Green Function Kernel Implementation",
-          "description": "Write WGPU compute shader in WGSL for impedance matrix fill using Green's function kernel calculations",
+          "team": "core",
+          "title": "Fix Core Module Compilation Errors",
+          "description": "Resolve all compilation errors in src-tauri/src/core/. Fix type mismatches, missing imports, and visibility issues. Ensure proper re-exports in mod.rs.",
           "acceptance_criteria": [
-            "WGSL shader computes Z-matrix elements with <1% error vs CPU reference",
-            "Shader handles wire segment interactions for up to 1000 segments",
-            "GPU computation 5x faster than CPU rayon implementation",
-            "Memory usage stays under 2GB for typical Yagi meshes"
+            "cargo build --bin src-tauri succeeds with zero errors",
+            "All 56+ tests in core module pass with cargo test core::",
+            "mod.rs properly re-exports AntennaGeometry, SimulationResult, SParameters, and all public types"
           ],
-          "dependencies": [
-            "S11-T4"
-          ],
-          "priority": "high",
+          "dependencies": [],
+          "priority": "critical",
           "estimated_complexity": "high"
         },
         {
           "id": "S12-T2",
-          "team": "gpu",
-          "title": "CPU vs GPU Benchmark Suite",
-          "description": "Create comprehensive benchmarking system comparing WGPU compute vs CPU rayon for various antenna sizes",
+          "team": "core",
+          "title": "Implement Tauri Command Bridge",
+          "description": "Add Tauri commands for frontend integration: simulate_antenna, get_antenna_templates, export_touchstone. Ensure proper error handling and serialization.",
           "acceptance_criteria": [
-            "Benchmark suite tests 100, 500, 1000, 2000 segment antennas",
-            "Performance metrics include computation time and memory usage",
-            "Results show GPU speedup scaling with problem size",
-            "Benchmark data exported to JSON for analysis"
+            "simulate_antenna command accepts antenna parameters and returns S-parameters",
+            "get_antenna_templates returns list of available antenna types",
+            "export_touchstone saves .s1p/.s2p files to user-specified path",
+            "All commands handle errors gracefully with proper Result<T, String> returns"
           ],
           "dependencies": [
             "S12-T1"
           ],
-          "priority": "medium",
+          "priority": "critical",
           "estimated_complexity": "medium"
         },
         {
           "id": "S12-T3",
-          "team": "3d",
-          "title": "Yagi-Uda 3D Model with Element Labels",
-          "description": "Create detailed 3D visualization of Yagi arrays with element identification, dimensions, and interactive labels",
+          "team": "gpu",
+          "title": "Remove GPU Dependencies - CPU Parallel Implementation",
+          "description": "Remove all wgpu runtime calls and implement CPU-only parallel computation using rayon. Replace GPU compute shaders with parallel CPU algorithms.",
           "acceptance_criteria": [
-            "3D model shows reflector, driven element, directors with distinct colors",
-            "Element labels display length and spacing measurements",
-            "Interactive hover shows element parameters (length, diameter, position)",
-            "Model scales correctly with antenna dimensions"
+            "All wgpu imports and dependencies removed from Cargo.toml",
+            "parallel_impedance_fill implemented using rayon::par_iter",
+            "parallel_frequency_sweep processes frequency points in parallel",
+            "cargo build succeeds without GPU runtime dependencies",
+            "cargo test gpu:: passes all tests"
           ],
           "dependencies": [
-            "S11-T1"
+            "S12-T1"
+          ],
+          "priority": "critical",
+          "estimated_complexity": "high"
+        },
+        {
+          "id": "S12-T4",
+          "team": "ui",
+          "title": "Fix UI Component TypeScript Errors",
+          "description": "Resolve all TypeScript compilation errors in UI components. Fix type imports, prop interfaces, and hook usage.",
+          "acceptance_criteria": [
+            "tsc --noEmit passes with zero TypeScript errors",
+            "All component prop interfaces properly defined",
+            "React hooks used correctly with proper dependency arrays",
+            "No 'any' types - all components fully typed"
+          ],
+          "dependencies": [
+            "S12-T2"
           ],
           "priority": "high",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S12-T4",
-          "team": "3d",
-          "title": "Camera Animation System",
-          "description": "Implement smooth camera transitions when switching between antenna types with preset viewpoints",
+          "id": "S12-T5",
+          "team": "ui",
+          "title": "Create Main App Layout Integration",
+          "description": "Build main App.tsx that integrates all existing components with proper layout. Sidebar navigation, main content area, 3D viewport placeholder.",
           "acceptance_criteria": [
-            "Camera animates smoothly between antenna views in 1-2 seconds",
-            "Preset viewpoints optimized for each antenna type",
-            "Animation can be interrupted/cancelled by user interaction",
-            "Camera maintains proper orientation and zoom levels"
+            "App.tsx renders without runtime errors",
+            "Sidebar contains navigation for Antenna Design, Simulation, Analysis tabs",
+            "Main content area switches between AntennaForm, SimulationHistory, ComparisonPanel",
+            "Dark theme applied consistently using Tailwind classes",
+            "3D viewport placeholder reserves space for antenna visualization"
           ],
           "dependencies": [
-            "S12-T3"
+            "S12-T4"
+          ],
+          "priority": "high",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S12-T6",
+          "team": "3d",
+          "title": "Fix 3D Viewport TypeScript Compilation",
+          "description": "Resolve TypeScript errors in all viewport components and antenna models. Ensure proper Three.js type usage.",
+          "acceptance_criteria": [
+            "tsc --noEmit passes for all files in src/viewport/",
+            "DipoleModel, MonopoleModel, PatchModel, QfhModel compile without errors",
+            "Three.js types properly imported and used",
+            "vitest runs successfully on viewport tests"
+          ],
+          "dependencies": [
+            "S12-T2"
+          ],
+          "priority": "high",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S12-T7",
+          "team": "3d",
+          "title": "Create Unified AntennaViewport Component",
+          "description": "Build single AntennaViewport component that switches between antenna models based on type. Integrate with UI layout.",
+          "acceptance_criteria": [
+            "AntennaViewport accepts antenna type prop and renders appropriate model",
+            "Smooth transitions between different antenna visualizations",
+            "Component integrates with main App layout without layout shifts",
+            "Viewport responds to window resize events properly"
+          ],
+          "dependencies": [
+            "S12-T6",
+            "S12-T5"
           ],
           "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S12-T5",
-          "team": "3d",
-          "title": "Wireframe Toggle and Visualization Modes",
-          "description": "Add wireframe rendering mode and multiple visualization options for antenna geometry",
+          "id": "S12-T8",
+          "team": "aiml",
+          "title": "Fix Python Test Suite",
+          "description": "Resolve all failing Python tests. Fix import errors, missing dependencies, and test assertion failures.",
           "acceptance_criteria": [
-            "Wireframe mode shows antenna structure without solid surfaces",
-            "Toggle between solid, wireframe, and hybrid rendering modes",
-            "Wireframe maintains element colors and labels",
-            "Performance impact <10% when switching modes"
+            "pytest runs without import errors",
+            "All existing tests pass with 100% success rate",
+            "Test coverage reports generated successfully",
+            "No deprecated API usage warnings"
+          ],
+          "dependencies": [],
+          "priority": "high",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S12-T9",
+          "team": "aiml",
+          "title": "Add ONNX Export and Training CLI",
+          "description": "Implement ONNX model export functionality and create CLI script for model training.",
+          "acceptance_criteria": [
+            "Surrogate model exports to .onnx format successfully",
+            "CLI script: python -m antenna_ml.train --data data.jsonl --output model.onnx works",
+            "Training script validates input data format",
+            "Exported ONNX model loads and runs inference correctly"
           ],
           "dependencies": [
-            "S12-T3"
+            "S12-T8"
           ],
-          "priority": "low",
-          "estimated_complexity": "low"
+          "priority": "medium",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S12-T10",
+          "team": "core",
+          "title": "Integration Testing and Build Verification",
+          "description": "Run full build pipeline and integration tests to ensure all components work together.",
+          "acceptance_criteria": [
+            "cargo build completes successfully",
+            "npm run build produces working Tauri application",
+            "pytest passes all Python tests",
+            "Integration test: create dipole → simulate → display results works end-to-end",
+            "Application launches without runtime errors"
+          ],
+          "dependencies": [
+            "S12-T2",
+            "S12-T3",
+            "S12-T5",
+            "S12-T7",
+            "S12-T9"
+          ],
+          "priority": "critical",
+          "estimated_complexity": "high"
         }
       ]
     },
     {
       "id": "sprint-13",
-      "name": "Interactive Smith Chart + UI Enhancements",
-      "description": "Implement interactive Smith chart with simulation data integration and responsive UI improvements",
+      "name": "STABILITY & PERFORMANCE",
+      "description": "Improve application stability, add error handling, and optimize performance after compilation fixes.",
       "tasks": [
         {
           "id": "S13-T1",
-          "team": "ui",
-          "title": "Smith Chart Component Foundation",
-          "description": "Create base Smith chart component with proper impedance/admittance grid, scaling, and coordinate transforms",
+          "team": "core",
+          "title": "Add Comprehensive Error Handling",
+          "description": "Implement robust error handling throughout core simulation engine with proper error propagation to UI.",
           "acceptance_criteria": [
-            "Smith chart displays standard impedance grid (0.2, 0.5, 1.0, 2.0, 5.0)",
-            "Coordinate transforms between rectangular and Smith chart coordinates accurate",
-            "Chart scales properly with container size",
-            "Grid lines and labels render clearly at all zoom levels"
+            "All simulation errors display user-friendly messages in UI",
+            "Invalid antenna parameters rejected with specific error descriptions",
+            "File I/O errors handled gracefully with retry mechanisms",
+            "Error logging implemented for debugging"
           ],
           "dependencies": [],
           "priority": "high",
-          "estimated_complexity": "high"
+          "estimated_complexity": "medium"
         },
         {
           "id": "S13-T2",
-          "team": "ui",
-          "title": "Smith Chart Simulation Data Integration",
-          "description": "Connect Smith chart to MoM simulation results, plot impedance vs frequency, enable interactive frequency selection",
+          "team": "gpu",
+          "title": "Optimize Parallel CPU Performance",
+          "description": "Profile and optimize rayon-based parallel computation for maximum CPU utilization.",
           "acceptance_criteria": [
-            "Impedance data from simulation plots correctly on Smith chart",
-            "Frequency sweep shows as connected curve on chart",
-            "Click on impedance point displays corresponding frequency value",
-            "Frequency markers update S11 chart cursor position"
+            "Impedance matrix computation utilizes all available CPU cores",
+            "Memory usage optimized to prevent allocation bottlenecks",
+            "Frequency sweep completes 50% faster than serial implementation",
+            "Performance benchmarks documented"
           ],
-          "dependencies": [
-            "S13-T1",
-            "S11-T1"
-          ],
-          "priority": "high",
+          "dependencies": [],
+          "priority": "medium",
           "estimated_complexity": "high"
         },
         {
           "id": "S13-T3",
           "team": "ui",
-          "title": "Responsive Sidebar Collapse",
-          "description": "Implement collapsible sidebar with mobile-responsive behavior and state persistence",
+          "title": "Add Loading States and Progress Indicators",
+          "description": "Implement loading spinners, progress bars, and status indicators for long-running operations.",
           "acceptance_criteria": [
-            "Sidebar collapses automatically on screens <768px width",
-            "Manual toggle button works on all screen sizes",
-            "Collapsed state persists across page reloads",
-            "Animation smooth and doesn't affect main content layout"
+            "Simulation progress bar shows completion percentage",
+            "Loading spinners appear during file operations",
+            "Status messages inform user of current operation",
+            "Cancel button allows stopping long simulations"
           ],
           "dependencies": [],
           "priority": "medium",
@@ -239,33 +233,31 @@
         },
         {
           "id": "S13-T4",
-          "team": "ui",
-          "title": "Dark Mode Toggle Implementation",
-          "description": "Add system-wide dark mode with theme persistence and smooth transitions",
+          "team": "3d",
+          "title": "Optimize 3D Rendering Performance",
+          "description": "Improve viewport rendering performance and add level-of-detail for complex geometries.",
           "acceptance_criteria": [
-            "Dark mode toggle switches all UI components consistently",
-            "Theme preference persists in localStorage",
-            "Respects system dark mode preference on first load",
-            "Color transitions smooth without jarring flashes"
+            "Viewport maintains 60fps during camera movement",
+            "Level-of-detail reduces geometry complexity at distance",
+            "Memory usage stays below 100MB for typical antenna models",
+            "Smooth animations for parameter changes"
           ],
           "dependencies": [],
           "priority": "medium",
-          "estimated_complexity": "medium"
+          "estimated_complexity": "high"
         },
         {
           "id": "S13-T5",
-          "team": "ui",
-          "title": "Mobile Layout Optimization",
-          "description": "Optimize layouts for mobile devices with touch-friendly controls and responsive charts",
+          "team": "aiml",
+          "title": "Model Validation and Accuracy Metrics",
+          "description": "Add validation pipeline for surrogate models with accuracy reporting.",
           "acceptance_criteria": [
-            "All charts and controls usable on 375px width screens",
-            "Touch targets minimum 44px for mobile interaction",
-            "Charts resize and maintain readability on small screens",
-            "Navigation works with touch gestures"
+            "Cross-validation reports R² score > 0.95 for S-parameters",
+            "Model accuracy compared against MoM ground truth",
+            "Validation metrics exported to JSON report",
+            "Automated model quality checks before deployment"
           ],
-          "dependencies": [
-            "S13-T3"
-          ],
+          "dependencies": [],
           "priority": "medium",
           "estimated_complexity": "medium"
         }
@@ -273,203 +265,281 @@
     },
     {
       "id": "sprint-14",
-      "name": "ML Hyperparameter Optimization + Model Versioning",
-      "description": "Implement advanced ML training with hyperparameter tuning and robust model management",
+      "name": "USER EXPERIENCE POLISH",
+      "description": "Polish user interface, add keyboard shortcuts, improve workflows, and enhance usability.",
       "tasks": [
         {
           "id": "S14-T1",
-          "team": "aiml",
-          "title": "Optuna Hyperparameter Sweep Framework",
-          "description": "Integrate Optuna for automated hyperparameter optimization of surrogate models with configurable search spaces",
+          "team": "ui",
+          "title": "Implement Keyboard Shortcuts and Hotkeys",
+          "description": "Add keyboard shortcuts for common operations and power user workflows.",
           "acceptance_criteria": [
-            "Optuna optimizes learning rate (1e-5 to 1e-2), hidden dims (64-512), batch size (16-128)",
-            "Search completes 100+ trials with early stopping on validation loss",
-            "Best hyperparameters improve model accuracy by >10% vs default",
-            "Optimization results saved with trial history and metrics"
+            "Ctrl+S saves current project",
+            "Ctrl+R runs simulation",
+            "Ctrl+E exports results",
+            "F11 toggles fullscreen 3D viewport",
+            "Help dialog (F1) shows all available shortcuts"
           ],
-          "dependencies": [
-            "S11-T5"
-          ],
-          "priority": "high",
-          "estimated_complexity": "high"
+          "dependencies": [],
+          "priority": "medium",
+          "estimated_complexity": "low"
         },
         {
           "id": "S14-T2",
-          "team": "aiml",
-          "title": "Model Versioning with Metadata",
-          "description": "Implement model versioning system with JSON metadata tracking training parameters, dataset versions, and performance metrics",
+          "team": "ui",
+          "title": "Add Undo/Redo for Parameter Changes",
+          "description": "Implement undo/redo stack for antenna parameter modifications.",
           "acceptance_criteria": [
-            "Each model version has unique ID with timestamp and git hash",
-            "Metadata JSON includes hyperparameters, dataset version, training metrics",
-            "Model registry allows loading specific versions by ID",
-            "Version comparison shows performance differences across models"
+            "Ctrl+Z undoes last parameter change",
+            "Ctrl+Y redoes undone changes",
+            "Undo stack maintains 50 recent changes",
+            "Visual indicator shows when undo/redo available"
           ],
-          "dependencies": [
-            "S14-T1"
-          ],
-          "priority": "high",
+          "dependencies": [],
+          "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
           "id": "S14-T3",
-          "team": "aiml",
-          "title": "Training Data Augmentation for Edge Cases",
-          "description": "Implement data augmentation techniques to improve model robustness on edge cases and extreme parameter values",
+          "team": "3d",
+          "title": "Add Interactive 3D Controls",
+          "description": "Implement mouse controls for 3D viewport: orbit, pan, zoom, and selection.",
           "acceptance_criteria": [
-            "Augmentation generates 2x training data with parameter noise injection",
-            "Edge case coverage includes extreme frequencies, geometries, materials",
-            "Augmented model shows <20% error on edge case test set",
-            "Training time increases <50% with augmentation enabled"
+            "Left mouse drag orbits camera around antenna",
+            "Right mouse drag pans viewport",
+            "Mouse wheel zooms in/out smoothly",
+            "Double-click resets camera to default view",
+            "Viewport controls help overlay (H key)"
           ],
-          "dependencies": [
-            "S14-T1"
-          ],
-          "priority": "medium",
+          "dependencies": [],
+          "priority": "high",
           "estimated_complexity": "medium"
         },
         {
           "id": "S14-T4",
-          "team": "aiml",
-          "title": "Advanced Training Metrics and Monitoring",
-          "description": "Implement comprehensive training monitoring with loss curves, validation metrics, and early stopping",
+          "team": "core",
+          "title": "Add Project Save/Load Functionality",
+          "description": "Implement project file format for saving/loading complete antenna designs and results.",
           "acceptance_criteria": [
-            "Training dashboard shows real-time loss curves and validation metrics",
-            "Early stopping prevents overfitting with patience parameter",
-            "Model checkpointing saves best weights during training",
-            "Training logs exported to TensorBoard format"
+            "Save project as .promin file with antenna params + simulation results",
+            "Load project restores all parameters and displays previous results",
+            "Auto-save every 5 minutes to prevent data loss",
+            "Recent projects list in File menu"
           ],
-          "dependencies": [
-            "S14-T2"
-          ],
-          "priority": "medium",
+          "dependencies": [],
+          "priority": "high",
           "estimated_complexity": "medium"
         },
         {
           "id": "S14-T5",
-          "team": "core",
-          "title": "ML Model Integration API",
-          "description": "Create clean API for integrating trained ML models into the simulation pipeline with fallback to MoM",
+          "team": "aiml",
+          "title": "Add Model Performance Monitoring",
+          "description": "Implement runtime monitoring of surrogate model performance and accuracy.",
           "acceptance_criteria": [
-            "API loads ONNX models and provides prediction interface",
-            "Automatic fallback to MoM solver if ML prediction fails",
-            "Model prediction time <100ms for typical antenna parameters",
-            "API handles model version switching without restart"
+            "Real-time comparison of AI predictions vs MoM results",
+            "Accuracy metrics displayed in UI dashboard",
+            "Model confidence intervals shown with predictions",
+            "Automatic fallback to MoM when AI confidence low"
           ],
-          "dependencies": [
-            "S14-T2"
-          ],
-          "priority": "high",
+          "dependencies": [],
+          "priority": "low",
           "estimated_complexity": "medium"
         }
       ]
     },
     {
       "id": "sprint-15",
-      "name": "Integration + Polish",
-      "description": "Integrate all Sprint 11 features, comprehensive testing, performance optimization, and user experience polish",
+      "name": "ADVANCED FEATURES & OPTIMIZATION",
+      "description": "Add advanced simulation features, optimization algorithms, and professional reporting capabilities.",
       "tasks": [
         {
           "id": "S15-T1",
           "team": "core",
-          "title": "End-to-End Yagi Simulation Pipeline",
-          "description": "Integrate Yagi-Uda geometry, GPU-accelerated MoM, and ML surrogate into complete simulation pipeline",
+          "title": "Implement Multi-Port S-Parameter Analysis",
+          "description": "Extend simulation engine to handle multi-port antennas and full S-parameter matrices.",
           "acceptance_criteria": [
-            "Complete Yagi simulation (geometry → MoM → results) works end-to-end",
-            "GPU acceleration automatically enabled when available",
-            "ML surrogate provides results within 5% of MoM for trained parameter ranges",
-            "Pipeline handles errors gracefully with informative messages"
+            "Support for 2-port, 4-port antenna analysis",
+            "Full S-parameter matrix calculation (S11, S12, S21, S22)",
+            "Multi-port Touchstone file export (.s2p, .s4p)",
+            "Isolation and coupling analysis between ports"
           ],
-          "dependencies": [
-            "S12-T1",
-            "S14-T5"
-          ],
-          "priority": "high",
+          "dependencies": [],
+          "priority": "medium",
           "estimated_complexity": "high"
         },
         {
           "id": "S15-T2",
-          "team": "ui",
-          "title": "Smith Chart + S11 Chart Integration",
-          "description": "Complete integration between Smith chart and S11 chart with synchronized cursors and data display",
+          "team": "aiml",
+          "title": "Implement Genetic Algorithm Optimization",
+          "description": "Add genetic algorithm for automated antenna parameter optimization using AI surrogate models.",
           "acceptance_criteria": [
-            "Clicking Smith chart updates S11 chart frequency cursor",
-            "S11 chart frequency selection updates Smith chart marker",
-            "Both charts display consistent impedance/frequency data",
-            "Chart synchronization works with imported Touchstone data"
+            "GA optimizes antenna parameters for target S11 < -20dB",
+            "Population size and mutation rate configurable",
+            "Optimization progress visualized in real-time",
+            "Pareto front analysis for multi-objective optimization"
           ],
-          "dependencies": [
-            "S13-T2"
+          "dependencies": [],
+          "priority": "high",
+          "estimated_complexity": "high"
+        },
+        {
+          "id": "S15-T3",
+          "team": "ui",
+          "title": "Add Professional Reporting System",
+          "description": "Create comprehensive PDF report generation with charts, tables, and analysis.",
+          "acceptance_criteria": [
+            "PDF report includes antenna geometry, S-parameters, Smith chart",
+            "Customizable report templates for different use cases",
+            "Export to multiple formats: PDF, HTML, Word",
+            "Company logo and branding customization"
           ],
+          "dependencies": [],
+          "priority": "medium",
+          "estimated_complexity": "high"
+        },
+        {
+          "id": "S15-T4",
+          "team": "3d",
+          "title": "Add Radiation Pattern Visualization",
+          "description": "Implement 3D radiation pattern visualization with far-field calculations.",
+          "acceptance_criteria": [
+            "3D radiation pattern overlay on antenna geometry",
+            "Polar plot view for 2D pattern cuts",
+            "Gain, directivity, and efficiency calculations",
+            "Animation of pattern vs frequency"
+          ],
+          "dependencies": [],
+          "priority": "high",
+          "estimated_complexity": "high"
+        },
+        {
+          "id": "S15-T5",
+          "team": "gpu",
+          "title": "Add Parallel Frequency Sweep Optimization",
+          "description": "Optimize frequency sweep calculations using advanced parallel algorithms.",
+          "acceptance_criteria": [
+            "Frequency points processed in optimal batch sizes",
+            "Memory-efficient streaming for large frequency ranges",
+            "Adaptive frequency sampling based on S-parameter variation",
+            "50% reduction in simulation time for broadband analysis"
+          ],
+          "dependencies": [],
+          "priority": "medium",
+          "estimated_complexity": "high"
+        }
+      ]
+    },
+    {
+      "id": "sprint-16",
+      "name": "PRODUCTION READINESS",
+      "description": "Final polish, comprehensive testing, documentation, and deployment preparation for production release.",
+      "tasks": [
+        {
+          "id": "S16-T1",
+          "team": "core",
+          "title": "Comprehensive Integration Testing",
+          "description": "Create full end-to-end test suite covering all major user workflows and edge cases.",
+          "acceptance_criteria": [
+            "Automated tests for all antenna types and simulation scenarios",
+            "Performance regression tests with benchmarks",
+            "Error handling tests for invalid inputs and edge cases",
+            "Cross-platform testing on Windows, macOS, Linux"
+          ],
+          "dependencies": [],
+          "priority": "critical",
+          "estimated_complexity": "high"
+        },
+        {
+          "id": "S16-T2",
+          "team": "ui",
+          "title": "Create User Documentation and Tutorials",
+          "description": "Develop comprehensive user guide, tutorials, and help system.",
+          "acceptance_criteria": [
+            "Step-by-step tutorial for first antenna simulation",
+            "Complete user manual with screenshots",
+            "In-app help system with contextual tips",
+            "Video tutorials for advanced features"
+          ],
+          "dependencies": [],
           "priority": "high",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S15-T3",
+          "id": "S16-T3",
           "team": "3d",
-          "title": "Yagi Visualization Polish",
-          "description": "Polish Yagi 3D visualization with improved materials, lighting, and performance optimization",
+          "title": "Final UI/UX Polish and Accessibility",
+          "description": "Final polish pass on user interface with accessibility improvements.",
           "acceptance_criteria": [
-            "Yagi elements render with realistic metallic materials",
-            "Lighting enhances 3D depth perception without performance impact",
-            "Frame rate maintains >30fps with complex Yagi arrays",
-            "Visual quality scales appropriately with device capabilities"
+            "WCAG 2.1 AA compliance for accessibility",
+            "High contrast mode for visually impaired users",
+            "Keyboard navigation for all UI elements",
+            "Screen reader compatibility"
           ],
-          "dependencies": [
-            "S12-T3",
-            "S12-T5"
-          ],
+          "dependencies": [],
           "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S15-T4",
-          "team": "gpu",
-          "title": "GPU Performance Optimization",
-          "description": "Optimize WGPU compute shaders for maximum performance and memory efficiency",
-          "acceptance_criteria": [
-            "GPU memory usage optimized for largest supported antenna meshes",
-            "Compute shader utilizes >80% of available GPU cores",
-            "Memory transfers minimized with efficient buffer reuse",
-            "Performance scales linearly with antenna complexity"
-          ],
-          "dependencies": [
-            "S12-T1",
-            "S12-T2"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S15-T5",
+          "id": "S16-T4",
           "team": "aiml",
-          "title": "Production ML Model Deployment",
-          "description": "Deploy optimized ML models with proper error handling and performance monitoring",
+          "title": "Model Deployment and Version Management",
+          "description": "Implement system for deploying and managing different versions of AI models.",
           "acceptance_criteria": [
-            "Production models load in <5 seconds on application startup",
-            "Model inference handles invalid inputs gracefully",
-            "Performance monitoring tracks prediction accuracy vs MoM",
-            "Model updates can be deployed without application restart"
+            "Model versioning system with backward compatibility",
+            "Automatic model updates with user consent",
+            "Model performance monitoring in production",
+            "Rollback capability for problematic model versions"
           ],
-          "dependencies": [
-            "S14-T4",
-            "S15-T1"
-          ],
+          "dependencies": [],
           "priority": "medium",
           "estimated_complexity": "medium"
+        },
+        {
+          "id": "S16-T5",
+          "team": "gpu",
+          "title": "Performance Optimization and Profiling",
+          "description": "Final performance optimization pass with detailed profiling and benchmarking.",
+          "acceptance_criteria": [
+            "Detailed performance profiles for all major operations",
+            "Memory usage optimized to minimum required",
+            "Startup time under 3 seconds on typical hardware",
+            "Simulation performance benchmarks documented"
+          ],
+          "dependencies": [],
+          "priority": "medium",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S16-T6",
+          "team": "core",
+          "title": "Release Preparation and Deployment",
+          "description": "Prepare final release build with installer, code signing, and distribution setup.",
+          "acceptance_criteria": [
+            "Signed installers for Windows, macOS, Linux",
+            "Automatic update system implemented",
+            "Crash reporting and telemetry system",
+            "Production deployment pipeline ready"
+          ],
+          "dependencies": [
+            "S16-T1",
+            "S16-T2",
+            "S16-T3",
+            "S16-T4",
+            "S16-T5"
+          ],
+          "priority": "critical",
+          "estimated_complexity": "high"
         }
       ]
     }
   ],
   "shared_interfaces_needed": [
-    "YagiUdaAntenna struct with element parameters for 3D rendering",
-    "WGPU compute buffer interface for impedance matrix data",
-    "Smith chart coordinate transform utilities",
-    "ML model prediction API with ONNX integration",
-    "Touchstone S2P export format specification",
-    "Training data schema for Yagi parameter sweeps",
-    "GPU benchmark results data structure",
-    "Theme system interface for dark mode support",
-    "Responsive layout breakpoint definitions",
-    "Model versioning metadata JSON schema"
+    "AntennaGeometry trait with unified parameter interface",
+    "SimulationResult struct with S-parameters and metadata",
+    "Tauri command interface for frontend-backend communication",
+    "ONNX model interface for AI surrogate integration",
+    "Project file format specification (.promin)",
+    "Error handling types and propagation patterns",
+    "Performance monitoring and telemetry interfaces"
   ]
 }
