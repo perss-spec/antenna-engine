@@ -1,0 +1,150 @@
+{
+  "id": "small_loop",
+  "name": "Small Loop Antenna (wire)",
+  "category": "wire",
+  "description": "A small loop antenna consists of a single turn of wire with circumference much smaller than one wavelength (typically C < λ/10). It exhibits magnetic dipole radiation characteristics with a null in the plane of the loop and maximum radiation perpendicular to the loop plane. Small loops are inherently narrowband with very low radiation resistance, requiring impedance matching networks for practical applications.",
+  "frequencyRange": {
+    "min": 100000,
+    "max": 30000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": -20,
+    "max": -10,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "1-3%",
+  "polarization": "linear",
+  "applications": [
+    "Direction finding",
+    "Radio astronomy",
+    "EMI/EMC testing",
+    "Magnetic field sensing",
+    "RFID readers",
+    "Portable HF communications",
+    "Loop-on-ground antennas"
+  ],
+  "parameters": {
+    "loop_radius": {
+      "name": "Loop Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Radius of the circular loop antenna",
+      "defaultFormula": "λ/(20*π)",
+      "range": {
+        "min": 0.001,
+        "max": 0.5
+      }
+    },
+    "wire_radius": {
+      "name": "Wire Radius",
+      "symbol": "rw",
+      "unit": "m",
+      "description": "Radius of the wire conductor",
+      "defaultFormula": "a/100",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "circumference": {
+      "name": "Loop Circumference",
+      "symbol": "C",
+      "unit": "m",
+      "description": "Total circumference of the loop",
+      "defaultFormula": "2*π*a",
+      "range": {
+        "min": 0.01,
+        "max": 3
+      }
+    },
+    "electrical_size": {
+      "name": "Electrical Size",
+      "symbol": "ka",
+      "unit": "dimensionless",
+      "description": "Electrical size parameter ka = 2πa/λ",
+      "defaultFormula": "2*π*a/λ",
+      "range": {
+        "min": 0.01,
+        "max": 1
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Small loop antenna design focuses on achieving the desired frequency response while maintaining the small loop condition (C < λ/10). The design process involves determining loop dimensions, calculating radiation resistance, designing impedance matching, and optimizing for specific applications.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency",
+        "description": "Establish the center frequency and bandwidth requirements",
+        "formula": "f0 = c/λ0"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Maximum Loop Dimensions",
+        "description": "Ensure small loop condition is satisfied",
+        "formula": "C_max = λ/10, a_max = λ/(20*π)"
+      },
+      {
+        "step": 3,
+        "title": "Select Loop Radius",
+        "description": "Choose loop radius based on size constraints and gain requirements",
+        "formula": "a = (0.05 to 0.15) * λ/(2*π)"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Radiation Resistance",
+        "description": "Determine the very low radiation resistance of the small loop",
+        "formula": "Rr = 20*π^2*(ka)^4 = 197*(C/λ)^4"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Loop Inductance",
+        "description": "Determine the loop inductance for impedance calculations",
+        "formula": "L = μ0*a*[ln(8*a/rw) - 2]"
+      },
+      {
+        "step": 6,
+        "title": "Design Impedance Matching",
+        "description": "Design matching network to transform low radiation resistance to 50Ω",
+        "formula": "Q = ωL/Rr, BW = 1/Q"
+      },
+      {
+        "step": 7,
+        "title": "Optimize Wire Gauge",
+        "description": "Select wire radius to minimize ohmic losses while maintaining structural integrity",
+        "formula": "rw = a/50 to a/200"
+      },
+      {
+        "step": 8,
+        "title": "Verify Performance",
+        "description": "Calculate final gain, bandwidth, and efficiency",
+        "formula": "G = 1.5*(ka)^4, η = Rr/(Rr + Rl)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = 1/(2*π*sqrt(L*C_tuning))",
+    "inputImpedance": "Zin = Rr + Rl + j*ω*L",
+    "gain": "G = 1.5*(ka)^4 = 1.5*(2*π*a/λ)^4",
+    "radiationPattern": "E_θ = j*η*k*I*A*sin(φ)/(4*π*r), E_φ = j*η*k*I*A*cos(θ)*cos(φ)/(4*π*r)",
+    "bandwidth": "BW = Rr/(ω*L) = (ka)^4/[a*ln(8*a/rw) - 2*a]"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use lumped circuit model with series inductance L and radiation resistance Rr. Include ohmic resistance Rl = sqrt(π*f*μ0/σ)/(2*π*rw) for conductor losses.",
+    "radiationModel": "Apply magnetic dipole radiation pattern with moment m = I*π*a^2. Use far-field approximation with sin(φ) dependence in H-plane and cos(θ)*cos(φ) in E-plane.",
+    "keyAssumptions": [
+      "Small loop condition ka << 1",
+      "Uniform current distribution",
+      "Thin wire approximation",
+      "Far-field radiation pattern",
+      "Lossless dielectric medium"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 5",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 6",
+    "Kraus, J.D. & Marhefka, R.J. 'Antennas for All Applications', 3rd Edition, Chapter 8",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 6"
+  ]
+}
