@@ -1,0 +1,165 @@
+{
+  "id": "quadrifilar_helix",
+  "name": "Quadrifilar Helix Antenna",
+  "category": "wire",
+  "description": "A four-wire helical antenna wound in a helical configuration with 90-degree phase differences between adjacent elements. Provides excellent circular polarization characteristics and hemispherical coverage patterns. Commonly used for satellite communications and GPS applications due to its compact size and broad beamwidth.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 10000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 0,
+    "max": 8,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-20%",
+  "polarization": "circular",
+  "applications": [
+    "Satellite communications",
+    "GPS receivers",
+    "Mobile satellite terminals",
+    "Telemetry systems",
+    "RFID readers",
+    "Handheld radios"
+  ],
+  "parameters": {
+    "helix_diameter": {
+      "name": "Helix Diameter",
+      "symbol": "D",
+      "unit": "m",
+      "description": "Diameter of the helical structure",
+      "defaultFormula": "lambda / (pi * sqrt(2))",
+      "range": {
+        "min": 0.05,
+        "max": 0.5
+      }
+    },
+    "helix_length": {
+      "name": "Helix Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Total axial length of the helix",
+      "defaultFormula": "lambda / 4",
+      "range": {
+        "min": 0.1,
+        "max": 2
+      }
+    },
+    "pitch_angle": {
+      "name": "Pitch Angle",
+      "symbol": "alpha",
+      "unit": "degrees",
+      "description": "Angle between helix wire and ground plane",
+      "defaultFormula": "atan(pitch / (pi * D))",
+      "range": {
+        "min": 5,
+        "max": 30
+      }
+    },
+    "wire_diameter": {
+      "name": "Wire Diameter",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Diameter of the conductor wire",
+      "defaultFormula": "lambda / 200",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "ground_plane_diameter": {
+      "name": "Ground Plane Diameter",
+      "symbol": "Dg",
+      "unit": "m",
+      "description": "Diameter of the ground plane reflector",
+      "defaultFormula": "lambda / 2",
+      "range": {
+        "min": 0.1,
+        "max": 1
+      }
+    },
+    "number_of_turns": {
+      "name": "Number of Turns",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Total number of helical turns per element",
+      "defaultFormula": "0.25",
+      "range": {
+        "min": 0.125,
+        "max": 2
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining helix geometry for desired frequency, calculating feed network for quadrature phasing, optimizing for circular polarization purity, and matching to desired impedance.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency and Wavelength",
+        "description": "Calculate free-space wavelength and establish design frequency",
+        "formula": "lambda = c / f"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Helix Diameter",
+        "description": "Set helix diameter for optimal radiation characteristics",
+        "formula": "D = lambda / (pi * sqrt(2))"
+      },
+      {
+        "step": 3,
+        "title": "Determine Helix Length and Pitch",
+        "description": "Calculate axial length and pitch angle for quarter-wave resonance",
+        "formula": "L = lambda / 4, pitch = L / N"
+      },
+      {
+        "step": 4,
+        "title": "Design Feed Network",
+        "description": "Create 90-degree hybrid network for quadrature feeding",
+        "formula": "Phase_n = n * 90 degrees, n = 0,1,2,3"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Input Impedance",
+        "description": "Determine individual element impedance and feed network matching",
+        "formula": "Z_in = 140 * (D/lambda) * sqrt(1 + (pitch/(pi*D))^2)"
+      },
+      {
+        "step": 6,
+        "title": "Optimize Ground Plane Size",
+        "description": "Size ground plane for desired front-to-back ratio",
+        "formula": "Dg >= lambda / 2"
+      },
+      {
+        "step": 7,
+        "title": "Verify Circular Polarization",
+        "description": "Check axial ratio and adjust geometry if needed",
+        "formula": "AR = 20 * log10((E_max + E_min)/(E_max - E_min))"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_r = c / (pi * sqrt(D^2 + (pitch)^2))",
+    "inputImpedance": "Z_in = 140 * (D/lambda) * sqrt(1 + (pitch/(pi*D))^2)",
+    "gain": "G = 10 * log10(4 * pi * D^2 / lambda^2) + 3",
+    "radiationPattern": "E(theta,phi) = (sin(theta) * cos(phi + n*pi/2)) * exp(-j*k*r)",
+    "bandwidth": "BW = 2 * (f_high - f_low) / f_center"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use transmission line model with helical geometry corrections and mutual coupling between elements",
+    "radiationModel": "Apply superposition of four helical elements with 90-degree phase progression and pattern multiplication",
+    "keyAssumptions": [
+      "Small pitch angle approximation",
+      "Uniform current distribution along helix",
+      "Negligible mutual coupling between non-adjacent elements",
+      "Perfect ground plane reflection",
+      "Thin wire approximation valid"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 9",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 8",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 7",
+    "Kraus, J.D. and Marhefka, R.J., 'Antennas for All Applications', 3rd Edition"
+  ]
+}
