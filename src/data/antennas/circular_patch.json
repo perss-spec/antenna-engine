@@ -1,0 +1,149 @@
+{
+  "id": "circular_patch",
+  "name": "Circular Microstrip Patch",
+  "category": "microstrip",
+  "description": "A circular microstrip patch antenna consists of a circular conducting patch printed on a grounded dielectric substrate. It radiates primarily in the broadside direction with moderate gain and is widely used in wireless communication systems due to its low profile, light weight, and ease of fabrication.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 3,
+    "max": 9,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "1-5%",
+  "polarization": "linear",
+  "applications": [
+    "GPS receivers",
+    "WiFi systems",
+    "Bluetooth devices",
+    "RFID tags",
+    "Mobile communications",
+    "Satellite communications",
+    "Wireless sensor networks"
+  ],
+  "parameters": {
+    "radius": {
+      "name": "Patch Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Physical radius of the circular patch conductor",
+      "defaultFormula": "0.293 * c / (f * sqrt(εr))",
+      "range": {
+        "min": 0.001,
+        "max": 0.1
+      }
+    },
+    "substrate_thickness": {
+      "name": "Substrate Thickness",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Thickness of the dielectric substrate between patch and ground plane",
+      "defaultFormula": "0.05 * λ0 / sqrt(εr)",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "dielectric_constant": {
+      "name": "Relative Permittivity",
+      "symbol": "εr",
+      "unit": "dimensionless",
+      "description": "Relative dielectric constant of the substrate material",
+      "defaultFormula": "4.4",
+      "range": {
+        "min": 1,
+        "max": 12
+      }
+    },
+    "loss_tangent": {
+      "name": "Loss Tangent",
+      "symbol": "tan(δ)",
+      "unit": "dimensionless",
+      "description": "Dielectric loss tangent of the substrate material",
+      "defaultFormula": "0.02",
+      "range": {
+        "min": 0.0001,
+        "max": 0.1
+      }
+    },
+    "feed_position": {
+      "name": "Feed Position",
+      "symbol": "rf",
+      "unit": "m",
+      "description": "Radial distance from center to coaxial feed point for impedance matching",
+      "defaultFormula": "0.5 * a",
+      "range": {
+        "min": 0,
+        "max": 1
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves calculating the patch radius for resonance, determining substrate parameters, positioning the feed for impedance matching, and optimizing for desired bandwidth and radiation characteristics.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Effective Radius",
+        "description": "Determine the effective radius accounting for fringing fields",
+        "formula": "ae = a * sqrt(1 + (2*h)/(π*a*εr) * (ln(π*a/(2*h)) + 1.7726))"
+      },
+      {
+        "step": 2,
+        "title": "Design Physical Radius",
+        "description": "Calculate physical patch radius for desired resonant frequency",
+        "formula": "a = F / (2 * fr * sqrt(εr) * sqrt(μ0 * ε0))"
+      },
+      {
+        "step": 3,
+        "title": "Determine Substrate Height",
+        "description": "Select substrate thickness for desired bandwidth and efficiency",
+        "formula": "h = 0.3 * c / (2 * π * fr * sqrt(εr))"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Feed Position",
+        "description": "Position coaxial feed for 50-ohm input impedance",
+        "formula": "rf = a * sqrt(Rin / 200)"
+      },
+      {
+        "step": 5,
+        "title": "Compute Radiation Conductance",
+        "description": "Calculate radiation conductance for efficiency analysis",
+        "formula": "Gr = (k0^4 * a^4) / (6 * π * η0)"
+      },
+      {
+        "step": 6,
+        "title": "Verify Bandwidth",
+        "description": "Check fractional bandwidth meets requirements",
+        "formula": "BW = (2 * h * sqrt(εr)) / (π * a * Q)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "fr = (1.8412 * c) / (2 * π * ae * sqrt(εr))",
+    "inputImpedance": "Zin = 1 / (Gr + jBr + Gd + jBd)",
+    "gain": "G = (2 * π * ae^2 * k0^2) / (3 * λ0^2) * (1 - (k0*h)^2/24)",
+    "radiationPattern": "E(θ,φ) = (j * k0 * h * V0 * ae * J1(k0*ae*sin(θ))) / (2 * r * sin(θ))",
+    "bandwidth": "BW = 3.77 * (εr - 1) / εr^2 * (h/λ0) * (ae/h)"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "cavity_model_with_fringing_fields",
+    "radiationModel": "magnetic_current_aperture_integration",
+    "keyAssumptions": [
+      "TM11 dominant mode",
+      "Perfect electric conductor patch",
+      "Infinite ground plane",
+      "Thin substrate approximation",
+      "Negligible surface waves"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition"
+  ]
+}
