@@ -19,6 +19,15 @@ interface GammaPoint {
   imag: number;
 }
 
+interface TooltipData {
+  x: number;
+  y: number;
+  impedance: { re: number; im: number };
+  gamma: GammaPoint;
+  vswr: number;
+  freq: number;
+}
+
 const SVG_SIZE = 400;
 const CENTER = SVG_SIZE / 2;
 const RADIUS = 170;
@@ -26,6 +35,7 @@ const POINT_RADIUS = 5;
 
 const RESISTANCE_VALUES = [0, 0.5, 1, 2, 5];
 const REACTANCE_VALUES = [0.5, 1, 2, 5];
+const VSWR_VALUES = [1.5, 2, 3];
 
 function impedanceToGamma(re: number, im: number, z0: number): GammaPoint {
   const zr = re / z0;
@@ -38,10 +48,25 @@ function impedanceToGamma(re: number, im: number, z0: number): GammaPoint {
   };
 }
 
+function gammaToImpedance(gamma: GammaPoint, z0: number): { re: number; im: number } {
+  const denom = (1 - gamma.real) ** 2 + gamma.imag ** 2;
+  if (denom === 0) return { re: Infinity, im: 0 };
+  const zr = ((1 - gamma.real ** 2 - gamma.imag ** 2) / denom) * z0;
+  const zi = ((2 * gamma.imag) / denom) * z0;
+  return { re: zr, im: zi };
+}
+
 function gammaToSvg(gamma: GammaPoint): { x: number; y: number } {
   return {
     x: CENTER + gamma.real * RADIUS,
     y: CENTER - gamma.imag * RADIUS,
+  };
+}
+
+function svgToGamma(x: number, y: number): GammaPoint {
+  return {
+    real: (x - CENTER) / RADIUS,
+    imag: -(y - CENTER) / RADIUS,
   };
 }
 
@@ -69,20 +94,39 @@ function formatFreq(hz: number): string {
   return `${hz} Hz`;
 }
 
-/** Clip a circle (cx, cy, r) to the unit circle and return an SVG arc path inside it. */
-function clipCircleToUnitCircle(
-  cx: number,
-  cy: number,
-  r: number
-): string | null {
+function findCircleUnitCircleIntersections(cx: number, cy: number, r: number): { angle1: number; angle2: number } | null {
   const d = Math.sqrt(cx * cx + cy * cy);
-  const unitR = 1; // unit circle radius
-
-  // No intersection check
+  const unitR = 1;
+  
   if (d > r + unitR + 1e-9 || d < Math.abs(r - unitR) - 1e-9) {
-    // Fully inside or fully outside
+    return null;
+  }
+  
+  const a = (unitR * unitR - r * r + d * d) / (2 * d);
+  const hSq = unitR * unitR - a * a;
+  if (hSq < 0) return null;
+  const h = Math.sqrt(Math.max(0, hSq));
+  
+  const px = (a * cx) / d;
+  const py = (a * cy) / d;
+  
+  const ix1 = px + (h * cy) / d;
+  const iy1 = py - (h * cx) / d;
+  const ix2 = px - (h * cy) / d;
+  const iy2 = py + (h * cx) / d;
+  
+  const angle1 = Math.atan2(iy1, ix1);
+  const angle2 = Math.atan2(iy2, ix2);
+  
+  return { angle1, angle2 };
+}
+
+function clipCircleToUnitCircle(cx: number, cy: number, r: number): string | null {
+  const d = Math.sqrt(cx * cx + cy * cy);
+  const unitR = 1;
+
+  if (d > r + unitR + 1e-9 || d < Math.abs(r - unitR) - 1e-9) {
     if (r + d <= unitR + 1e-9) {
-      // Circle fully inside unit circle — draw the whole circle
       const svgCx = CENTER + cx * RADIUS;
       const svgCy = CENTER - cy * RADIUS;
       const svgR = r * RADIUS;
@@ -91,30 +135,19 @@ function clipCircleToUnitCircle(
     return null;
   }
 
-  // Find intersection points
-  const a = (unitR * unitR - r * r + d * d) / (2 * d);
-  const hSq = unitR * unitR - a * a;
-  if (hSq < 0) return null;
-  const h = Math.sqrt(Math.max(0, hSq));
-
-  const px = (a * cx) / d;
-  const py = (a * cy) / d;
-
-  const ix1 = px + (h * cy) / d;
-  const iy1 = py - (h * cx) / d;
-  const ix2 = px - (h * cy) / d;
-  const iy2 = py + (h * cx) / d;
-
-  // We want the arc of the inner circle that lies inside the unit circle.
-  // The midpoint of the arc inside the unit circle should be inside the unit circle.
-  const midAngle1 = Math.atan2(iy1 - cy, ix1 - cx);
-  const midAngle2 = Math.atan2(iy2 - cy, ix2 - cx);
-
-  // Choose the arc that is inside the unit circle
-  let startAngle = midAngle1;
-  let endAngle = midAngle2;
-
-  // Test midpoint of arc going from startAngle to endAngle
+  const intersections = findCircleUnitCircleIntersections(cx, cy, r);
+  if (!intersections) return null;
+  
+  const { angle1, angle2 } = intersections;
+  
+  const ix1 = Math.cos(angle1);
+  const iy1 = Math.sin(angle1);
+  const ix2 = Math.cos(angle2);
+  const iy2 = Math.sin(angle2);
+  
+  let startAngle = angle1;
+  let endAngle = angle2;
+  
   const testArc = (sa: number, ea: number, largeArc: boolean) => {
     const mid = largeArc
       ? sa + ((ea - sa + 3 * Math.PI) % (2 * Math.PI)) / 2 + Math.PI
@@ -124,7 +157,6 @@ function clipCircleToUnitCircle(
     return mx * mx + my * my <= unitR * unitR + 1e-6;
   };
 
-  // Determine sweep: we try small arc first
   let largeArc = false;
   if (!testArc(startAngle, endAngle, false)) {
     largeArc = true;
@@ -137,9 +169,25 @@ function clipCircleToUnitCircle(
   const svgR = r * RADIUS;
   const largeArcFlag = largeArc ? 1 : 0;
 
-  // SVG y is flipped, so sweep direction inverts
   return `M ${svgX1} ${svgY1} A ${svgR} ${svgR} 0 ${largeArcFlag} 1 ${svgX2} ${svgY2}`;
 }
+
+const VSWRCircles: FC = () => (
+  <g className="stroke-gray-400 dark:stroke-gray-500" strokeWidth={0.5} fill="none" strokeDasharray="3 2">
+    {VSWR_VALUES.map((vswr) => {
+      const r = (vswr - 1) / (vswr + 1);
+      const svgR = r * RADIUS;
+      return (
+        <circle
+          key={`vswr-${vswr}`}
+          cx={CENTER}
+          cy={CENTER}
+          r={svgR}
+        />
+      );
+    })}
+  </g>
+);
 
 const ConstantResistanceCircles: FC = () => (
   <g className="stroke-zinc-600 dark:stroke-zinc-500" strokeWidth={0.5} fill="none">
@@ -157,10 +205,8 @@ const ConstantReactanceArcs: FC = () => (
   <g className="stroke-zinc-600 dark:stroke-zinc-500" strokeWidth={0.5} fill="none" strokeDasharray="4 3">
     {REACTANCE_VALUES.flatMap((x) => {
       const arcs: JSX.Element[] = [];
-      // Positive reactance: center (1, 1/x), radius 1/|x|
       const pathPos = clipCircleToUnitCircle(1, 1 / x, 1 / x);
       if (pathPos) arcs.push(<path key={`x+${x}`} d={pathPos} />);
-      // Negative reactance: center (1, -1/x), radius 1/|x|
       const pathNeg = clipCircleToUnitCircle(1, -1 / x, 1 / x);
       if (pathNeg) arcs.push(<path key={`x-${x}`} d={pathNeg} />);
       return arcs;
@@ -185,7 +231,6 @@ const GridLabels: FC = () => {
   });
 
   const reactanceLabels = REACTANCE_VALUES.flatMap((x) => {
-    // Label near the unit circle boundary at the reactance arc intersection
     const angle = 2 * Math.atan(1 / x);
     const lx = CENTER + Math.cos(angle) * RADIUS;
     const lyPos = CENTER - Math.sin(angle) * RADIUS;
@@ -200,7 +245,23 @@ const GridLabels: FC = () => {
     ];
   });
 
-  return <g>{resistanceLabels}{reactanceLabels}</g>;
+  const vswrLabels = VSWR_VALUES.map((vswr) => {
+    const r = (vswr - 1) / (vswr + 1);
+    const svgX = CENTER + r * RADIUS;
+    return (
+      <text
+        key={`vswr-${vswr}`}
+        x={svgX}
+        y={CENTER - 8}
+        className="fill-gray-500 text-[8px]"
+        textAnchor="middle"
+      >
+        {vswr}:1
+      </text>
+    );
+  });
+
+  return <g>{resistanceLabels}{reactanceLabels}{vswrLabels}</g>;
 };
 
 const SmithChart: FC<SmithChartProps> = ({
@@ -209,6 +270,7 @@ const SmithChart: FC<SmithChartProps> = ({
   className = '',
 }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   const { minFreq, maxFreq } = useMemo(() => {
     if (impedancePoints.length === 0) return { minFreq: 0, maxFreq: 0 };
@@ -228,8 +290,76 @@ const SmithChart: FC<SmithChartProps> = ({
     [impedancePoints, referenceImpedance, minFreq, maxFreq]
   );
 
+  const frequencyLabels = useMemo(() => {
+    if (plotData.length < 10) return [];
+    const labels: Array<{ x: number; y: number; freq: number }> = [];
+    for (let i = 0; i < plotData.length; i += 10) {
+      const point = plotData[i];
+      labels.push({
+        x: point.svg.x,
+        y: point.svg.y,
+        freq: point.freq,
+      });
+    }
+    return labels;
+  }, [plotData]);
+
   const handleMouseEnter = useCallback((i: number) => setHoveredIdx(i), []);
   const handleMouseLeave = useCallback(() => setHoveredIdx(null), []);
+
+  const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const svgX = ((event.clientX - rect.left) / rect.width) * SVG_SIZE;
+    const svgY = ((event.clientY - rect.top) / rect.height) * SVG_SIZE;
+    
+    const gamma = svgToGamma(svgX, svgY);
+    const gammaDistance = Math.sqrt(gamma.real ** 2 + gamma.imag ** 2);
+    
+    if (gammaDistance > 1.05) {
+      setTooltip(null);
+      return;
+    }
+    
+    let nearestIdx = -1;
+    let minDistance = Infinity;
+    
+    plotData.forEach((point, idx) => {
+      const dx = point.svg.x - svgX;
+      const dy = point.svg.y - svgY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestIdx = idx;
+      }
+    });
+    
+    if (nearestIdx >= 0 && minDistance < 20) {
+      const point = plotData[nearestIdx];
+      setTooltip({
+        x: svgX,
+        y: svgY,
+        impedance: { re: point.re, im: point.im },
+        gamma: point.gamma,
+        vswr: point.vswr,
+        freq: point.freq,
+      });
+    } else {
+      const impedance = gammaToImpedance(gamma, referenceImpedance);
+      const vswr = calcVSWR(gamma);
+      setTooltip({
+        x: svgX,
+        y: svgY,
+        impedance,
+        gamma,
+        vswr,
+        freq: 0,
+      });
+    }
+  }, [plotData, referenceImpedance]);
+
+  const handleMouseLeaveChart = useCallback(() => {
+    setTooltip(null);
+  }, []);
 
   const hovered = hoveredIdx !== null ? plotData[hoveredIdx] : null;
 
@@ -243,6 +373,8 @@ const SmithChart: FC<SmithChartProps> = ({
           <svg
             viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
             className="w-full max-w-[500px] aspect-square"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeaveChart}
           >
             {/* Background */}
             <circle
@@ -263,6 +395,9 @@ const SmithChart: FC<SmithChartProps> = ({
               strokeWidth={0.8}
             />
 
+            {/* VSWR circles */}
+            <VSWRCircles />
+
             {/* Grid */}
             <ConstantResistanceCircles />
             <ConstantReactanceArcs />
@@ -278,6 +413,19 @@ const SmithChart: FC<SmithChartProps> = ({
                 strokeLinejoin="round"
               />
             )}
+
+            {/* Frequency labels */}
+            {frequencyLabels.map((label, idx) => (
+              <text
+                key={`freq-${idx}`}
+                x={label.x + 8}
+                y={label.y - 8}
+                className="fill-blue-500 text-[8px] font-mono"
+                textAnchor="start"
+              >
+                {formatFreq(label.freq)}
+              </text>
+            ))}
 
             {/* Data points */}
             {plotData.map((p, i) => (
@@ -304,7 +452,7 @@ const SmithChart: FC<SmithChartProps> = ({
             </text>
           </svg>
 
-          {/* Tooltip */}
+          {/* Hover tooltip */}
           {hovered && (
             <div
               className="absolute pointer-events-none z-50 rounded-md border border-zinc-700 bg-zinc-900/95 px-3 py-2 text-xs font-mono text-zinc-200 shadow-lg whitespace-nowrap"
@@ -324,6 +472,31 @@ const SmithChart: FC<SmithChartProps> = ({
               <div className="text-zinc-400">
                 |Γ| = {gammaMagnitude(hovered.gamma).toFixed(4)}
               </div>
+            </div>
+          )}
+
+          {/* Mouse tooltip */}
+          {tooltip && (
+            <div
+              className="absolute pointer-events-none z-40 rounded-md border border-zinc-600 bg-zinc-800/90 px-2 py-1 text-xs font-mono text-zinc-300 shadow-md whitespace-nowrap"
+              style={{
+                left: `${(tooltip.x / SVG_SIZE) * 100}%`,
+                top: `${(tooltip.y / SVG_SIZE) * 100}%`,
+                transform: 'translate(8px, -100%)',
+              }}
+            >
+              <div>
+                Z = {tooltip.impedance.re.toFixed(1)} {tooltip.impedance.im >= 0 ? '+' : '-'} j{Math.abs(tooltip.impedance.im).toFixed(1)} Ω
+              </div>
+              <div>
+                |Γ| = {gammaMagnitude(tooltip.gamma).toFixed(3)}
+              </div>
+              <div>
+                VSWR = {tooltip.vswr === Infinity ? '∞' : tooltip.vswr.toFixed(1)}:1
+              </div>
+              {tooltip.freq > 0 && (
+                <div>f = {formatFreq(tooltip.freq)}</div>
+              )}
             </div>
           )}
         </div>
