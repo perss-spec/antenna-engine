@@ -153,7 +153,7 @@ pub async fn simulate_antenna(request: SimulateRequest) -> Result<SimulateRespon
         // Create solver for this frequency
         match MomSolver::new(&element, &params) {
             Ok(mut solver) => {
-                match solver.solve(&params) {
+                match solver.run_simulation(&params) {
                     Ok(result) => {
                         if let Some(s_param) = result.s_parameters.first() {
                             let s11_complex = num_complex::Complex64::new(s_param.s11_re, s_param.s11_im);
