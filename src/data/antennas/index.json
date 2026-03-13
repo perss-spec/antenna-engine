@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-03-13T15:24:37.866Z",
+  "count": 8,
+  "antennas": [
+    {
+      "id": "axial_helix",
+      "name": "Axial Mode Helical (wire)",
+      "category": "wire",
+      "description": "A helical antenna operating in axial mode where the circumference is approximately one wavelength, producing circularly polarized radiation along the helix axis. The antenna consists of a wire wound in a helical coil above a ground plane, providing excellent circular polarization and moderate gain.",
+      "polarization": "circular",
+      "typicalGain": {
+        "min": 10,
+        "max": 20,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "40-60%"
+    },
+    {
+      "id": "folded_dipole",
+      "name": "Folded Dipole",
+      "category": "wire",
+      "description": "A folded dipole consists of two parallel conductors connected at their ends, with one conductor fed at the center and the other acting as a parasitic element. This configuration provides higher input impedance (typically 300 ohms) compared to a simple dipole while maintaining similar radiation characteristics. The folded dipole is widely used in applications requiring impedance matching to higher impedance transmission lines.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2,
+        "max": 2.2,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-10%"
+    },
+    {
+      "id": "half_wave_dipole",
+      "name": "Half-Wave Dipole",
+      "category": "wire",
+      "description": "A fundamental wire antenna consisting of a straight conductor with length equal to half a wavelength at the operating frequency. It is center-fed and exhibits omnidirectional radiation in the plane perpendicular to its axis with a characteristic figure-8 pattern. The half-wave dipole serves as the reference antenna for gain measurements and is widely used in communications systems.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2.1,
+        "max": 2.2,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-10%"
+    },
+    {
+      "id": "log_periodic",
+      "name": "Log-Periodic Dipole Array (wire)",
+      "category": "wire",
+      "description": "A frequency-independent antenna consisting of multiple dipole elements arranged in a logarithmic progression. The elements are fed through a transmission line with alternating phase connections, creating a traveling wave structure that maintains consistent radiation characteristics over a wide frequency range.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 6,
+        "max": 12,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": ">50%"
+    },
+    {
+      "id": "quadrifilar_helix",
+      "name": "Quadrifilar Helix Antenna",
+      "category": "wire",
+      "description": "A four-wire helical antenna wound in a helical configuration with 90-degree phase differences between adjacent elements. Provides excellent circular polarization characteristics and hemispherical coverage patterns. Commonly used for satellite communications and GPS applications due to its compact size and broad beamwidth.",
+      "polarization": "circular",
+      "typicalGain": {
+        "min": 0,
+        "max": 8,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-20%"
+    },
+    {
+      "id": "quarter_wave_monopole",
+      "name": "Quarter-Wave Monopole (wire)",
+      "category": "wire",
+      "description": "A quarter-wavelength vertical wire antenna mounted over a ground plane, representing half of a dipole antenna. It exhibits omnidirectional radiation pattern in the horizontal plane with vertical polarization. The ground plane acts as an image plane, creating the effect of a full half-wave dipole.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2.15,
+        "max": 5.15,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-15%"
+    },
+    {
+      "id": "small_loop",
+      "name": "Small Loop Antenna (wire)",
+      "category": "wire",
+      "description": "A small loop antenna consists of a single turn of wire with circumference much smaller than one wavelength (typically C < λ/10). It exhibits magnetic dipole radiation characteristics with a null in the plane of the loop and maximum radiation perpendicular to the loop plane. Small loops are inherently narrowband with very low radiation resistance, requiring impedance matching networks for practical applications.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": -20,
+        "max": -10,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "1-5%"
+    },
+    {
+      "id": "yagi_uda",
+      "name": "Yagi-Uda Array",
+      "category": "wire",
+      "description": "A directional antenna array consisting of a driven element (typically a dipole) with one or more parasitic elements including reflectors and directors. The parasitic elements are not directly connected to the transmission line but are electromagnetically coupled to the driven element, creating a highly directional radiation pattern with significant forward gain.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 6,
+        "max": 20,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-15%"
+    }
+  ]
+}
