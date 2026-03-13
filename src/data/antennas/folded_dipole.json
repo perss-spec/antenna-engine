@@ -16,11 +16,10 @@
   "typicalBandwidth": "5-10%",
   "polarization": "linear",
   "applications": [
-    "FM radio antennas",
-    "TV receiving antennas",
-    "Yagi-Uda array elements",
+    "TV antennas",
+    "FM radio receivers",
     "VHF/UHF communications",
-    "RFID readers",
+    "Yagi-Uda array elements",
     "Impedance matching applications"
   ],
   "parameters": {
@@ -32,7 +31,7 @@
       "defaultFormula": "0.5 * lambda",
       "range": {
         "min": 0.45,
-        "max": 0.52
+        "max": 0.55
       }
     },
     "spacing": {
@@ -53,7 +52,7 @@
       "description": "Radius of the conductor wire",
       "defaultFormula": "0.001 * lambda",
       "range": {
-        "min": 0.0005,
+        "min": 0.0001,
         "max": 0.01
       }
     },
@@ -70,62 +69,61 @@
     }
   },
   "designMethodology": {
-    "overview": "Design process involves determining conductor dimensions, spacing, and feed point configuration to achieve desired impedance and radiation characteristics while maintaining resonance at the operating frequency.",
+    "overview": "Design a folded dipole by determining the conductor length for resonance, selecting appropriate spacing and wire radius, calculating the input impedance, and optimizing for the desired frequency response.",
     "steps": [
       {
         "step": 1,
-        "title": "Determine Operating Wavelength",
-        "description": "Calculate free-space wavelength at the design frequency",
+        "title": "Determine Operating Frequency",
+        "description": "Select the center frequency and calculate the free-space wavelength",
         "formula": "lambda = c / f"
       },
       {
         "step": 2,
-        "title": "Calculate Initial Length",
-        "description": "Set initial conductor length to half wavelength with velocity factor correction",
-        "formula": "L = 0.5 * lambda * k_v"
+        "title": "Calculate Conductor Length",
+        "description": "Set the total length of each conductor to approximately half wavelength",
+        "formula": "L = 0.5 * lambda * k_eff"
       },
       {
         "step": 3,
-        "title": "Determine Conductor Spacing",
-        "description": "Choose spacing based on desired impedance and mechanical constraints",
+        "title": "Select Conductor Spacing",
+        "description": "Choose spacing between conductors, typically 1-5% of wavelength",
         "formula": "d = 0.01 * lambda to 0.05 * lambda"
       },
       {
         "step": 4,
-        "title": "Calculate Wire Radius",
-        "description": "Select wire radius for practical construction and impedance control",
-        "formula": "a = lambda / (2 * pi * 100) to lambda / (2 * pi * 50)"
+        "title": "Determine Wire Radius",
+        "description": "Select wire radius based on bandwidth requirements and mechanical constraints",
+        "formula": "a = 0.001 * lambda (typical)"
       },
       {
         "step": 5,
-        "title": "Compute Input Impedance",
-        "description": "Calculate theoretical input impedance using transmission line theory",
-        "formula": "Z_in = 4 * Z_dipole * (1 + (d/(2*a))^2)^0.5"
+        "title": "Calculate Input Impedance",
+        "description": "Compute the input impedance using the step-up ratio",
+        "formula": "Z_in = n^2 * Z_dipole"
       },
       {
         "step": 6,
-        "title": "Adjust for End Effects",
-        "description": "Apply length correction for finite wire radius and end effects",
-        "formula": "L_corrected = L - 2 * a * (ln(L/a) - 2.25)"
+        "title": "Optimize for Resonance",
+        "description": "Adjust length to achieve resonance at the desired frequency",
+        "formula": "L_opt = L * (f_target / f_resonant)"
       }
     ]
   },
   "equations": {
-    "resonantFrequency": "f_r = c / (2 * L_eff * sqrt(epsilon_eff))",
-    "inputImpedance": "Z_in = 4 * Z_0 * sqrt(1 + (d/(2*a))^2) where Z_0 = 73 ohms",
+    "resonantFrequency": "f_r = c / (2 * L_eff)",
+    "inputImpedance": "Z_in = (Z_c / 2) * (1 + (Z_c / (2 * Z_dipole)))^2",
     "gain": "G = 1.64 (same as simple dipole)",
-    "radiationPattern": "E(theta) = cos((pi/2)*cos(theta)) / sin(theta)",
-    "bandwidth": "BW = 2 * (f_2 - f_1) / f_0 where VSWR < 2"
+    "radiationPattern": "E(theta) = cos((pi/2) * cos(theta)) / sin(theta)",
+    "bandwidth": "BW = 2 * sqrt(2 * ln(VSWR) / (pi * Q))"
   },
   "mockSolverHints": {
     "impedanceModel": "transmission_line_equivalent_circuit",
     "radiationModel": "method_of_moments_wire_segments",
     "keyAssumptions": [
       "thin_wire_approximation",
-      "uniform_current_distribution",
-      "far_field_radiation_pattern",
-      "lossless_conductors",
-      "free_space_environment"
+      "sinusoidal_current_distribution",
+      "far_field_radiation",
+      "lossless_conductors"
     ]
   },
   "references": [

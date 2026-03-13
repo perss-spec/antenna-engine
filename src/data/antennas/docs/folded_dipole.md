@@ -10,64 +10,64 @@ A folded dipole consists of two parallel conductors connected at their ends, wit
 - **Typical Gain:** 2 to 2.2 dBi
 - **Bandwidth:** 5-10%
 - **Polarization:** linear
-- **Applications:** FM radio antennas, TV receiving antennas, Yagi-Uda array elements, VHF/UHF communications, RFID readers, Impedance matching applications
+- **Applications:** TV antennas, FM radio receivers, VHF/UHF communications, Yagi-Uda array elements, Impedance matching applications
 
 ## Parameters
 
 | Parameter | Symbol | Unit | Default Formula | Range |
 |-----------|--------|------|----------------|-------|
-| Total Length | L | m | 0.5 * lambda | 0.45 - 0.52 |
+| Total Length | L | m | 0.5 * lambda | 0.45 - 0.55 |
 | Conductor Spacing | d | m | 0.01 * lambda | 0.005 - 0.05 |
-| Wire Radius | a | m | 0.001 * lambda | 0.0005 - 0.01 |
+| Wire Radius | a | m | 0.001 * lambda | 0.0001 - 0.01 |
 | Step-up Ratio | n | dimensionless | 4 | 2 - 6 |
 
 ## Design Methodology
 
-Design process involves determining conductor dimensions, spacing, and feed point configuration to achieve desired impedance and radiation characteristics while maintaining resonance at the operating frequency.
+Design a folded dipole by determining the conductor length for resonance, selecting appropriate spacing and wire radius, calculating the input impedance, and optimizing for the desired frequency response.
 
-### Step 1: Determine Operating Wavelength
+### Step 1: Determine Operating Frequency
 
-Calculate free-space wavelength at the design frequency
+Select the center frequency and calculate the free-space wavelength
 
 **Formula:** `lambda = c / f`
 
-### Step 2: Calculate Initial Length
+### Step 2: Calculate Conductor Length
 
-Set initial conductor length to half wavelength with velocity factor correction
+Set the total length of each conductor to approximately half wavelength
 
-**Formula:** `L = 0.5 * lambda * k_v`
+**Formula:** `L = 0.5 * lambda * k_eff`
 
-### Step 3: Determine Conductor Spacing
+### Step 3: Select Conductor Spacing
 
-Choose spacing based on desired impedance and mechanical constraints
+Choose spacing between conductors, typically 1-5% of wavelength
 
 **Formula:** `d = 0.01 * lambda to 0.05 * lambda`
 
-### Step 4: Calculate Wire Radius
+### Step 4: Determine Wire Radius
 
-Select wire radius for practical construction and impedance control
+Select wire radius based on bandwidth requirements and mechanical constraints
 
-**Formula:** `a = lambda / (2 * pi * 100) to lambda / (2 * pi * 50)`
+**Formula:** `a = 0.001 * lambda (typical)`
 
-### Step 5: Compute Input Impedance
+### Step 5: Calculate Input Impedance
 
-Calculate theoretical input impedance using transmission line theory
+Compute the input impedance using the step-up ratio
 
-**Formula:** `Z_in = 4 * Z_dipole * (1 + (d/(2*a))^2)^0.5`
+**Formula:** `Z_in = n^2 * Z_dipole`
 
-### Step 6: Adjust for End Effects
+### Step 6: Optimize for Resonance
 
-Apply length correction for finite wire radius and end effects
+Adjust length to achieve resonance at the desired frequency
 
-**Formula:** `L_corrected = L - 2 * a * (ln(L/a) - 2.25)`
+**Formula:** `L_opt = L * (f_target / f_resonant)`
 
 ## Equations
 
-- **resonantFrequency:** `f_r = c / (2 * L_eff * sqrt(epsilon_eff))`
-- **inputImpedance:** `Z_in = 4 * Z_0 * sqrt(1 + (d/(2*a))^2) where Z_0 = 73 ohms`
+- **resonantFrequency:** `f_r = c / (2 * L_eff)`
+- **inputImpedance:** `Z_in = (Z_c / 2) * (1 + (Z_c / (2 * Z_dipole)))^2`
 - **gain:** `G = 1.64 (same as simple dipole)`
-- **radiationPattern:** `E(theta) = cos((pi/2)*cos(theta)) / sin(theta)`
-- **bandwidth:** `BW = 2 * (f_2 - f_1) / f_0 where VSWR < 2`
+- **radiationPattern:** `E(theta) = cos((pi/2) * cos(theta)) / sin(theta)`
+- **bandwidth:** `BW = 2 * sqrt(2 * ln(VSWR) / (pi * Q))`
 
 ## Mock Solver Hints
 
@@ -75,10 +75,9 @@ Apply length correction for finite wire radius and end effects
 - **Radiation Model:** method_of_moments_wire_segments
 - **Key Assumptions:**
   - thin_wire_approximation
-  - uniform_current_distribution
-  - far_field_radiation_pattern
+  - sinusoidal_current_distribution
+  - far_field_radiation
   - lossless_conductors
-  - free_space_environment
 
 ## References
 
