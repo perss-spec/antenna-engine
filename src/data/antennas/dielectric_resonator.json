@@ -1,0 +1,154 @@
+{
+  "id": "dielectric_resonator",
+  "name": "Dielectric Resonator Antenna",
+  "category": "special",
+  "description": "A dielectric resonator antenna (DRA) consists of a high permittivity dielectric material that acts as both the resonator and radiator. The antenna operates by exciting electromagnetic modes within the dielectric resonator, which then radiate into free space. DRAs offer high radiation efficiency, wide bandwidth, and compact size with excellent temperature stability.",
+  "frequencyRange": {
+    "min": 1000000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 3,
+    "max": 8,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-30%",
+  "polarization": "linear",
+  "applications": [
+    "Millimeter-wave communications",
+    "Satellite communications",
+    "Wireless base stations",
+    "Radar systems",
+    "Mobile handsets",
+    "RFID readers"
+  ],
+  "parameters": {
+    "dielectric_constant": {
+      "name": "Relative Permittivity",
+      "symbol": "εr",
+      "unit": "dimensionless",
+      "description": "Relative permittivity of the dielectric resonator material",
+      "defaultFormula": "10",
+      "range": {
+        "min": 6,
+        "max": 100
+      }
+    },
+    "resonator_height": {
+      "name": "Resonator Height",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Height of the cylindrical dielectric resonator",
+      "defaultFormula": "λ0/(4*sqrt(εr))",
+      "range": {
+        "min": 0.001,
+        "max": 0.1
+      }
+    },
+    "resonator_radius": {
+      "name": "Resonator Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Radius of the cylindrical dielectric resonator",
+      "defaultFormula": "λ0/(6*sqrt(εr))",
+      "range": {
+        "min": 0.001,
+        "max": 0.05
+      }
+    },
+    "ground_plane_size": {
+      "name": "Ground Plane Size",
+      "symbol": "Lg",
+      "unit": "m",
+      "description": "Size of the square ground plane",
+      "defaultFormula": "λ0/2",
+      "range": {
+        "min": 0.01,
+        "max": 1
+      }
+    },
+    "feed_position": {
+      "name": "Feed Position",
+      "symbol": "xf",
+      "unit": "m",
+      "description": "Distance of feed point from resonator center",
+      "defaultFormula": "a/2",
+      "range": {
+        "min": 0.0001,
+        "max": 0.02
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves selecting appropriate dielectric material, determining resonator dimensions for desired frequency, choosing excitation method, and optimizing feed coupling for impedance matching.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Select Dielectric Material",
+        "description": "Choose dielectric constant based on size requirements and frequency",
+        "formula": "εr = 10 to 40 for most applications"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Resonator Dimensions",
+        "description": "Determine radius and height for fundamental TE01δ mode",
+        "formula": "a = 6.324*c/(2*π*f0*sqrt(εr-1))"
+      },
+      {
+        "step": 3,
+        "title": "Set Height-to-Radius Ratio",
+        "description": "Optimize aspect ratio for desired bandwidth and radiation pattern",
+        "formula": "h/a = 0.5 to 2.0"
+      },
+      {
+        "step": 4,
+        "title": "Design Ground Plane",
+        "description": "Size ground plane to minimize back radiation",
+        "formula": "Lg ≥ λ0/2"
+      },
+      {
+        "step": 5,
+        "title": "Select Feed Method",
+        "description": "Choose microstrip line, coaxial probe, or aperture coupling",
+        "formula": "Probe length = h/4"
+      },
+      {
+        "step": 6,
+        "title": "Optimize Feed Position",
+        "description": "Adjust feed location for 50-ohm impedance matching",
+        "formula": "xf = a*sqrt(Rin/377)"
+      },
+      {
+        "step": 7,
+        "title": "Fine-tune Dimensions",
+        "description": "Adjust resonator size for exact frequency and bandwidth",
+        "formula": "Δf/f0 = -Δa/(2*a)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c*x01/(2*π*a*sqrt(εr-1)) where x01 = 6.324",
+    "inputImpedance": "Rin = 377*Q*V²/(2*P) where Q is quality factor, V is modal voltage, P is power",
+    "gain": "G = 4*π*U/Pin where U is radiation intensity in maximum direction",
+    "radiationPattern": "E(θ,φ) = j*k0*η0*I*L*exp(-j*k0*r)/(4*π*r) * F(θ,φ)",
+    "bandwidth": "BW = (f2-f1)/f0 = 1/Q where Q = ω0*W/P"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use cavity model with magnetic wall boundary conditions and coupling coefficient for feed interaction",
+    "radiationModel": "Apply equivalence principle with magnetic current sources on resonator surface using TE01δ mode field distribution",
+    "keyAssumptions": [
+      "Perfect conductor ground plane",
+      "Lossless dielectric material",
+      "Far-field radiation pattern",
+      "Dominant TE01δ mode excitation",
+      "Weak coupling approximation for feed"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 15",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition, Chapter 8",
+    "Petosa, A. 'Dielectric Resonator Antenna Handbook', Artech House",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 12"
+  ]
+}
