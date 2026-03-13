@@ -1,0 +1,171 @@
+{
+  "id": "inset_fed_patch",
+  "name": "Inset-Fed Patch (microstrip)",
+  "category": "microstrip",
+  "description": "A rectangular microstrip patch antenna fed by a microstrip line inserted into the patch at a specific distance from the edge to achieve impedance matching. The inset feed eliminates the need for external matching networks by positioning the feed point at the desired input impedance location along the patch.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 6,
+    "max": 9,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "2-5%",
+  "polarization": "linear",
+  "applications": [
+    "GPS antennas",
+    "WiFi systems",
+    "cellular base stations",
+    "satellite communications",
+    "RFID readers",
+    "wireless sensor networks"
+  ],
+  "parameters": {
+    "patch_length": {
+      "name": "Patch Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Length of the rectangular patch along the resonant dimension",
+      "defaultFormula": "c/(2*f0*sqrt(epsilon_eff))",
+      "range": {
+        "min": 0.01,
+        "max": 0.2
+      }
+    },
+    "patch_width": {
+      "name": "Patch Width",
+      "symbol": "W",
+      "unit": "m",
+      "description": "Width of the rectangular patch perpendicular to the resonant dimension",
+      "defaultFormula": "c/(2*f0)*sqrt(2/(epsilon_r+1))",
+      "range": {
+        "min": 0.01,
+        "max": 0.3
+      }
+    },
+    "substrate_height": {
+      "name": "Substrate Height",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Thickness of the dielectric substrate",
+      "defaultFormula": "0.01*c/f0",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "substrate_permittivity": {
+      "name": "Relative Permittivity",
+      "symbol": "epsilon_r",
+      "unit": "dimensionless",
+      "description": "Relative dielectric constant of the substrate material",
+      "defaultFormula": "4.4",
+      "range": {
+        "min": 2.2,
+        "max": 12
+      }
+    },
+    "inset_distance": {
+      "name": "Inset Distance",
+      "symbol": "y0",
+      "unit": "m",
+      "description": "Distance from the patch edge to the feed point for impedance matching",
+      "defaultFormula": "L/pi*acos(sqrt(Z0/R_edge))",
+      "range": {
+        "min": 0.001,
+        "max": 0.05
+      }
+    },
+    "feedline_width": {
+      "name": "Feedline Width",
+      "symbol": "Wf",
+      "unit": "m",
+      "description": "Width of the microstrip feedline for 50-ohm characteristic impedance",
+      "defaultFormula": "8*h*exp(A)/(exp(2*A)-2) where A=Z0*sqrt((epsilon_r+1)/2)/377+((epsilon_r-1)/(epsilon_r+1))*(0.23+0.11/epsilon_r)",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves calculating patch dimensions for resonance, determining effective permittivity, computing inset distance for impedance matching, and optimizing feedline geometry.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Patch Width",
+        "description": "Determine optimal patch width for efficient radiation",
+        "formula": "W = c/(2*f0)*sqrt(2/(epsilon_r+1))"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Effective Permittivity",
+        "description": "Compute effective dielectric constant accounting for fringing fields",
+        "formula": "epsilon_eff = (epsilon_r+1)/2 + (epsilon_r-1)/2 * (1+12*h/W)^(-0.5)"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Extension Length",
+        "description": "Determine fringing field extension due to open-end effects",
+        "formula": "delta_L = 0.412*h*(epsilon_eff+0.3)*(W/h+0.264)/((epsilon_eff-0.258)*(W/h+0.8))"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Patch Length",
+        "description": "Determine resonant patch length including fringing effects",
+        "formula": "L = c/(2*f0*sqrt(epsilon_eff)) - 2*delta_L"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Edge Resistance",
+        "description": "Determine input resistance at the radiating edge",
+        "formula": "R_edge = 90*(epsilon_r/epsilon_eff)^2/(W/lambda_0)"
+      },
+      {
+        "step": 6,
+        "title": "Calculate Inset Distance",
+        "description": "Determine inset distance for 50-ohm input impedance",
+        "formula": "y0 = L/pi * acos(sqrt(50/R_edge))"
+      },
+      {
+        "step": 7,
+        "title": "Design Feedline",
+        "description": "Calculate microstrip feedline width for 50-ohm impedance",
+        "formula": "Wf = 8*h*exp(A)/(exp(2*A)-2) where A depends on Z0 and epsilon_r"
+      },
+      {
+        "step": 8,
+        "title": "Optimize Performance",
+        "description": "Fine-tune dimensions using simulation for desired bandwidth and matching",
+        "formula": "Adjust L, W, y0 based on S11 < -10 dB requirement"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c/(2*L_eff*sqrt(epsilon_eff)) where L_eff = L + 2*delta_L",
+    "inputImpedance": "Zin = R_edge * cos^2(pi*y0/L) where R_edge = 90*(epsilon_r/epsilon_eff)^2/(W/lambda_0)",
+    "gain": "G = 4*pi*A_eff/lambda_0^2 where A_eff ≈ 0.8*W*L for rectangular patch",
+    "radiationPattern": "E_theta = j*k0*h*E0*sin(k0*W*sin(theta)*cos(phi)/2)/(k0*W*sin(theta)*cos(phi)/2) * sin(k0*L*sin(theta)*sin(phi)/2)/(k0*L*sin(theta)*sin(phi)/2)",
+    "bandwidth": "BW ≈ 3.77*(h/lambda_0)*(epsilon_r-1)/epsilon_r^2 * (W/L)"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "transmission_line_model_with_cavity_resonator",
+    "radiationModel": "aperture_field_integration_with_magnetic_current_sources",
+    "keyAssumptions": [
+      "thin substrate approximation h << lambda_0",
+      "perfect conductor assumption",
+      "TM10 dominant mode",
+      "negligible surface waves",
+      "far-field radiation pattern"
+    ]
+  },
+  "references": [
+    "Balanis C.A. 'Antenna Theory: Analysis and Design' 4th Edition Chapter 14",
+    "Pozar D.M. 'Microwave Engineering' 4th Edition Chapter 12",
+    "Stutzman W.L. & Thiele G.A. 'Antenna Theory and Design' 3rd Edition Chapter 10",
+    "Volakis J.L. 'Antenna Engineering Handbook' 4th Edition Chapter 11"
+  ]
+}
