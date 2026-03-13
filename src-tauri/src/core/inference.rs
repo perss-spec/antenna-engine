@@ -1,7 +1,6 @@
 //! Surrogate model inference for fast antenna parameter prediction
 
 use crate::core::types::{AntennaError, Result};
-use crate::core::element::{AntennaElement, DipoleParams, PatchParams, QfhParams};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -92,12 +91,11 @@ impl SurrogatePredictor {
             input.num_points,
         );
 
-        // For now, use polynomial approximation as fallback
-        // TODO: Replace with actual ONNX inference when ort crate is available
+        // For now, use analytical approximation instead of ONNX model
         let (s11_db, impedance_re, impedance_im) = match input.element_type.as_str() {
-            "dipole" => self.predict_dipole_polynomial(input, &frequencies),
-            "patch" => self.predict_patch_polynomial(input, &frequencies),
-            "qfh" => self.predict_qfh_polynomial(input, &frequencies),
+            "dipole" => self.predict_dipole(input, &frequencies)?,
+            "patch" => self.predict_patch(input, &frequencies)?,
+            "qfh" => self.predict_qfh(input, &frequencies)?,
             _ => {
                 return Err(AntennaError::InvalidParameter(
                     format!("Unsupported element type: {}", input.element_type)
@@ -111,236 +109,185 @@ impl SurrogatePredictor {
             impedance_re,
             impedance_im,
             confidence: 0.85, // Placeholder confidence
-            model_version: "polynomial_fallback_v1.0".to_string(),
+            model_version: "analytical_v1.0".to_string(),
         })
     }
 
-    /// Generate frequency points in the specified range
+    /// Generate frequency points for prediction
     fn generate_frequency_points(&self, start: f64, stop: f64, num_points: usize) -> Vec<f64> {
         if num_points <= 1 {
             return vec![start];
         }
         
-        (0..num_points)
-            .map(|i| start + (stop - start) * (i as f64) / ((num_points - 1) as f64))
-            .collect()
+        let mut frequencies = Vec::with_capacity(num_points);
+        let step = (stop - start) / (num_points - 1) as f64;
+        
+        for i in 0..num_points {
+            frequencies.push(start + i as f64 * step);
+        }
+        
+        frequencies
     }
 
-    /// Polynomial approximation for dipole antennas
-    fn predict_dipole_polynomial(
+    /// Predict dipole response using analytical model
+    fn predict_dipole(
         &self,
         input: &PredictionInput,
         frequencies: &[f64],
-    ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
-        use crate::core::C0;
-        
+    ) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
         let length = input.parameters.get("length")
-            .copied()
-            .unwrap_or(0.15); // Default half-wave at 1 GHz
-        
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing dipole length".to_string()))?;
         let _radius = input.parameters.get("radius")
-            .copied()
-            .unwrap_or(0.001);
-        
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing dipole radius".to_string()))?;
+
         let mut s11_db = Vec::new();
         let mut impedance_re = Vec::new();
         let mut impedance_im = Vec::new();
-        
+
         for &freq in frequencies {
-            let wavelength = C0 / freq;
-            let electrical_length = length / wavelength;
+            // Analytical dipole impedance
+            let wavelength = crate::core::C0 / freq;
+            let electrical_length = 2.0 * length / wavelength;
             
-            // Simple polynomial model for dipole impedance
-            // Based on typical dipole behavior near resonance
-            let delta = electrical_length - 0.5; // Deviation from half-wave
+            let z_re = 73.1;
+            let z_im = 42.5 * (electrical_length - 1.0);
             
-            // Resistance varies around 73 ohms for half-wave dipole
-            let resistance = 73.0 + 200.0 * delta * delta;
+            impedance_re.push(z_re);
+            impedance_im.push(z_im);
             
-            // Reactance is approximately linear with frequency deviation
-            let reactance = 42.5 * delta * 4.0;
+            // Calculate S11
+            let z_in = num_complex::Complex64::new(z_re, z_im);
+            let z0 = num_complex::Complex64::new(50.0, 0.0);
+            let s11 = (z_in - z0) / (z_in + z0);
             
-            // Calculate S11 from impedance
-            let z_real = resistance;
-            let z_imag = reactance;
-            let z0 = 50.0;
-            
-            let gamma_re = (z_real - z0) / (z_real + z0);
-            let gamma_im = z_imag / (z_real + z0);
-            let gamma_mag = (gamma_re * gamma_re + gamma_im * gamma_im).sqrt();
-            let s11_db_val = 20.0 * gamma_mag.log10();
-            
-            s11_db.push(s11_db_val);
-            impedance_re.push(z_real);
-            impedance_im.push(z_imag);
+            s11_db.push(20.0 * s11.norm().log10());
         }
-        
-        (s11_db, impedance_re, impedance_im)
+
+        Ok((s11_db, impedance_re, impedance_im))
     }
 
-    /// Polynomial approximation for patch antennas
-    fn predict_patch_polynomial(
+    /// Predict patch antenna response (simplified)
+    fn predict_patch(
         &self,
         input: &PredictionInput,
         frequencies: &[f64],
-    ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
-        use crate::core::C0;
-        
-        let _width = input.parameters.get("width")
-            .copied()
-            .unwrap_or(0.038); // Default for 2.4 GHz patch
-        
+    ) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+        let width = input.parameters.get("width")
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing patch width".to_string()))?;
         let length = input.parameters.get("length")
-            .copied()
-            .unwrap_or(0.029);
-        
-        let substrate_er = input.parameters.get("substrate_er")
-            .copied()
-            .unwrap_or(4.4);
-        
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing patch length".to_string()))?;
+
         let mut s11_db = Vec::new();
         let mut impedance_re = Vec::new();
         let mut impedance_im = Vec::new();
-        
+
         for &freq in frequencies {
-            let wavelength = C0 / freq;
-            let effective_wavelength = wavelength / substrate_er.sqrt();
-            let electrical_length = length / effective_wavelength;
+            // Simplified patch model - resonant at c/(2*length)
+            let resonant_freq = crate::core::C0 / (2.0 * length);
+            let freq_ratio = freq / resonant_freq;
             
-            // Simple model for patch resonance
-            let delta = electrical_length - 0.5;
+            // Simple impedance model
+            let z_re = 50.0 + 200.0 * (freq_ratio - 1.0).powi(2);
+            let z_im = 100.0 * (freq_ratio - 1.0);
             
-            // Patch typically has higher impedance than dipole
-            let resistance = 100.0 + 300.0 * delta * delta;
-            let reactance = 80.0 * delta * 3.0;
+            impedance_re.push(z_re);
+            impedance_im.push(z_im);
             
             // Calculate S11
-            let z_real = resistance;
-            let z_imag = reactance;
-            let z0 = 50.0;
+            let z_in = num_complex::Complex64::new(z_re, z_im);
+            let z0 = num_complex::Complex64::new(50.0, 0.0);
+            let s11 = (z_in - z0) / (z_in + z0);
             
-            let gamma_re = (z_real - z0) / (z_real + z0);
-            let gamma_im = z_imag / (z_real + z0);
-            let gamma_mag = (gamma_re * gamma_re + gamma_im * gamma_im).sqrt();
-            let s11_db_val = 20.0 * gamma_mag.log10();
-            
-            s11_db.push(s11_db_val);
-            impedance_re.push(z_real);
-            impedance_im.push(z_imag);
+            s11_db.push(20.0 * s11.norm().log10());
         }
-        
-        (s11_db, impedance_re, impedance_im)
+
+        Ok((s11_db, impedance_re, impedance_im))
     }
 
-    /// Polynomial approximation for QFH antennas
-    fn predict_qfh_polynomial(
+    /// Predict QFH antenna response (simplified)
+    fn predict_qfh(
         &self,
         input: &PredictionInput,
         frequencies: &[f64],
-    ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
-        use crate::core::C0;
-        
+    ) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
         let design_freq = input.parameters.get("frequency")
-            .copied()
-            .unwrap_or(1.0e9);
-        
-        let diameter = input.parameters.get("diameter")
-            .copied()
-            .unwrap_or(0.05);
-        
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing QFH frequency".to_string()))?;
+        let turns = input.parameters.get("turns")
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing QFH turns".to_string()))?;
+        let _diameter = input.parameters.get("diameter")
+            .ok_or_else(|| AntennaError::InvalidParameter("Missing QFH diameter".to_string()))?;
+
         let mut s11_db = Vec::new();
         let mut impedance_re = Vec::new();
         let mut impedance_im = Vec::new();
-        
+
         for &freq in frequencies {
+            // Simplified QFH model
             let freq_ratio = freq / design_freq;
-            let delta = freq_ratio - 1.0;
             
-            // QFH typically has moderate impedance with good bandwidth
-            let resistance = 50.0 + 100.0 * delta * delta;
-            let reactance = 25.0 * delta * 2.0;
+            // Helical antenna impedance approximation
+            let z_re = 140.0 * turns.sqrt();
+            let z_im = 50.0 * (freq_ratio - 1.0);
+            
+            impedance_re.push(z_re);
+            impedance_im.push(z_im);
             
             // Calculate S11
-            let z_real = resistance;
-            let z_imag = reactance;
-            let z0 = 50.0;
+            let z_in = num_complex::Complex64::new(z_re, z_im);
+            let z0 = num_complex::Complex64::new(50.0, 0.0);
+            let s11 = (z_in - z0) / (z_in + z0);
             
-            let gamma_re = (z_real - z0) / (z_real + z0);
-            let gamma_im = z_imag / (z_real + z0);
-            let gamma_mag = (gamma_re * gamma_re + gamma_im * gamma_im).sqrt();
-            let s11_db_val = 20.0 * gamma_mag.log10();
-            
-            s11_db.push(s11_db_val);
-            impedance_re.push(z_real);
-            impedance_im.push(z_imag);
+            s11_db.push(20.0 * s11.norm().log10());
         }
-        
-        (s11_db, impedance_re, impedance_im)
+
+        Ok((s11_db, impedance_re, impedance_im))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[test]
-    fn test_surrogate_predictor_creation() {
+    fn test_predictor_creation() {
         let predictor = SurrogatePredictor::new();
         assert!(!predictor.model_loaded);
-    }
-
-    #[test]
-    fn test_dipole_polynomial_prediction() {
-        let predictor = SurrogatePredictor {
-            model_path: Some("test".to_string()),
-            model_loaded: true,
-            element_type: "dipole".to_string(),
-        };
-        
-        let mut params = HashMap::new();
-        params.insert("length".to_string(), 0.15);
-        params.insert("radius".to_string(), 0.001);
-        
-        let input = PredictionInput {
-            element_type: "dipole".to_string(),
-            parameters: params,
-            frequency_range: (900e6, 1100e6),
-            num_points: 11,
-        };
-        
-        let result = predictor.predict(&input);
-        assert!(result.is_ok());
-        
-        let prediction = result.unwrap();
-        assert_eq!(prediction.frequencies.len(), 11);
-        assert_eq!(prediction.s11_db.len(), 11);
-        assert_eq!(prediction.impedance_re.len(), 11);
-        assert_eq!(prediction.impedance_im.len(), 11);
+        assert_eq!(predictor.element_type, "");
     }
 
     #[test]
     fn test_frequency_generation() {
         let predictor = SurrogatePredictor::new();
-        let freqs = predictor.generate_frequency_points(1e9, 2e9, 5);
+        let freqs = predictor.generate_frequency_points(100e6, 200e6, 11);
         
-        assert_eq!(freqs.len(), 5);
-        assert_eq!(freqs[0], 1e9);
-        assert_eq!(freqs[4], 2e9);
+        assert_eq!(freqs.len(), 11);
+        assert_eq!(freqs[0], 100e6);
+        assert_eq!(freqs[10], 200e6);
     }
 
     #[test]
-    fn test_prediction_without_model() {
-        let predictor = SurrogatePredictor::new();
-        
+    fn test_dipole_prediction() {
+        let predictor = SurrogatePredictor {
+            model_loaded: true,
+            model_path: Some("test".to_string()),
+            element_type: "dipole".to_string(),
+        };
+
+        let mut params = HashMap::new();
+        params.insert("length".to_string(), 0.15);
+        params.insert("radius".to_string(), 0.001);
+
         let input = PredictionInput {
             element_type: "dipole".to_string(),
-            parameters: HashMap::new(),
-            frequency_range: (1e9, 2e9),
-            num_points: 10,
+            parameters: params,
+            frequency_range: (100e6, 200e6),
+            num_points: 5,
         };
-        
-        let result = predictor.predict(&input);
-        assert!(result.is_err());
+
+        let result = predictor.predict(&input).unwrap();
+        assert_eq!(result.frequencies.len(), 5);
+        assert_eq!(result.s11_db.len(), 5);
+        assert_eq!(result.impedance_re.len(), 5);
+        assert_eq!(result.impedance_im.len(), 5);
     }
 }

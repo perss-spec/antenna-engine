@@ -1,3 +1,6 @@
+// GPU shader for MoM impedance matrix computation
+// Each thread computes one Z[i,j] element using Green's function
+
 struct Segment {
     start_pos: vec3<f32>,
     end_pos: vec3<f32>,
@@ -16,9 +19,6 @@ struct Params {
 @group(0) @binding(1) var<uniform> params: Params;
 @group(0) @binding(2) var<storage, read_write> z_matrix: array<vec2<f32>>;
 
-const PI: f32 = 3.14159265359;
-const EPS: f32 = 1e-10;
-
 @compute @workgroup_size(8, 8)
 fn fill_impedance(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = gid.y;
@@ -31,49 +31,40 @@ fn fill_impedance(@builtin(global_invocation_id) gid: vec3<u32>) {
     let seg_i = segments[i];
     let seg_j = segments[j];
     
-    // Compute segment centers
-    let center_i = (seg_i.start_pos + seg_i.end_pos) * 0.5;
-    let center_j = (seg_j.start_pos + seg_j.end_pos) * 0.5;
-    
-    let r_vec = center_i - center_j;
-    let r = length(r_vec);
-    
-    var z_element: vec2<f32>;
+    // Calculate impedance matrix element Z[i,j]
+    var z_ij: vec2<f32>;
     
     if (i == j) {
-        // Self-impedance (thin wire approximation)
-        let a = seg_j.length / 100.0; // Wire radius approximation
-        let ln_term = log(2.0 * seg_j.length / a);
-        // Z_self = eta0 / (2π) * ln(2L/a) * j
-        z_element = vec2<f32>(0.0, params.eta0 / (2.0 * PI) * ln_term);
-    } else if (r < EPS) {
-        z_element = vec2<f32>(0.0, 0.0);
+        // Self-impedance (simplified)
+        let length = seg_i.length;
+        let self_z = params.eta0 * sin(2.0 * 3.14159265 * length * params.frequency / 299792458.0) / (4.0 * 3.14159265);
+        z_ij = vec2<f32>(self_z, 0.0);
     } else {
         // Mutual impedance using Green's function
-        let kr = params.k0 * r;
+        let center_i = (seg_i.start_pos + seg_i.end_pos) * 0.5;
+        let center_j = (seg_j.start_pos + seg_j.end_pos) * 0.5;
         
-        // Green's function: G = -jk0 * exp(-jkr) / (4πr)
-        // exp(-jkr) = cos(kr) - j*sin(kr)
-        let cos_kr = cos(kr);
-        let sin_kr = sin(kr);
+        let r_vec = center_i - center_j;
+        let r = length(r_vec);
         
-        let exp_neg_jkr = vec2<f32>(cos_kr, -sin_kr);
-        let green_factor = -params.k0 / (4.0 * PI * r);
-        
-        // G = green_factor * j * exp(-jkr)
-        // j * (a + jb) = -b + ja
-        let green = vec2<f32>(
-            green_factor * (-exp_neg_jkr.y),  // Real part
-            green_factor * exp_neg_jkr.x      // Imaginary part
-        );
-        
-        // Z_mutual = eta0 * length_j * G
-        z_element = vec2<f32>(
-            params.eta0 * seg_j.length * green.x,
-            params.eta0 * seg_j.length * green.y
-        );
+        if (r < 1e-6) {
+            z_ij = vec2<f32>(0.0, 0.0);
+        } else {
+            // Green's function: G = exp(-jkr) / (4πr)
+            let kr = params.k0 * r;
+            let cos_kr = cos(kr);
+            let sin_kr = sin(kr);
+            
+            // exp(-jkr) = cos(kr) - j*sin(kr)
+            let green_re = cos_kr / (4.0 * 3.14159265 * r);
+            let green_im = -sin_kr / (4.0 * 3.14159265 * r);
+            
+            // Z_ij = η₀ * G(r)
+            z_ij = vec2<f32>(green_re * params.eta0, green_im * params.eta0);
+        }
     }
     
-    let matrix_idx = i * params.num_segments + j;
-    z_matrix[matrix_idx] = z_element;
+    // Store result in row-major order
+    let index = i * params.num_segments + j;
+    z_matrix[index] = z_ij;
 }
