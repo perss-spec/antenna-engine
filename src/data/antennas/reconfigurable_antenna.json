@@ -1,0 +1,155 @@
+{
+  "id": "reconfigurable_antenna",
+  "name": "Reconfigurable Antenna",
+  "category": "special",
+  "description": "An adaptive antenna system capable of dynamically altering its radiation characteristics including frequency, polarization, and beam direction through electronic or mechanical switching mechanisms. These antennas employ variable components such as PIN diodes, varactors, MEMS switches, or tunable materials to achieve real-time reconfiguration. They enable cognitive radio systems, adaptive beamforming, and multi-standard wireless communications.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": -5,
+    "max": 25,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-40%",
+  "polarization": "dual",
+  "applications": [
+    "Cognitive radio systems",
+    "Software-defined radio",
+    "Multi-band mobile communications",
+    "Adaptive radar systems",
+    "Satellite communications",
+    "MIMO systems",
+    "IoT devices",
+    "5G/6G base stations"
+  ],
+  "parameters": {
+    "switching_time": {
+      "name": "Switching Time",
+      "symbol": "t_s",
+      "unit": "ns",
+      "description": "Time required to reconfigure antenna characteristics",
+      "defaultFormula": "100 + 50*log10(f/1e9)",
+      "range": {
+        "min": 10,
+        "max": 10000
+      }
+    },
+    "tuning_range": {
+      "name": "Frequency Tuning Range",
+      "symbol": "TR",
+      "unit": "%",
+      "description": "Percentage frequency range over which antenna can be tuned",
+      "defaultFormula": "30 + 20*sqrt(lambda/0.1)",
+      "range": {
+        "min": 10,
+        "max": 200
+      }
+    },
+    "isolation": {
+      "name": "Port Isolation",
+      "symbol": "S21",
+      "unit": "dB",
+      "description": "Isolation between reconfigurable states or ports",
+      "defaultFormula": "-20 - 10*log10(BW/0.1)",
+      "range": {
+        "min": -50,
+        "max": -10
+      }
+    },
+    "insertion_loss": {
+      "name": "Insertion Loss",
+      "symbol": "IL",
+      "unit": "dB",
+      "description": "Loss introduced by switching elements in active state",
+      "defaultFormula": "0.5 + 0.1*sqrt(f/1e9)",
+      "range": {
+        "min": 0.1,
+        "max": 3
+      }
+    },
+    "control_voltage": {
+      "name": "Control Voltage",
+      "symbol": "V_c",
+      "unit": "V",
+      "description": "Voltage required to activate switching elements",
+      "defaultFormula": "3 + 2*log10(P_rf/0.001)",
+      "range": {
+        "min": 1,
+        "max": 30
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves selecting reconfiguration mechanism, determining switching topology, optimizing antenna geometry for multiple states, and implementing control circuitry with minimal impact on radiation performance.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Define Reconfiguration Requirements",
+        "description": "Specify frequency bands, polarization states, and beam directions needed",
+        "formula": "N_states = 2^N_switches"
+      },
+      {
+        "step": 2,
+        "title": "Select Switching Technology",
+        "description": "Choose between PIN diodes, varactors, MEMS, or other switching elements",
+        "formula": "P_switch = V_bias * I_bias + P_rf_loss"
+      },
+      {
+        "step": 3,
+        "title": "Design Base Antenna Structure",
+        "description": "Create fundamental radiating element optimized for center frequency",
+        "formula": "L_base = c/(2*f_center*sqrt(epsilon_eff))"
+      },
+      {
+        "step": 4,
+        "title": "Implement Switching Network",
+        "description": "Integrate switching elements to modify current paths or reactive loading",
+        "formula": "Z_switch = R_on + j*omega*L_parasitic"
+      },
+      {
+        "step": 5,
+        "title": "Optimize Multi-State Performance",
+        "description": "Tune antenna dimensions for acceptable performance across all states",
+        "formula": "VSWR_max = max(VSWR_state_i) for i=1 to N"
+      },
+      {
+        "step": 6,
+        "title": "Design Bias Network",
+        "description": "Create DC bias circuitry with RF isolation using chokes and blocking capacitors",
+        "formula": "X_choke = omega*L_choke > 10*Z0"
+      },
+      {
+        "step": 7,
+        "title": "Validate Switching Speed",
+        "description": "Verify reconfiguration time meets system requirements",
+        "formula": "t_total = t_switch + t_settle + t_measure"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_r = 1/(2*pi*sqrt(L_eff*C_eff)) where L_eff and C_eff vary with switch states",
+    "inputImpedance": "Z_in = Z_antenna + Z_switch_network = R_rad + j*X_reactive + Z_switching_elements",
+    "gain": "G = eta_rad * eta_mismatch * D where eta_mismatch = 4*R_rad*R_source/|Z_in + Z_source|^2",
+    "radiationPattern": "E(theta,phi) = sum(I_n * E_n(theta,phi)) where I_n depends on switch configuration",
+    "bandwidth": "BW = (f_high - f_low)/f_center where limits set by VSWR < 2 across all states"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Multi-state impedance matrix with switching element models: Z_total = Z_antenna + Z_switches(state)",
+    "radiationModel": "Superposition of current distributions for each switch state with method of moments integration",
+    "keyAssumptions": [
+      "Switch elements modeled as ideal with parasitic reactances",
+      "Bias networks provide perfect RF isolation",
+      "Switching transients neglected in steady-state analysis",
+      "Mutual coupling between switches is minimal"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 21",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 20",
+    "Christodoulou, C.G. 'Reconfigurable Antennas for Wireless and Space Applications'",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition, Chapter 10"
+  ]
+}
