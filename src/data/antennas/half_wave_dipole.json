@@ -2,7 +2,7 @@
   "id": "half_wave_dipole",
   "name": "Half-Wave Dipole",
   "category": "wire",
-  "description": "A fundamental wire antenna consisting of a straight conductor with length equal to half a wavelength at the operating frequency. It is the most widely used and analyzed antenna type, serving as a reference for gain measurements and forming the basis for many other antenna designs. The half-wave dipole exhibits omnidirectional radiation in the plane perpendicular to its axis with a characteristic donut-shaped pattern.",
+  "description": "A fundamental wire antenna consisting of a straight conductor with length equal to half a wavelength at the operating frequency. It is center-fed and exhibits omnidirectional radiation in the plane perpendicular to its axis with a characteristic figure-8 pattern. The half-wave dipole serves as the reference antenna for gain measurements and is widely used in communications systems.",
   "frequencyRange": {
     "min": 1000000,
     "max": 10000000000,
@@ -17,13 +17,12 @@
   "polarization": "linear",
   "applications": [
     "FM radio broadcasting",
-    "Television broadcasting",
+    "Television antennas",
     "Amateur radio",
     "Wireless communications",
     "Reference antenna for measurements",
-    "Base element for antenna arrays",
-    "Dipole arrays",
-    "Yagi-Uda antennas"
+    "Base station antennas",
+    "Dipole arrays"
   ],
   "parameters": {
     "length": {
@@ -33,46 +32,46 @@
       "description": "Physical length of the dipole conductor",
       "defaultFormula": "0.47 * c / f",
       "range": {
-        "min": 0.45,
-        "max": 0.49
+        "min": 0.001,
+        "max": 100
       }
     },
-    "wireRadius": {
+    "radius": {
       "name": "Wire Radius",
       "symbol": "a",
       "unit": "m",
       "description": "Radius of the cylindrical conductor",
-      "defaultFormula": "0.001 * c / f",
+      "defaultFormula": "L / 1000",
       "range": {
         "min": 0.0001,
         "max": 0.01
+      }
+    },
+    "frequency": {
+      "name": "Operating Frequency",
+      "symbol": "f",
+      "unit": "Hz",
+      "description": "Design frequency for half-wavelength resonance",
+      "defaultFormula": "c / (2 * L / 0.47)",
+      "range": {
+        "min": 1000000,
+        "max": 10000000000
       }
     },
     "feedGap": {
       "name": "Feed Gap",
       "symbol": "g",
       "unit": "m",
-      "description": "Gap at the center where the antenna is fed",
-      "defaultFormula": "0.001 * c / f",
+      "description": "Gap width at the center feed point",
+      "defaultFormula": "a / 10",
       "range": {
-        "min": 0.0001,
-        "max": 0.01
-      }
-    },
-    "operatingFrequency": {
-      "name": "Operating Frequency",
-      "symbol": "f",
-      "unit": "Hz",
-      "description": "Design frequency for resonance",
-      "defaultFormula": "c / (2 * L)",
-      "range": {
-        "min": 1000000,
-        "max": 10000000000
+        "min": 0.00001,
+        "max": 0.001
       }
     }
   },
   "designMethodology": {
-    "overview": "Design process involves calculating the physical length for resonance, determining wire dimensions for practical construction, and optimizing for desired impedance matching.",
+    "overview": "Design process involves calculating the physical length for resonance, determining wire dimensions for practical construction, and optimizing the feed structure for impedance matching.",
     "steps": [
       {
         "step": 1,
@@ -82,51 +81,51 @@
       },
       {
         "step": 2,
-        "title": "Select Wire Diameter",
-        "description": "Choose wire radius based on bandwidth and mechanical requirements",
-        "formula": "a = (0.001 to 0.01) * c / f"
+        "title": "Select Wire Radius",
+        "description": "Choose conductor radius based on bandwidth and mechanical requirements",
+        "formula": "a = L / (2000 to 500) for typical applications"
       },
       {
         "step": 3,
         "title": "Calculate Input Impedance",
-        "description": "Determine theoretical input impedance for matching network design",
-        "formula": "Z_in = 73.1 + j * 42.5 * ln(L/(2*a))"
+        "description": "Determine theoretical input impedance at resonance",
+        "formula": "Zin = 73.1 + j * 42.5 * ln(L/a) ohms"
       },
       {
         "step": 4,
-        "title": "Design Feed System",
-        "description": "Design balun or matching network to interface with transmission line",
-        "formula": "VSWR = (Z_0 + Z_in) / |Z_0 - Z_in|"
+        "title": "Design Feed Structure",
+        "description": "Design the feed gap and balun if required for balanced operation",
+        "formula": "g = a / 10 to a / 5"
       },
       {
         "step": 5,
         "title": "Optimize for Bandwidth",
-        "description": "Adjust length and diameter ratio for desired bandwidth performance",
-        "formula": "BW ≈ 4 * a / L"
+        "description": "Adjust length and radius ratio for desired bandwidth",
+        "formula": "BW ≈ 4 * a / L * 100%"
       },
       {
         "step": 6,
         "title": "Verify Radiation Pattern",
-        "description": "Calculate radiation pattern and gain to confirm design objectives",
-        "formula": "G = 1.64 (2.15 dBi)"
+        "description": "Confirm omnidirectional pattern in H-plane and figure-8 in E-plane",
+        "formula": "E(θ) = cos(π/2 * cos(θ)) / sin(θ)"
       }
     ]
   },
   "equations": {
-    "resonantFrequency": "f_r = c / (2 * L_eff) where L_eff = 0.47 * lambda",
-    "inputImpedance": "Z_in = R_r + j * X_in = 73.1 + j * 42.5 * ln(L/(2*a)) ohms",
-    "gain": "G = 1.64 (2.15 dBi) for ideal half-wave dipole",
-    "radiationPattern": "E(theta) = cos((pi/2)*cos(theta)) / sin(theta) in elevation plane",
-    "bandwidth": "BW = 2 * |f - f_r| / f_r for VSWR < 2, approximately 4*a/L"
+    "resonantFrequency": "f = c / (2 * L_eff) where L_eff = 0.47 * λ",
+    "inputImpedance": "Zin = 73.1 + j * 42.5 * ln(L/a) ohms at resonance",
+    "gain": "G = 1.64 (2.15 dBi) for lossless dipole",
+    "radiationPattern": "E(θ) = cos(π/2 * cos(θ)) / sin(θ) in elevation plane",
+    "bandwidth": "BW = 4 * (a/L) * 100% for VSWR < 2"
   },
   "mockSolverHints": {
-    "impedanceModel": "Use method of moments with sinusoidal current distribution I(z) = I_0 * sin(k*(L/2 - |z|)) for z along dipole axis",
-    "radiationModel": "Far-field calculation using current distribution with radiation resistance R_r = 73.1 ohms and directivity D = 1.64",
+    "impedanceModel": "Method of moments with sinusoidal current distribution I(z) = I0 * sin(π/2 - π*|z|/L)",
+    "radiationModel": "Far-field integration using cos(π/2*cos(θ))/sin(θ) pattern function",
     "keyAssumptions": [
       "Thin wire approximation (L >> a)",
       "Perfect conductor",
       "Sinusoidal current distribution",
-      "Far-field radiation pattern",
+      "Far-field radiation",
       "Free space environment"
     ]
   },
