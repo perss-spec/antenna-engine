@@ -1,0 +1,189 @@
+{
+  "id": "pyramidal_horn",
+  "name": "Pyramidal Horn",
+  "category": "aperture",
+  "description": "A pyramidal horn antenna is a flared waveguide structure that provides a smooth transition from a rectangular waveguide to free space. It features flaring in both E-plane and H-plane dimensions, creating a pyramidal shape that improves impedance matching and directivity compared to an open waveguide. The horn provides moderate to high gain with good impedance matching over a wide frequency range.",
+  "frequencyRange": {
+    "min": 1000000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 10,
+    "max": 25,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "30-50%",
+  "polarization": "linear",
+  "applications": [
+    "Microwave communication systems",
+    "Radar antennas",
+    "Satellite ground stations",
+    "Feed horns for reflector antennas",
+    "EMC testing",
+    "Radio astronomy",
+    "Microwave measurement systems"
+  ],
+  "parameters": {
+    "a": {
+      "name": "Waveguide Width",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Width of the rectangular waveguide feeding the horn",
+      "defaultFormula": "0.7 * lambda",
+      "range": {
+        "min": 0.5,
+        "max": 1.2
+      }
+    },
+    "b": {
+      "name": "Waveguide Height",
+      "symbol": "b",
+      "unit": "m",
+      "description": "Height of the rectangular waveguide feeding the horn",
+      "defaultFormula": "0.35 * lambda",
+      "range": {
+        "min": 0.25,
+        "max": 0.6
+      }
+    },
+    "A": {
+      "name": "Horn Aperture Width",
+      "symbol": "A",
+      "unit": "m",
+      "description": "Width of the horn aperture in the E-plane",
+      "defaultFormula": "3 * lambda",
+      "range": {
+        "min": 1.5,
+        "max": 10
+      }
+    },
+    "B": {
+      "name": "Horn Aperture Height",
+      "symbol": "B",
+      "unit": "m",
+      "description": "Height of the horn aperture in the H-plane",
+      "defaultFormula": "2.5 * lambda",
+      "range": {
+        "min": 1.2,
+        "max": 8
+      }
+    },
+    "L1": {
+      "name": "E-plane Horn Length",
+      "symbol": "L1",
+      "unit": "m",
+      "description": "Axial length of the horn in the E-plane",
+      "defaultFormula": "(A^2 - a^2) / (8 * lambda)",
+      "range": {
+        "min": 1,
+        "max": 20
+      }
+    },
+    "L2": {
+      "name": "H-plane Horn Length",
+      "symbol": "L2",
+      "unit": "m",
+      "description": "Axial length of the horn in the H-plane",
+      "defaultFormula": "(B^2 - b^2) / (8 * lambda)",
+      "range": {
+        "min": 1,
+        "max": 20
+      }
+    },
+    "flare_angle_E": {
+      "name": "E-plane Flare Angle",
+      "symbol": "θE",
+      "unit": "degrees",
+      "description": "Half-angle of flare in the E-plane",
+      "defaultFormula": "atan((A - a) / (2 * L1)) * 180 / pi",
+      "range": {
+        "min": 5,
+        "max": 30
+      }
+    },
+    "flare_angle_H": {
+      "name": "H-plane Flare Angle",
+      "symbol": "θH",
+      "unit": "degrees",
+      "description": "Half-angle of flare in the H-plane",
+      "defaultFormula": "atan((B - b) / (2 * L2)) * 180 / pi",
+      "range": {
+        "min": 5,
+        "max": 30
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design of pyramidal horn antennas involves determining optimal aperture dimensions and horn lengths to achieve desired gain and beamwidth while maintaining good impedance matching. The design balances aperture efficiency against phase error from the horn geometry.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency and Waveguide Dimensions",
+        "description": "Select the operating frequency and corresponding rectangular waveguide dimensions for the dominant TE10 mode",
+        "formula": "a = 0.7 * lambda, b = 0.35 * lambda, fc = c / (2 * a)"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Desired Gain and Aperture Area",
+        "description": "Determine the required aperture area based on desired gain using aperture antenna theory",
+        "formula": "G = 4 * pi * Aeff / lambda^2, Aeff = eta_ap * A * B"
+      },
+      {
+        "step": 3,
+        "title": "Optimize E-plane Dimensions",
+        "description": "Calculate optimal E-plane aperture width and horn length for maximum gain with acceptable phase error",
+        "formula": "A_opt = sqrt(3 * lambda * L1), L1 = (A^2 - a^2) / (8 * lambda)"
+      },
+      {
+        "step": 4,
+        "title": "Optimize H-plane Dimensions",
+        "description": "Calculate optimal H-plane aperture height and horn length for maximum gain with acceptable phase error",
+        "formula": "B_opt = sqrt(2 * lambda * L2), L2 = (B^2 - b^2) / (8 * lambda)"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Flare Angles",
+        "description": "Determine the flare angles in both planes to ensure gradual transition and good impedance matching",
+        "formula": "theta_E = atan((A - a) / (2 * L1)), theta_H = atan((B - b) / (2 * L2))"
+      },
+      {
+        "step": 6,
+        "title": "Verify Phase Error and Aperture Efficiency",
+        "description": "Check that phase errors are acceptable and calculate aperture efficiency",
+        "formula": "delta_E = (A - a)^2 / (8 * lambda * L1), delta_H = (B - b)^2 / (8 * lambda * L2)"
+      },
+      {
+        "step": 7,
+        "title": "Calculate Radiation Patterns and Gain",
+        "description": "Compute the theoretical radiation patterns and gain using aperture field distribution",
+        "formula": "G = 32 * A * B / (lambda^2 * theta_E * theta_H), theta_3dB = 51 * lambda / A (E-plane)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "fc = c / (2 * a) for TE10 mode cutoff",
+    "inputImpedance": "Z_in ≈ 377 * sqrt(1 - (fc/f)^2) for matched horn",
+    "gain": "G = 32 * A * B / (lambda^2 * theta_E_rad * theta_H_rad) where theta in radians",
+    "radiationPattern": "E_theta = (sin(u)/u) * (sin(v)/v) where u = (pi*A*sin(theta)*cos(phi))/lambda, v = (pi*B*sin(theta)*sin(phi))/lambda",
+    "bandwidth": "BW ≈ 2 * (f - fc) / f for VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use transmission line model with gradual taper approximation, account for TE10 mode propagation and reflection coefficient at aperture",
+    "radiationModel": "Apply Huygens principle with uniform amplitude and quadratic phase distribution across aperture, use Fresnel integrals for pattern calculation",
+    "keyAssumptions": [
+      "Dominant TE10 mode propagation",
+      "Uniform field distribution at aperture",
+      "Quadratic phase variation across aperture",
+      "Perfect conductor walls",
+      "No higher-order mode excitation"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 13",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 11",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Chapter 6",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 15",
+    "Love, A.W., 'Electromagnetic Horn Antennas', IEEE Press, 1976"
+  ]
+}
