@@ -1,6 +1,7 @@
-export { AntennaView } from './AntennaView'
 export { default as AntennaViewport } from './AntennaViewport'
+export { AntennaView } from './AntennaView'
 export { DipoleModel } from './DipoleModel'
 export { MonopoleModel } from './MonopoleModel'
 export { PatchModel } from './PatchModel'
+export { QfhModel } from './QfhModel'
 export { default as GroundPlane } from './GroundPlane'
