@@ -1,0 +1,171 @@
+{
+  "id": "phased_array",
+  "name": "Phased Array",
+  "category": "array",
+  "description": "A phased array antenna consists of multiple radiating elements with controllable phase relationships to electronically steer the beam direction without physical movement. The array can achieve high gain, narrow beamwidth, and rapid beam scanning through precise phase control of individual elements.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 15,
+    "max": 50,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-30%",
+  "polarization": "linear",
+  "applications": [
+    "radar systems",
+    "satellite communications",
+    "5G base stations",
+    "electronic warfare",
+    "space communications",
+    "weather radar",
+    "phased array radar"
+  ],
+  "parameters": {
+    "num_elements": {
+      "name": "Number of Elements",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Total number of radiating elements in the array",
+      "defaultFormula": "16",
+      "range": {
+        "min": 4,
+        "max": 10000
+      }
+    },
+    "element_spacing": {
+      "name": "Element Spacing",
+      "symbol": "d",
+      "unit": "m",
+      "description": "Distance between adjacent array elements",
+      "defaultFormula": "0.5 * lambda",
+      "range": {
+        "min": 0.3,
+        "max": 1
+      }
+    },
+    "scan_angle": {
+      "name": "Scan Angle",
+      "symbol": "theta_s",
+      "unit": "degrees",
+      "description": "Maximum beam steering angle from broadside",
+      "defaultFormula": "60",
+      "range": {
+        "min": 0,
+        "max": 90
+      }
+    },
+    "phase_shift": {
+      "name": "Progressive Phase Shift",
+      "symbol": "beta",
+      "unit": "radians",
+      "description": "Phase difference between adjacent elements for beam steering",
+      "defaultFormula": "2*pi*d*sin(theta_s)/lambda",
+      "range": {
+        "min": -3.14159,
+        "max": 3.14159
+      }
+    },
+    "array_length": {
+      "name": "Array Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Physical length of the linear array",
+      "defaultFormula": "(N-1)*d",
+      "range": {
+        "min": 0.1,
+        "max": 100
+      }
+    },
+    "taper_coefficient": {
+      "name": "Amplitude Taper Coefficient",
+      "symbol": "a_n",
+      "unit": "dimensionless",
+      "description": "Amplitude weighting coefficient for sidelobe control",
+      "defaultFormula": "1.0",
+      "range": {
+        "min": 0.1,
+        "max": 1
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Phased array design involves determining element type, spacing, number of elements, and feed network configuration to meet gain, beamwidth, and scanning requirements while maintaining acceptable impedance matching and sidelobe levels.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Array Requirements",
+        "description": "Specify gain, beamwidth, scan range, and frequency band requirements",
+        "formula": "G_req = 10*log10(4*pi*A_eff/lambda^2)"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Number of Elements",
+        "description": "Estimate required number of elements based on gain and aperture size",
+        "formula": "N = G_linear/(G_element * eta_array)"
+      },
+      {
+        "step": 3,
+        "title": "Set Element Spacing",
+        "description": "Choose spacing to avoid grating lobes within scan range",
+        "formula": "d <= lambda/(1 + sin(theta_max))"
+      },
+      {
+        "step": 4,
+        "title": "Design Array Geometry",
+        "description": "Arrange elements in linear, planar, or conformal configuration",
+        "formula": "L_array = (N-1)*d for linear array"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Phase Shifts",
+        "description": "Determine progressive phase shift for desired beam direction",
+        "formula": "beta_n = n * k * d * sin(theta_s)"
+      },
+      {
+        "step": 6,
+        "title": "Apply Amplitude Tapering",
+        "description": "Design amplitude distribution to control sidelobe levels",
+        "formula": "a_n = Taylor_window(n, N, SLL_dB)"
+      },
+      {
+        "step": 7,
+        "title": "Design Feed Network",
+        "description": "Create corporate or series feed network with required phase shifts",
+        "formula": "Z_feed = Z0/sqrt(N) for corporate feed"
+      },
+      {
+        "step": 8,
+        "title": "Analyze Mutual Coupling",
+        "description": "Account for coupling effects between adjacent elements",
+        "formula": "Z_active = Z_self + sum(Z_mn * I_n/I_m)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c/(2*L_element) for individual elements",
+    "inputImpedance": "Z_in = Z_element + Z_mutual + Z_feed",
+    "gain": "G = 10*log10(N * G_element * eta_array * cos^q(theta))",
+    "radiationPattern": "AF(theta) = sum(a_n * exp(j*n*(k*d*sin(theta) - beta)))",
+    "bandwidth": "BW = 2*(f_max - f_min)/f_center"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use active impedance matrix including mutual coupling between elements with Z_mn = R_mn + j*X_mn",
+    "radiationModel": "Multiply element pattern by array factor: E_total(theta,phi) = E_element(theta,phi) * AF(theta,phi)",
+    "keyAssumptions": [
+      "uniform element patterns",
+      "linear phase progression",
+      "far-field approximation",
+      "negligible higher-order coupling"
+    ]
+  },
+  "references": [
+    "Balanis \"Antenna Theory: Analysis and Design\" Chapter 6",
+    "Stutzman & Thiele \"Antenna Theory and Design\" Chapter 11",
+    "Mailloux \"Phased Array Antenna Handbook\"",
+    "Hansen \"Phased Array Antennas\""
+  ]
+}
