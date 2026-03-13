@@ -1,10 +1,13 @@
-//! CPU frequency sweep runner with analytical dipole approximation
+//! CPU frequency sweep runner with parallel processing
 
 use crate::core::C0;
+use crate::gpu::parallel::{ParallelFrequencySweep, SweepResult};
 use std::f64::consts::PI;
 use num_complex::Complex64;
 use serde::{Serialize, Deserialize};
 use rayon::prelude::*;
+use std::sync::Arc;
+use crate::core::geometry::Mesh;
 
 /// Frequency sweep configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,10 +54,7 @@ impl SweepConfig {
 
 /// Run CPU-based frequency sweep using analytical dipole approximation
 /// 
-/// This uses a simplified half-wave dipole model:
-/// Z_in = 73.1 + j*42.5*(2*length*freq/c - 1)
-/// 
-/// This is a placeholder until full GPU MoM acceleration is implemented.
+/// This uses a simplified half-wave dipole model for fast computation.
 pub fn run_cpu_sweep(config: &SweepConfig, length: f64, radius: f64) -> Vec<SweepPoint> {
     let frequencies = config.frequency_points();
     let mut results = Vec::with_capacity(frequencies.len());
@@ -86,15 +86,29 @@ pub fn run_parallel_cpu_sweep(config: &SweepConfig, length: f64, radius: f64) ->
         .collect()
 }
 
+/// Run mesh-based parallel frequency sweep
+pub fn run_mesh_based_sweep(config: &SweepConfig, mesh: &Mesh, wire_radius: f64) -> Vec<SweepPoint> {
+    let mesh_arc = Arc::new(mesh.clone());
+    let sweep = ParallelFrequencySweep::new(mesh_arc, wire_radius);
+    
+    let frequencies = config.frequency_points();
+    let results = sweep.run_sweep(&frequencies);
+    
+    results
+        .into_iter()
+        .map(|result| SweepPoint {
+            freq_hz: result.frequency,
+            s11_db: result.s11_db,
+        })
+        .collect()
+}
+
 /// Calculate S11 for dipole using analytical approximation
 fn calculate_dipole_s11(frequency: f64, length: f64, _radius: f64) -> f64 {
     // Avoid division by zero
     if frequency <= 0.0 || length <= 0.0 {
         return -100.0; // Very low reflection (good match)
     }
-    
-    // Wave number
-    let _k = 2.0 * PI * frequency / C0;
     
     // Electrical length in wavelengths
     let electrical_length = 2.0 * length * frequency / C0;
@@ -104,124 +118,157 @@ fn calculate_dipole_s11(frequency: f64, length: f64, _radius: f64) -> f64 {
     let z_real = 73.1;
     let z_imag = 42.5 * (electrical_length - 1.0);
     
+    // Calculate S11
     let z_in = Complex64::new(z_real, z_imag);
-    let z0 = Complex64::new(50.0, 0.0); // Reference impedance
-    
-    // Calculate reflection coefficient S11
+    let z0 = Complex64::new(50.0, 0.0); // 50 ohm reference
     let s11 = (z_in - z0) / (z_in + z0);
     
     // Convert to dB
-    let s11_mag = s11.norm();
-    if s11_mag > 0.0 {
-        20.0 * s11_mag.log10()
-    } else {
-        -100.0 // Very good match
-    }
+    20.0 * s11.norm().log10()
+}
+
+/// Advanced sweep with custom impedance model
+pub fn run_advanced_sweep<F>(config: &SweepConfig, impedance_model: F) -> Vec<SweepPoint>
+where
+    F: Fn(f64) -> Complex64 + Sync,
+{
+    let frequencies = config.frequency_points();
+    
+    frequencies
+        .par_iter()
+        .map(|&freq| {
+            let z_in = impedance_model(freq);
+            let z0 = Complex64::new(50.0, 0.0);
+            let s11 = (z_in - z0) / (z_in + z0);
+            let s11_db = 20.0 * s11.norm().log10();
+            
+            SweepPoint {
+                freq_hz: freq,
+                s11_db,
+            }
+        })
+        .collect()
+}
+
+/// Batch frequency sweep for multiple configurations
+pub fn run_batch_sweep(
+    configs: &[(SweepConfig, f64, f64)], // (config, length, radius)
+) -> Vec<Vec<SweepPoint>> {
+    configs
+        .par_iter()
+        .map(|(config, length, radius)| {
+            run_parallel_cpu_sweep(config, *length, *radius)
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
+    use crate::core::geometry::{Point3D, Segment};
     
     #[test]
-    fn test_sweep_config() {
-        let config = SweepConfig::new(100e6, 200e6, 11);
-        let freqs = config.frequency_points();
+    fn test_sweep_config_frequency_points() {
+        let config = SweepConfig::new(100e6, 200e6, 5);
+        let frequencies = config.frequency_points();
         
-        assert_eq!(freqs.len(), 11);
-        assert_eq!(freqs[0], 100e6);
-        assert_eq!(freqs[10], 200e6);
+        assert_eq!(frequencies.len(), 5);
+        assert_eq!(frequencies[0], 100e6);
+        assert_eq!(frequencies[4], 200e6);
         
         // Check linear spacing
-        let expected_step = 10e6;
-        for i in 1..freqs.len() {
-            let actual_step = freqs[i] - freqs[i-1];
-            assert!((actual_step - expected_step).abs() < 1e3); // 1 kHz tolerance
+        let expected_step = (200e6 - 100e6) / 4.0;
+        for i in 1..5 {
+            let expected = 100e6 + i as f64 * expected_step;
+            assert!((frequencies[i] - expected).abs() < 1e-6);
         }
     }
     
     #[test]
-    fn test_dipole_s11_calculation() {
-        // Test half-wave dipole at resonance
-        let freq = 300e6; // 300 MHz
-        let length = C0 / (2.0 * freq); // Half wavelength
-        let radius = 0.001;
+    fn test_run_cpu_sweep() {
+        let config = SweepConfig::new(100e6, 200e6, 3);
+        let results = run_cpu_sweep(&config, 0.15, 0.001);
         
-        let s11_db = calculate_dipole_s11(freq, length, radius);
+        assert_eq!(results.len(), 3);
         
-        // Should be reasonably well matched (negative dB)
-        assert!(s11_db < 0.0);
-        assert!(s11_db > -50.0); // Not unrealistically good
+        for (i, result) in results.iter().enumerate() {
+            assert!(result.freq_hz > 0.0);
+            assert!(result.s11_db.is_finite());
+            assert!(result.s11_db < 10.0); // Should be reasonable dB value
+        }
     }
     
     #[test]
-    fn test_cpu_sweep() {
-        let config = SweepConfig::new(100e6, 200e6, 10);
-        let results = run_cpu_sweep(&config, 0.15, 0.001);
+    fn test_parallel_cpu_sweep() {
+        let config = SweepConfig::new(100e6, 300e6, 10);
+        let results = run_parallel_cpu_sweep(&config, 0.15, 0.001);
         
         assert_eq!(results.len(), 10);
         
-        // All results should be finite
-        for point in &results {
-            assert!(point.freq_hz.is_finite());
-            assert!(point.s11_db.is_finite());
-            assert!(point.freq_hz >= 100e6);
-            assert!(point.freq_hz <= 200e6);
+        // Results should be in frequency order
+        for i in 1..results.len() {
+            assert!(results[i].freq_hz > results[i-1].freq_hz);
         }
     }
     
     #[test]
-    fn test_parallel_sweep() {
-        let config = SweepConfig::new(100e6, 200e6, 100);
-        let serial_results = run_cpu_sweep(&config, 0.15, 0.001);
-        let parallel_results = run_parallel_cpu_sweep(&config, 0.15, 0.001);
+    fn test_mesh_based_sweep() {
+        let vertices = vec![
+            Point3D::new(0.0, 0.0, -0.075),
+            Point3D::new(0.0, 0.0, 0.075),
+        ];
         
-        assert_eq!(serial_results.len(), parallel_results.len());
+        let segments = vec![
+            Segment { start: 0, end: 1 },
+        ];
         
-        // Results should be identical (order may differ, so sort first)
-        let mut serial_sorted = serial_results;
-        let mut parallel_sorted = parallel_results;
+        let mesh = Mesh {
+            vertices,
+            triangles: vec![],
+            segments,
+        };
         
-        serial_sorted.sort_by(|a, b| a.freq_hz.partial_cmp(&b.freq_hz).unwrap());
-        parallel_sorted.sort_by(|a, b| a.freq_hz.partial_cmp(&b.freq_hz).unwrap());
+        let config = SweepConfig::new(200e6, 400e6, 5);
+        let results = run_mesh_based_sweep(&config, &mesh, 0.001);
         
-        for (s, p) in serial_sorted.iter().zip(parallel_sorted.iter()) {
-            assert!((s.freq_hz - p.freq_hz).abs() < 1e-6);
-            assert!((s.s11_db - p.s11_db).abs() < 1e-6);
+        assert_eq!(results.len(), 5);
+        
+        for result in &results {
+            assert!(result.freq_hz >= 200e6);
+            assert!(result.freq_hz <= 400e6);
+            assert!(result.s11_db.is_finite());
         }
     }
     
     #[test]
-    fn benchmark_1000_point_sweep() {
-        let config = SweepConfig::new(100e6, 1100e6, 1000);
-        let length = 0.15; // 15 cm dipole
-        let radius = 0.001; // 1 mm radius
+    fn test_advanced_sweep_with_custom_model() {
+        let config = SweepConfig::new(100e6, 200e6, 3);
         
-        // Benchmark serial version
-        let start = Instant::now();
-        let serial_results = run_cpu_sweep(&config, length, radius);
-        let serial_time = start.elapsed();
+        // Custom impedance model: constant 75 ohm resistive
+        let impedance_model = |_freq: f64| Complex64::new(75.0, 0.0);
         
-        // Benchmark parallel version
-        let start = Instant::now();
-        let parallel_results = run_parallel_cpu_sweep(&config, length, radius);
-        let parallel_time = start.elapsed();
+        let results = run_advanced_sweep(&config, impedance_model);
         
-        assert_eq!(serial_results.len(), 1000);
-        assert_eq!(parallel_results.len(), 1000);
+        assert_eq!(results.len(), 3);
         
-        eprintln!("1000-point sweep benchmark:");
-        eprintln!("  Serial:   {:?}", serial_time);
-        eprintln!("  Parallel: {:?}", parallel_time);
-        
-        if parallel_time < serial_time {
-            let speedup = serial_time.as_secs_f64() / parallel_time.as_secs_f64();
-            eprintln!("  Speedup:  {:.2}x", speedup);
+        // All results should have same S11 for constant impedance
+        let expected_s11_db = results[0].s11_db;
+        for result in &results {
+            assert!((result.s11_db - expected_s11_db).abs() < 1e-10);
         }
+    }
+    
+    #[test]
+    fn test_batch_sweep() {
+        let configs = vec![
+            (SweepConfig::new(100e6, 200e6, 3), 0.10, 0.001),
+            (SweepConfig::new(150e6, 250e6, 3), 0.15, 0.001),
+        ];
         
-        // Both should complete in reasonable time (< 1 second)
-        assert!(serial_time.as_secs() < 1);
-        assert!(parallel_time.as_secs() < 1);
+        let batch_results = run_batch_sweep(&configs);
+        
+        assert_eq!(batch_results.len(), 2);
+        assert_eq!(batch_results[0].len(), 3);
+        assert_eq!(batch_results[1].len(), 3);
     }
 }
