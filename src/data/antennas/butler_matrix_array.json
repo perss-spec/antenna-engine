@@ -1,0 +1,155 @@
+{
+  "id": "butler_matrix_array",
+  "name": "Butler Matrix Array",
+  "category": "array",
+  "description": "A Butler matrix array is a beamforming network that uses a matrix of hybrid couplers and phase shifters to create multiple simultaneous beams from an array of antenna elements. The Butler matrix provides orthogonal beams with fixed beam directions, making it ideal for multi-beam applications. This passive beamforming network enables simultaneous reception or transmission in multiple directions without requiring active phase shifters.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 10,
+    "max": 25,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-20%",
+  "polarization": "linear",
+  "applications": [
+    "satellite communications",
+    "radar systems",
+    "cellular base stations",
+    "direction finding",
+    "multi-beam antennas",
+    "smart antennas",
+    "beamforming networks"
+  ],
+  "parameters": {
+    "num_elements": {
+      "name": "Number of Elements",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Number of antenna elements in the array, typically powers of 2",
+      "defaultFormula": "4",
+      "range": {
+        "min": 4,
+        "max": 64
+      }
+    },
+    "element_spacing": {
+      "name": "Element Spacing",
+      "symbol": "d",
+      "unit": "m",
+      "description": "Distance between adjacent array elements",
+      "defaultFormula": "0.5 * lambda",
+      "range": {
+        "min": 0.4,
+        "max": 0.8
+      }
+    },
+    "coupling_factor": {
+      "name": "Coupler Coupling Factor",
+      "symbol": "C",
+      "unit": "dB",
+      "description": "Coupling factor of the hybrid couplers in the Butler matrix",
+      "defaultFormula": "3",
+      "range": {
+        "min": 3,
+        "max": 10
+      }
+    },
+    "phase_shift": {
+      "name": "Progressive Phase Shift",
+      "symbol": "beta",
+      "unit": "degrees",
+      "description": "Progressive phase shift between adjacent elements for beam steering",
+      "defaultFormula": "360 / N",
+      "range": {
+        "min": 0,
+        "max": 360
+      }
+    },
+    "beam_width": {
+      "name": "Beam Width",
+      "symbol": "theta_3dB",
+      "unit": "degrees",
+      "description": "Half-power beam width of individual beams",
+      "defaultFormula": "51 * lambda / (N * d)",
+      "range": {
+        "min": 10,
+        "max": 90
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Butler matrix array design involves determining the matrix size, designing hybrid couplers and phase shifters, calculating beam directions, and optimizing the feed network for desired performance.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Matrix Size",
+        "description": "Select number of elements N (power of 2) and calculate required matrix size",
+        "formula": "Matrix_size = N x N"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Beam Directions",
+        "description": "Determine beam pointing angles for each input port",
+        "formula": "theta_m = arcsin(m * lambda / (N * d)) where m = -(N-1)/2 to (N-1)/2"
+      },
+      {
+        "step": 3,
+        "title": "Design Hybrid Couplers",
+        "description": "Design 3dB hybrid couplers with proper coupling and isolation",
+        "formula": "S21 = S31 = -j/sqrt(2), S41 = S51 = -1/sqrt(2)"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Phase Shifts",
+        "description": "Determine required phase shifts for each path in the matrix",
+        "formula": "phi_mn = (2*pi/N) * m * n where m,n are port indices"
+      },
+      {
+        "step": 5,
+        "title": "Design Phase Shifters",
+        "description": "Implement fixed phase shifters using transmission line lengths",
+        "formula": "L_phase = phi * lambda / (2*pi)"
+      },
+      {
+        "step": 6,
+        "title": "Optimize Feed Network",
+        "description": "Minimize insertion loss and maximize isolation between ports",
+        "formula": "IL_total = IL_coupler + IL_phase + IL_mismatch"
+      },
+      {
+        "step": 7,
+        "title": "Verify Beam Orthogonality",
+        "description": "Ensure beams are orthogonal and have equal power distribution",
+        "formula": "Orthogonality = integral(E_m * E_n * dtheta) = 0 for m != n"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c / (2 * L_coupler * sqrt(epsilon_eff))",
+    "inputImpedance": "Zin = Z0 * sqrt((1 + S11) / (1 - S11))",
+    "gain": "G = 10 * log10(N * D * eta) where D is directivity and eta is efficiency",
+    "radiationPattern": "E(theta) = sum(I_n * exp(j * n * k * d * sin(theta) + j * phi_n)) for n = 1 to N",
+    "bandwidth": "BW = 2 * (f_max - f_min) / f0 where VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use scattering parameter matrix analysis for Butler matrix network with hybrid coupler and phase shifter models",
+    "radiationModel": "Array factor multiplication with element pattern, considering mutual coupling effects between elements",
+    "keyAssumptions": [
+      "ideal hybrid couplers with perfect isolation",
+      "lossless phase shifters",
+      "identical array elements",
+      "far-field radiation pattern",
+      "linear array geometry"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 6",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 7",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition, Chapter 7",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 20"
+  ]
+}
