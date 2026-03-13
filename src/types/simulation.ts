@@ -6,12 +6,14 @@ export interface SimulationParams {
   referenceImpedance: number;
 }
 
-export interface FrequencySweepParams {
+export interface SimulationConfig {
   startFrequency: number;
   stopFrequency: number;
   numPoints: number;
   referenceImpedance: number;
-  resolution: number;
+  useGpu: boolean;
+  solverType: string;
+  convergenceThreshold: number;
 }
 
 export interface SParameterResult {
@@ -30,80 +32,73 @@ export interface FieldResult {
   powerDensity: number[];
 }
 
-export interface ConvergenceInfo {
-  iterations: number;
-  residual: number;
-  converged: boolean;
-  conditionNumber: number;
+export interface RadiationPattern {
+  theta: number[];
+  phi: number[];
+  gainDb: number[][];
+  directivityDb: number;
+  efficiency: number;
 }
 
 export interface SimulationResult {
   sParams: SParameterResult[];
-  field: FieldResult;
+  field?: FieldResult;
+  radiationPattern?: RadiationPattern;
   numUnknowns: number;
   solverType: string;
-  computationTime: number;
-  convergenceInfo: ConvergenceInfo;
+  computationTimeMs: number;
+  memoryUsedMb: number;
 }
 
 export interface SimulationProgress {
   stage: string;
   progress: number;
-  message: string;
   etaSeconds?: number;
+  currentFrequency?: number;
 }
 
-export enum SamplingMethod {
-  Random = 'Random',
-  LatinHypercube = 'LatinHypercube',
-  Grid = 'Grid',
-  Sobol = 'Sobol'
+export interface GPUCapabilities {
+  available: boolean;
+  deviceName: string;
+  memoryMb: number;
+  computeUnits: number;
+  supportsCompute: boolean;
 }
 
-export interface BatchSimulationParams {
-  parameterRanges: Record<string, [number, number]>;
-  numSamples: number;
-  frequencySweep: FrequencySweepParams;
-  samplingMethod: SamplingMethod;
+export interface BenchmarkResult {
+  matrixSize: number;
+  cpuTimeMs: number;
+  gpuTimeMs: number;
+  speedupRatio: number;
+  memoryUsedMb: number;
 }
 
-export interface DatasetMetadata {
-  antennaType: string;
-  timestamp: string;
-  solverVersion: string;
-  convergenceQuality: number;
-}
-
-export interface DatasetEntry {
-  parameters: Record<string, number>;
-  results: SimulationResult;
-  metadata: DatasetMetadata;
-}
-
-// Chart data interfaces
-export interface ChartDataPoint {
-  x: number;
-  y: number;
-}
-
-export interface S11ChartData {
-  frequency: number[];
-  magnitude: number[];
-  phase: number[];
-  vswr: number[];
-}
-
-export interface SmithChartData {
-  real: number[];
-  imaginary: number[];
-  frequency: number[];
-}
-
-// Touchstone file interfaces
-export interface TouchstoneData {
-  frequencies: number[];
+export interface ModelPrediction {
   sParameters: SParameterResult[];
-  format: 'MA' | 'DB' | 'RI';
-  frequencyUnit: string;
-  referenceImpedance: number;
+  confidence: number;
+  uncertainty?: number;
+  inferenceTimeMs: number;
+  modelVersion: string;
+}
+
+export interface OptimizationResult {
+  optimalParameters: Record<string, number>;
+  achievedS11Db: number;
+  targetFrequency: number;
+  generations: number;
+  convergenceHistory: number[];
+  optimizationTimeMs: number;
+}
+
+export interface ProjectData {
+  name: string;
+  version: string;
+  createdAt: string;
+  modifiedAt: string;
+  antennaType: string;
+  parameters: Record<string, number>;
+  simulationResults?: SimulationResult;
+  optimizationResults?: OptimizationResult;
+  materials: import('./antenna').Material[];
+  unitSystem: import('./antenna').UnitSystem;
 }

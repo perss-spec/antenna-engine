@@ -4,44 +4,6 @@ export interface Point3D {
   z: number;
 }
 
-export interface DipoleParams {
-  length: number;
-  radius: number;
-  center: Point3D;
-  orientation: Point3D;
-}
-
-export interface PatchParams {
-  width: number;
-  length: number;
-  substrateHeight: number;
-  substrateEr: number;
-  center: Point3D;
-}
-
-export interface QfhParams {
-  frequency: number;
-  turns: number;
-  diameter: number;
-  height: number;
-  wireRadius: number;
-  center: Point3D;
-}
-
-export interface MonopoleParams {
-  height: number;
-  radius: number;
-  groundPlaneRadius: number;
-  center: Point3D;
-}
-
-export type AntennaType = 'dipole' | 'patch' | 'qfh' | 'monopole';
-
-export interface AntennaElement {
-  type: AntennaType;
-  params: DipoleParams | PatchParams | QfhParams | MonopoleParams;
-}
-
 export interface Material {
   name: string;
   epsilonR: number;
@@ -69,33 +31,58 @@ export enum FrequencyUnit {
   GHz = 'GHz'
 }
 
-export interface AntennaTemplate {
-  id: string;
-  name: string;
-  description: string;
-  antennaType: string;
-  defaultParams: Record<string, any>;
-  frequencyRange: [number, number];
-  typicalApplications: string[];
-}
-
-export interface WireSegment {
-  start: Point3D;
-  end: Point3D;
+export interface DipoleParams {
+  length: number;
   radius: number;
-  materialId: string;
+  center: Point3D;
+  orientation: Point3D;
 }
 
-export interface SurfaceElement {
-  vertices: Point3D[];
-  normal: Point3D;
-  area: number;
-  materialId: string;
+export interface PatchParams {
+  width: number;
+  length: number;
+  substrateHeight: number;
+  substrateEr: number;
+  center: Point3D;
 }
 
-export interface AntennaGeometry {
-  wireSegments: WireSegment[];
-  surfaceElements: SurfaceElement[];
-  feedPoints: Point3D[];
-  boundingBox: [Point3D, Point3D];
+export interface QfhParams {
+  frequency: number;
+  turns: number;
+  diameter: number;
+  height: number;
+  wireRadius: number;
+  center: Point3D;
+}
+
+export interface MonopoleParams {
+  length: number;
+  radius: number;
+  groundPlaneRadius: number;
+  center: Point3D;
+}
+
+export interface YagiParams {
+  reflectorLength: number;
+  drivenLength: number;
+  directorLength: number;
+  elementSpacing: number;
+  wireRadius: number;
+  center: Point3D;
+}
+
+export type AntennaType = 'Dipole' | 'Patch' | 'Qfh' | 'Monopole' | 'Yagi';
+
+export type AntennaParams = DipoleParams | PatchParams | QfhParams | MonopoleParams | YagiParams;
+
+export interface AntennaElement {
+  type: AntennaType;
+  params: AntennaParams;
+}
+
+export enum AntennaError {
+  InvalidGeometry = 'InvalidGeometry',
+  SimulationFailed = 'SimulationFailed',
+  InvalidParameter = 'InvalidParameter',
+  NumericalError = 'NumericalError'
 }
