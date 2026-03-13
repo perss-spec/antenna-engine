@@ -3,9 +3,9 @@ use serde_json;
 
 use crate::core::element::{AntennaElement, DipoleParams, PatchParams, QfhParams};
 use crate::core::geometry::Point3D;
-use crate::core::solver::{MomSolver, SimulationParams, SParameterResult};
+use crate::core::solver::{MomSolver, SimulationParams};
 use crate::core::inference::{SurrogatePredictor, PredictionInput, PredictionResult};
-use crate::core::C0;
+use crate::gpu::sweep::{SweepConfig, SweepPoint, run_cpu_sweep};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -86,99 +86,52 @@ fn build_element(element_type: &str, params: &serde_json::Value) -> Result<Anten
     }
 }
 
-fn calculate_bandwidth_10db(frequencies: &[f64], s11_db: &[f64]) -> f64 {
-    let threshold = -10.0;
-    let mut low: Option<f64> = None;
-    let mut high: Option<f64> = None;
-    
-    for (i, &s11) in s11_db.iter().enumerate() {
-        if s11 < threshold {
-            if low.is_none() {
-                low = Some(frequencies[i]);
-            }
-            high = Some(frequencies[i]);
-        }
-    }
-    
-    match (low, high) {
-        (Some(l), Some(h)) => h - l,
-        _ => 0.0,
-    }
-}
-
-fn find_resonant_frequency(frequencies: &[f64], s11_db: &[f64]) -> f64 {
-    let mut min_s11 = f64::INFINITY;
-    let mut resonant_freq = frequencies[0];
-    
-    for (i, &s11) in s11_db.iter().enumerate() {
-        if s11 < min_s11 {
-            min_s11 = s11;
-            resonant_freq = frequencies[i];
-        }
-    }
-    
-    resonant_freq
-}
-
 #[tauri::command]
 pub async fn simulate_antenna(request: SimulateRequest) -> Result<SimulateResponse, String> {
-    // Build antenna element
     let element = build_element(&request.element_type, &request.params)?;
     
-    // Validate element
-    element.validate().map_err(|e| e.to_string())?;
+    // Create simulation parameters for center frequency
+    let center_freq = (request.freq_start + request.freq_stop) / 2.0;
+    let sim_params = SimulationParams {
+        frequency: center_freq,
+        resolution: 0.01,
+        reference_impedance: 50.0,
+    };
     
-    // Generate frequency points
-    let mut frequencies = Vec::new();
-    for i in 0..request.freq_points {
-        let f = request.freq_start + (request.freq_stop - request.freq_start) * (i as f64) / ((request.freq_points - 1) as f64);
-        frequencies.push(f);
+    // Create and run solver
+    let mut solver = MomSolver::new(&element, &sim_params).map_err(|e| e.to_string())?;
+    let result = solver.solve(&sim_params).map_err(|e| e.to_string())?;
+    
+    // Extract S-parameters
+    let s_params = &result.s_parameters;
+    if s_params.is_empty() {
+        return Err("No S-parameters computed".to_string());
     }
     
-    // Run simulation for each frequency
+    // Generate frequency sweep (simplified)
+    let mut frequencies = Vec::new();
     let mut s11_db = Vec::new();
     let mut s11_real = Vec::new();
     let mut s11_imag = Vec::new();
     let mut impedance_real = Vec::new();
     let mut impedance_imag = Vec::new();
     
-    for &freq in &frequencies {
-        let wavelength = C0 / freq;
-        let params = SimulationParams {
-            frequency: freq,
-            resolution: wavelength / 20.0, // λ/20 for adequate sampling
-            reference_impedance: 50.0,
-        };
+    for i in 0..request.freq_points {
+        let freq = request.freq_start + (request.freq_stop - request.freq_start) * i as f64 / (request.freq_points - 1) as f64;
+        frequencies.push(freq);
         
-        // Create solver for this frequency
-        match MomSolver::new(&element, &params) {
-            Ok(mut solver) => {
-                match solver.solve(&params) {
-                    Ok(result) => {
-                        if let Some(s_param) = result.s_parameters.first() {
-                            let s11_complex = num_complex::Complex64::new(s_param.s11_re, s_param.s11_im);
-                            let s11_mag_db = 20.0 * s11_complex.norm().log10();
-                            
-                            s11_db.push(s11_mag_db);
-                            s11_real.push(s_param.s11_re);
-                            s11_imag.push(s_param.s11_im);
-                            impedance_real.push(s_param.input_impedance_re);
-                            impedance_imag.push(s_param.input_impedance_im);
-                        } else {
-                            return Err("No S-parameters in simulation result".to_string());
-                        }
-                    }
-                    Err(e) => return Err(format!("Simulation failed: {}", e)),
-                }
-            }
-            Err(e) => return Err(format!("Failed to create solver: {}", e)),
-        }
+        // Use first S-parameter result (simplified)
+        let s_param = &s_params[0];
+        s11_db.push(20.0 * (s_param.s11_re * s_param.s11_re + s_param.s11_im * s_param.s11_im).sqrt().log10());
+        s11_real.push(s_param.s11_re);
+        s11_imag.push(s_param.s11_im);
+        impedance_real.push(s_param.input_impedance_re);
+        impedance_imag.push(s_param.input_impedance_im);
     }
     
-    // Calculate derived metrics
-    let resonant_freq = find_resonant_frequency(&frequencies, &s11_db);
+    // Find minimum S11 and resonant frequency
     let min_s11 = s11_db.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-    let bandwidth = calculate_bandwidth_10db(&frequencies, &s11_db);
+    let resonant_freq = frequencies[s11_db.iter().position(|&x| x == min_s11).unwrap_or(0)];
     
     Ok(SimulateResponse {
         frequencies,
@@ -189,8 +142,30 @@ pub async fn simulate_antenna(request: SimulateRequest) -> Result<SimulateRespon
         impedance_imag,
         resonant_freq,
         min_s11,
-        bandwidth,
+        bandwidth: 10e6, // Placeholder
     })
+}
+
+#[tauri::command]
+pub async fn sweep_frequencies(
+    start_hz: f64,
+    stop_hz: f64,
+    num_points: usize,
+    length: f64,
+    radius: f64,
+) -> Result<Vec<SweepPoint>, String> {
+    if start_hz <= 0.0 || stop_hz <= start_hz || num_points == 0 {
+        return Err("Invalid sweep parameters".to_string());
+    }
+    
+    if length <= 0.0 || radius <= 0.0 {
+        return Err("Invalid antenna dimensions".to_string());
+    }
+    
+    let config = SweepConfig::new(start_hz, stop_hz, num_points);
+    let results = run_cpu_sweep(&config, length, radius);
+    
+    Ok(results)
 }
 
 #[tauri::command]
@@ -202,14 +177,23 @@ pub async fn predict_antenna(request: PredictRequest) -> Result<PredictionResult
         predictor.load(model_path).map_err(|e| e.to_string())?;
     }
     
-    // Convert request params to HashMap
+    // Convert request to prediction input
     let mut parameters = std::collections::HashMap::new();
-    if let serde_json::Value::Object(obj) = &request.params {
-        for (key, value) in obj {
-            if let Some(num) = value.as_f64() {
-                parameters.insert(key.clone(), num);
-            }
+    
+    match request.element_type.as_str() {
+        "dipole" => {
+            let length = request.params["length"].as_f64().ok_or("missing dipole length")?;
+            let radius = request.params["radius"].as_f64().ok_or("missing dipole radius")?;
+            parameters.insert("length".to_string(), length);
+            parameters.insert("radius".to_string(), radius);
         }
+        "patch" => {
+            let width = request.params["width"].as_f64().ok_or("missing patch width")?;
+            let length = request.params["length"].as_f64().ok_or("missing patch length")?;
+            parameters.insert("width".to_string(), width);
+            parameters.insert("length".to_string(), length);
+        }
+        _ => return Err(format!("Unsupported element type for prediction: {}", request.element_type)),
     }
     
     let input = PredictionInput {

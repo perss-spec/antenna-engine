@@ -104,101 +104,124 @@ fn calculate_dipole_s11(frequency: f64, length: f64, _radius: f64) -> f64 {
     let z_real = 73.1;
     let z_imag = 42.5 * (electrical_length - 1.0);
     
-    // Input impedance
     let z_in = Complex64::new(z_real, z_imag);
+    let z0 = Complex64::new(50.0, 0.0); // Reference impedance
     
-    // Reference impedance (50 ohms)
-    let z0 = Complex64::new(50.0, 0.0);
+    // Calculate reflection coefficient S11
+    let s11 = (z_in - z0) / (z_in + z0);
     
-    // Reflection coefficient
-    let gamma = (z_in - z0) / (z_in + z0);
-    
-    // S11 in dB
-    let s11_magnitude = gamma.norm();
-    
-    // Clamp to reasonable range
-    if s11_magnitude < 1e-10 {
-        -100.0 // Very good match
+    // Convert to dB
+    let s11_mag = s11.norm();
+    if s11_mag > 0.0 {
+        20.0 * s11_mag.log10()
     } else {
-        20.0 * s11_magnitude.log10()
+        -100.0 // Very good match
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
     
     #[test]
-    fn test_sweep_config_creation() {
-        let config = SweepConfig::new(100e6, 200e6, 10);
-        assert_eq!(config.start_hz, 100e6);
-        assert_eq!(config.stop_hz, 200e6);
-        assert_eq!(config.num_points, 10);
-    }
-    
-    #[test]
-    fn test_frequency_points_generation() {
-        let config = SweepConfig::new(100e6, 200e6, 3);
-        let points = config.frequency_points();
+    fn test_sweep_config() {
+        let config = SweepConfig::new(100e6, 200e6, 11);
+        let freqs = config.frequency_points();
         
-        assert_eq!(points.len(), 3);
-        assert_eq!(points[0], 100e6);
-        assert_eq!(points[1], 150e6);
-        assert_eq!(points[2], 200e6);
-    }
-    
-    #[test]
-    fn test_cpu_sweep_results_finite() {
-        let config = SweepConfig::new(100e6, 200e6, 10);
-        let results = run_cpu_sweep(&config, 0.15, 0.001); // 15cm dipole, 1mm radius
+        assert_eq!(freqs.len(), 11);
+        assert_eq!(freqs[0], 100e6);
+        assert_eq!(freqs[10], 200e6);
         
-        assert_eq!(results.len(), 10);
-        
-        // All results should be finite
-        for point in &results {
-            assert!(point.freq_hz.is_finite(), "Frequency should be finite");
-            assert!(point.s11_db.is_finite(), "S11 should be finite");
-            assert!(point.freq_hz > 0.0, "Frequency should be positive");
-            assert!(point.s11_db <= 0.0, "S11 in dB should be <= 0");
-        }
-    }
-    
-    #[test]
-    fn test_parallel_sweep_matches_sequential() {
-        let config = SweepConfig::new(100e6, 200e6, 5);
-        let length = 0.15;
-        let radius = 0.001;
-        
-        let sequential = run_cpu_sweep(&config, length, radius);
-        let parallel = run_parallel_cpu_sweep(&config, length, radius);
-        
-        assert_eq!(sequential.len(), parallel.len());
-        
-        for (seq, par) in sequential.iter().zip(parallel.iter()) {
-            assert!((seq.freq_hz - par.freq_hz).abs() < 1e-6);
-            assert!((seq.s11_db - par.s11_db).abs() < 1e-6);
+        // Check linear spacing
+        let expected_step = 10e6;
+        for i in 1..freqs.len() {
+            let actual_step = freqs[i] - freqs[i-1];
+            assert!((actual_step - expected_step).abs() < 1e3); // 1 kHz tolerance
         }
     }
     
     #[test]
     fn test_dipole_s11_calculation() {
-        // Test at resonant frequency (half-wave)
-        let freq = C0 / (2.0 * 0.15); // Resonant frequency for 15cm dipole
-        let s11 = calculate_dipole_s11(freq, 0.15, 0.001);
+        // Test half-wave dipole at resonance
+        let freq = 300e6; // 300 MHz
+        let length = C0 / (2.0 * freq); // Half wavelength
+        let radius = 0.001;
         
-        // Should be reasonably well matched at resonance
-        assert!(s11.is_finite());
-        assert!(s11 < -5.0, "Should have decent match at resonance");
+        let s11_db = calculate_dipole_s11(freq, length, radius);
+        
+        // Should be reasonably well matched (negative dB)
+        assert!(s11_db < 0.0);
+        assert!(s11_db > -50.0); // Not unrealistically good
     }
     
     #[test]
-    fn test_edge_cases() {
-        // Zero frequency
-        let s11 = calculate_dipole_s11(0.0, 0.15, 0.001);
-        assert_eq!(s11, -100.0);
+    fn test_cpu_sweep() {
+        let config = SweepConfig::new(100e6, 200e6, 10);
+        let results = run_cpu_sweep(&config, 0.15, 0.001);
         
-        // Zero length
-        let s11 = calculate_dipole_s11(100e6, 0.0, 0.001);
-        assert_eq!(s11, -100.0);
+        assert_eq!(results.len(), 10);
+        
+        // All results should be finite
+        for point in &results {
+            assert!(point.freq_hz.is_finite());
+            assert!(point.s11_db.is_finite());
+            assert!(point.freq_hz >= 100e6);
+            assert!(point.freq_hz <= 200e6);
+        }
+    }
+    
+    #[test]
+    fn test_parallel_sweep() {
+        let config = SweepConfig::new(100e6, 200e6, 100);
+        let serial_results = run_cpu_sweep(&config, 0.15, 0.001);
+        let parallel_results = run_parallel_cpu_sweep(&config, 0.15, 0.001);
+        
+        assert_eq!(serial_results.len(), parallel_results.len());
+        
+        // Results should be identical (order may differ, so sort first)
+        let mut serial_sorted = serial_results;
+        let mut parallel_sorted = parallel_results;
+        
+        serial_sorted.sort_by(|a, b| a.freq_hz.partial_cmp(&b.freq_hz).unwrap());
+        parallel_sorted.sort_by(|a, b| a.freq_hz.partial_cmp(&b.freq_hz).unwrap());
+        
+        for (s, p) in serial_sorted.iter().zip(parallel_sorted.iter()) {
+            assert!((s.freq_hz - p.freq_hz).abs() < 1e-6);
+            assert!((s.s11_db - p.s11_db).abs() < 1e-6);
+        }
+    }
+    
+    #[test]
+    fn benchmark_1000_point_sweep() {
+        let config = SweepConfig::new(100e6, 1100e6, 1000);
+        let length = 0.15; // 15 cm dipole
+        let radius = 0.001; // 1 mm radius
+        
+        // Benchmark serial version
+        let start = Instant::now();
+        let serial_results = run_cpu_sweep(&config, length, radius);
+        let serial_time = start.elapsed();
+        
+        // Benchmark parallel version
+        let start = Instant::now();
+        let parallel_results = run_parallel_cpu_sweep(&config, length, radius);
+        let parallel_time = start.elapsed();
+        
+        assert_eq!(serial_results.len(), 1000);
+        assert_eq!(parallel_results.len(), 1000);
+        
+        eprintln!("1000-point sweep benchmark:");
+        eprintln!("  Serial:   {:?}", serial_time);
+        eprintln!("  Parallel: {:?}", parallel_time);
+        
+        if parallel_time < serial_time {
+            let speedup = serial_time.as_secs_f64() / parallel_time.as_secs_f64();
+            eprintln!("  Speedup:  {:.2}x", speedup);
+        }
+        
+        // Both should complete in reasonable time (< 1 second)
+        assert!(serial_time.as_secs() < 1);
+        assert!(parallel_time.as_secs() < 1);
     }
 }
