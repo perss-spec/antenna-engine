@@ -1,0 +1,154 @@
+{
+  "id": "parabolic_reflector",
+  "name": "Parabolic Reflector",
+  "category": "aperture",
+  "description": "A parabolic reflector antenna consists of a parabolic-shaped conducting surface that focuses electromagnetic waves to or from a feed antenna located at the focal point. The parabolic geometry provides high directivity and gain by creating a uniform phase front across the aperture when illuminated by a point source at the focus.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 300000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 20,
+    "max": 60,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-20%",
+  "polarization": "linear",
+  "applications": [
+    "Satellite communications",
+    "Radio astronomy",
+    "Radar systems",
+    "Point-to-point microwave links",
+    "Deep space communications",
+    "Radio telescopes"
+  ],
+  "parameters": {
+    "diameter": {
+      "name": "Reflector Diameter",
+      "symbol": "D",
+      "unit": "m",
+      "description": "Physical diameter of the parabolic reflector aperture",
+      "defaultFormula": "10*lambda",
+      "range": {
+        "min": 0.5,
+        "max": 100
+      }
+    },
+    "focal_length": {
+      "name": "Focal Length",
+      "symbol": "f",
+      "unit": "m",
+      "description": "Distance from reflector vertex to focal point where feed is located",
+      "defaultFormula": "D/4",
+      "range": {
+        "min": 0.1,
+        "max": 50
+      }
+    },
+    "f_over_d": {
+      "name": "F/D Ratio",
+      "symbol": "f/D",
+      "unit": "dimensionless",
+      "description": "Ratio of focal length to diameter, determines reflector depth and feed pattern requirements",
+      "defaultFormula": "0.25",
+      "range": {
+        "min": 0.15,
+        "max": 0.6
+      }
+    },
+    "edge_taper": {
+      "name": "Edge Taper",
+      "symbol": "TE",
+      "unit": "dB",
+      "description": "Reduction in illumination amplitude at reflector edge compared to center",
+      "defaultFormula": "-10",
+      "range": {
+        "min": -20,
+        "max": -6
+      }
+    },
+    "surface_tolerance": {
+      "name": "Surface Tolerance",
+      "symbol": "δ",
+      "unit": "m",
+      "description": "RMS deviation of reflector surface from ideal parabola",
+      "defaultFormula": "lambda/16",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves selecting reflector geometry, determining feed requirements, optimizing illumination taper, and analyzing performance trade-offs between gain, sidelobe level, and bandwidth.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Aperture Size",
+        "description": "Calculate required diameter based on gain specification",
+        "formula": "D = sqrt(4*pi*A_eff/lambda^2) where A_eff = 10^(G/10) * lambda^2/(4*pi*eta_ap)"
+      },
+      {
+        "step": 2,
+        "title": "Select F/D Ratio",
+        "description": "Choose focal length to diameter ratio based on feed pattern and blockage constraints",
+        "formula": "f/D = 0.25 to 0.4 for typical designs"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Focal Length",
+        "description": "Determine focal point location from reflector vertex",
+        "formula": "f = (f/D) * D"
+      },
+      {
+        "step": 4,
+        "title": "Design Feed Illumination",
+        "description": "Select feed pattern to achieve desired edge taper",
+        "formula": "theta_0 = 2*atan(D/(4*f)) for edge angle"
+      },
+      {
+        "step": 5,
+        "title": "Optimize Edge Taper",
+        "description": "Balance gain and sidelobe performance through illumination control",
+        "formula": "G_max occurs at TE = -8.7 dB for uniform phase"
+      },
+      {
+        "step": 6,
+        "title": "Calculate Surface Tolerance",
+        "description": "Determine manufacturing precision requirements",
+        "formula": "delta_rms < lambda/16 for <1dB gain loss"
+      },
+      {
+        "step": 7,
+        "title": "Analyze Blockage Effects",
+        "description": "Account for feed and support structure shadowing",
+        "formula": "eta_blockage = 1 - (A_blocked/A_aperture)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "Not applicable - broadband aperture antenna",
+    "inputImpedance": "Determined by feed antenna impedance",
+    "gain": "G = eta_ap * (pi*D/lambda)^2 where eta_ap is aperture efficiency",
+    "radiationPattern": "E(theta,phi) = (j*k*exp(-j*k*r)/(4*pi*r)) * integral over aperture of E_aperture(x',y') * exp(j*k*(x'*sin(theta)*cos(phi) + y'*sin(theta)*sin(phi)))",
+    "bandwidth": "BW limited by feed bandwidth and focal point shift with frequency"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use feed antenna impedance model with reflector coupling effects",
+    "radiationModel": "Physical optics aperture integration with Fresnel diffraction corrections",
+    "keyAssumptions": [
+      "Far-field approximation",
+      "Perfect conductor reflector",
+      "Geometrical optics ray tracing",
+      "Uniform aperture phase",
+      "Negligible edge diffraction for large D/lambda"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', Chapter 15",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', Chapter 12",
+    "Pozar, D.M. 'Microwave Engineering', Chapter 15",
+    "Volakis, J.L. 'Antenna Engineering Handbook', Chapter 17"
+  ]
+}
