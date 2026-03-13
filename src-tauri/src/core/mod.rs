@@ -9,6 +9,7 @@
 //! - Dataset export functionality
 //! - Parameter space coverage analysis
 //! - Surrogate model inference for fast predictions
+//! - Antenna array analysis and array factor computation
 
 pub mod types;
 pub mod geometry;
@@ -25,6 +26,7 @@ pub mod batch;
 pub mod export;
 pub mod coverage;
 pub mod inference;
+pub mod array;
 
 // Re-export commonly used types
 pub use types::{Result, AntennaError};
@@ -36,6 +38,7 @@ pub use batch::{BatchSimulator, BatchConfig, BatchResult, ParameterSweep, ScaleT
 pub use export::{DatasetExporter, ExportConfig, ExportFormat};
 pub use coverage::{CoverageAnalyzer, CoverageConfig, CoverageResult};
 pub use inference::{SurrogatePredictor, PredictionInput, PredictionResult};
+pub use array::{ArrayConfig, compute_array_factor, compute_array_pattern, find_beam_direction, calculate_beamwidth};
 
 // Physical constants
 pub const C0: f64 = 299_792_458.0; // Speed of light in vacuum (m/s)
@@ -64,6 +67,7 @@ mod tests {
         let _simulator = BatchSimulator::new();
         let _config = ExportConfig::default();
         let _predictor = SurrogatePredictor::new();
+        let _array_config = ArrayConfig::broadside(4, 0.5, AntennaElement::new_dipole(0.15, 0.001));
         
         // Test passes if no panics occur
         assert!(true);
