@@ -1,0 +1,151 @@
+{
+  "id": "metamaterial_antenna",
+  "name": "Metamaterial Antenna",
+  "category": "special",
+  "description": "An antenna that incorporates metamaterial structures with engineered electromagnetic properties not found in natural materials, typically exhibiting negative permittivity or permeability. These antennas can achieve enhanced directivity, bandwidth, or miniaturization through the manipulation of electromagnetic wave propagation. Metamaterial antennas enable novel functionalities such as beam steering, cloaking, and super-resolution imaging.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 300000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 3,
+    "max": 25,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-30%",
+  "polarization": "linear",
+  "applications": [
+    "Satellite communications",
+    "Radar systems",
+    "Wireless power transfer",
+    "Medical imaging",
+    "5G/6G base stations",
+    "Stealth technology",
+    "Beam steering arrays",
+    "Compact mobile devices"
+  ],
+  "parameters": {
+    "unit_cell_size": {
+      "name": "Unit Cell Size",
+      "symbol": "a",
+      "unit": "mm",
+      "description": "Physical dimension of the metamaterial unit cell, typically much smaller than wavelength",
+      "defaultFormula": "lambda_0 / 10",
+      "range": {
+        "min": 0.1,
+        "max": 50
+      }
+    },
+    "relative_permittivity": {
+      "name": "Effective Relative Permittivity",
+      "symbol": "epsilon_eff",
+      "unit": "dimensionless",
+      "description": "Effective permittivity of the metamaterial structure, can be negative",
+      "defaultFormula": "-5 + 2*j",
+      "range": {
+        "min": -20,
+        "max": 20
+      }
+    },
+    "relative_permeability": {
+      "name": "Effective Relative Permeability",
+      "symbol": "mu_eff",
+      "unit": "dimensionless",
+      "description": "Effective permeability of the metamaterial structure, can be negative",
+      "defaultFormula": "-3 + 1.5*j",
+      "range": {
+        "min": -15,
+        "max": 15
+      }
+    },
+    "substrate_thickness": {
+      "name": "Substrate Thickness",
+      "symbol": "h",
+      "unit": "mm",
+      "description": "Thickness of the dielectric substrate supporting the metamaterial structure",
+      "defaultFormula": "lambda_0 / 20",
+      "range": {
+        "min": 0.1,
+        "max": 10
+      }
+    },
+    "number_of_layers": {
+      "name": "Number of Metamaterial Layers",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Number of metamaterial layers in the antenna structure",
+      "defaultFormula": "3",
+      "range": {
+        "min": 1,
+        "max": 20
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Metamaterial antenna design involves creating periodic structures with engineered electromagnetic properties, followed by integration with conventional radiating elements to achieve desired antenna characteristics.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Define Target Properties",
+        "description": "Specify desired effective permittivity and permeability values based on application requirements",
+        "formula": "n_eff = sqrt(epsilon_eff * mu_eff)"
+      },
+      {
+        "step": 2,
+        "title": "Unit Cell Design",
+        "description": "Design metamaterial unit cell geometry (split-ring resonators, wire arrays, etc.) to achieve target properties",
+        "formula": "f_resonant = 1 / (2 * pi * sqrt(L * C))"
+      },
+      {
+        "step": 3,
+        "title": "Parameter Extraction",
+        "description": "Extract effective material parameters using S-parameter retrieval methods",
+        "formula": "epsilon_eff = (n^2 - z^2) / z^2, mu_eff = n * z"
+      },
+      {
+        "step": 4,
+        "title": "Antenna Integration",
+        "description": "Integrate metamaterial structure with radiating element (patch, dipole, etc.)",
+        "formula": "Z_in = Z_antenna + Z_metamaterial"
+      },
+      {
+        "step": 5,
+        "title": "Impedance Matching",
+        "description": "Design matching network to achieve 50-ohm input impedance",
+        "formula": "VSWR = (1 + |Gamma|) / (1 - |Gamma|)"
+      },
+      {
+        "step": 6,
+        "title": "Performance Optimization",
+        "description": "Optimize unit cell dimensions and spacing for desired gain and bandwidth",
+        "formula": "G = 4 * pi * A_eff / lambda_0^2"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_0 = c / (2 * L_eff * sqrt(epsilon_eff * mu_eff))",
+    "inputImpedance": "Z_in = sqrt(mu_eff / epsilon_eff) * Z_0 * tanh(gamma * h)",
+    "gain": "G = 4 * pi * A_eff / lambda_0^2 * |epsilon_eff * mu_eff|",
+    "radiationPattern": "E(theta, phi) = E_0 * F_element(theta, phi) * F_array(theta, phi) * F_metamaterial(theta, phi)",
+    "bandwidth": "BW = 2 * |Im(epsilon_eff)| / |Re(epsilon_eff)| * f_0"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "transmission_line_metamaterial",
+    "radiationModel": "effective_medium_theory",
+    "keyAssumptions": [
+      "Unit cell size << wavelength (homogenization valid)",
+      "Periodic boundary conditions for unit cell analysis",
+      "Local field effects negligible",
+      "Effective medium parameters frequency-dependent",
+      "Losses included through imaginary parts of material parameters"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 21",
+    "Caloz, C. and Itoh, T. 'Electromagnetic Metamaterials: Transmission Line Theory and Microwave Applications'",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition, Chapter 9",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 42",
+    "Engheta, N. and Ziolkowski, R.W. 'Metamaterials: Physics and Engineering Explorations'"
+  ]
+}
