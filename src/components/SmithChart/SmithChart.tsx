@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { FC } from 'react';
+import type { FC, JSX } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface ImpedancePoint {
