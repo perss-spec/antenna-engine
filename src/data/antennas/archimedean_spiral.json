@@ -1,0 +1,166 @@
+{
+  "id": "archimedean_spiral",
+  "name": "Archimedean Spiral",
+  "category": "broadband",
+  "description": "A frequency-independent spiral antenna where the radius increases linearly with angle, providing broadband operation with circular polarization. The self-complementary structure maintains constant impedance and radiation characteristics over multiple octaves. Widely used in applications requiring ultra-wideband performance with circular polarization.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 18000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 3,
+    "max": 8,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": ">100%",
+  "polarization": "circular",
+  "applications": [
+    "EMC testing",
+    "Direction finding",
+    "Broadband communications",
+    "Radar systems",
+    "Electronic warfare",
+    "Satellite communications",
+    "Ultra-wideband systems"
+  ],
+  "parameters": {
+    "outer_radius": {
+      "name": "Outer Radius",
+      "symbol": "r_out",
+      "unit": "m",
+      "description": "Maximum radius of the spiral determining the lowest operating frequency",
+      "defaultFormula": "lambda_min / (2 * pi)",
+      "range": {
+        "min": 0.01,
+        "max": 1
+      }
+    },
+    "inner_radius": {
+      "name": "Inner Radius",
+      "symbol": "r_in",
+      "unit": "m",
+      "description": "Minimum radius of the spiral determining the highest operating frequency",
+      "defaultFormula": "lambda_max / (2 * pi)",
+      "range": {
+        "min": 0.001,
+        "max": 0.1
+      }
+    },
+    "growth_rate": {
+      "name": "Growth Rate",
+      "symbol": "a",
+      "unit": "m/rad",
+      "description": "Rate at which radius increases with angle in Archimedean spiral equation r = a * phi",
+      "defaultFormula": "(r_out - r_in) / (2 * pi * N)",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "num_turns": {
+      "name": "Number of Turns",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Total number of spiral turns from inner to outer radius",
+      "defaultFormula": "log10(f_max/f_min)",
+      "range": {
+        "min": 1,
+        "max": 10
+      }
+    },
+    "arm_width": {
+      "name": "Arm Width",
+      "symbol": "w",
+      "unit": "m",
+      "description": "Width of the spiral conductor arms",
+      "defaultFormula": "0.1 * lambda_max",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "arm_spacing": {
+      "name": "Arm Spacing",
+      "symbol": "s",
+      "unit": "m",
+      "description": "Spacing between spiral arms for self-complementary design",
+      "defaultFormula": "w",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining spiral dimensions based on frequency requirements, ensuring self-complementary geometry for constant impedance, and optimizing the feeding structure for broadband matching.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Frequency Range Specification",
+        "description": "Define the required operating frequency range and calculate corresponding wavelengths",
+        "formula": "lambda_min = c / f_min, lambda_max = c / f_max"
+      },
+      {
+        "step": 2,
+        "title": "Outer Radius Calculation",
+        "description": "Calculate outer radius based on lowest frequency for proper radiation",
+        "formula": "r_out = lambda_min / (2 * pi)"
+      },
+      {
+        "step": 3,
+        "title": "Inner Radius Calculation",
+        "description": "Calculate inner radius based on highest frequency and practical constraints",
+        "formula": "r_in = lambda_max / (2 * pi)"
+      },
+      {
+        "step": 4,
+        "title": "Growth Rate Determination",
+        "description": "Calculate the growth rate parameter for the Archimedean spiral",
+        "formula": "a = (r_out - r_in) / (2 * pi * N)"
+      },
+      {
+        "step": 5,
+        "title": "Self-Complementary Design",
+        "description": "Set arm width and spacing equal for self-complementary structure",
+        "formula": "w = s = 0.1 * lambda_max"
+      },
+      {
+        "step": 6,
+        "title": "Impedance Matching",
+        "description": "Design balun or feeding structure for 50-ohm impedance matching",
+        "formula": "Z_spiral = 188.5 ohms (self-complementary)"
+      },
+      {
+        "step": 7,
+        "title": "Substrate Selection",
+        "description": "Choose substrate thickness and dielectric constant for optimal performance",
+        "formula": "h = 0.05 * lambda_max, epsilon_r = 2.2 to 10"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f = c / (2 * pi * r) for each radius point",
+    "inputImpedance": "Z_in = 188.5 ohms (self-complementary structure)",
+    "gain": "G = 4 + 10*log10(f/f_min) dBi (approximate)",
+    "radiationPattern": "E_theta = (j*k*r*exp(-j*k*r))/(4*pi*r) * [cos(phi/2) - cos(3*phi/2)]",
+    "bandwidth": "BW = (f_max - f_min) / f_center * 100%"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use self-complementary theory with Z0 = 188.5 ohms, apply balun transformation to 50 ohms",
+    "radiationModel": "Frequency-independent pattern with circular polarization, use active region concept at circumference = wavelength",
+    "keyAssumptions": [
+      "Self-complementary structure",
+      "Infinite ground plane",
+      "Perfect conductor",
+      "Active region dominates radiation",
+      "Frequency-independent behavior"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 14",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 12",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 14",
+    "Kraus, J.D. 'Antennas for All Applications', 3rd Edition, Chapter 13"
+  ]
+}
