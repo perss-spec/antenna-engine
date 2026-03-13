@@ -1,0 +1,171 @@
+{
+  "id": "vivaldi_tsa",
+  "name": "Vivaldi Tapered Slot Antenna",
+  "category": "broadband",
+  "description": "The Vivaldi antenna is an exponentially tapered slot antenna that provides ultra-wideband performance with excellent gain and directional characteristics. It consists of a gradually flared slot cut into a metallic substrate, creating a traveling wave structure that radiates efficiently across multiple octaves. The exponential taper profile enables smooth impedance transformation and minimizes reflections over an extremely wide frequency range.",
+  "frequencyRange": {
+    "min": 500000000,
+    "max": 40000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 6,
+    "max": 15,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": ">80%",
+  "polarization": "linear",
+  "applications": [
+    "Ultra-wideband communications",
+    "Ground penetrating radar",
+    "EMC testing",
+    "Direction finding systems",
+    "Impulse radar",
+    "Biomedical imaging",
+    "Through-wall radar"
+  ],
+  "parameters": {
+    "length": {
+      "name": "Antenna Length",
+      "symbol": "L",
+      "unit": "mm",
+      "description": "Total length of the tapered slot structure",
+      "defaultFormula": "L = 0.7 * c / f_low",
+      "range": {
+        "min": 50,
+        "max": 500
+      }
+    },
+    "aperture_width": {
+      "name": "Aperture Width",
+      "symbol": "W_a",
+      "unit": "mm",
+      "description": "Width of the slot at the radiating aperture",
+      "defaultFormula": "W_a = 0.5 * c / f_low",
+      "range": {
+        "min": 10,
+        "max": 200
+      }
+    },
+    "slot_width": {
+      "name": "Slot Width at Feed",
+      "symbol": "W_s",
+      "unit": "mm",
+      "description": "Width of the slot at the feed point",
+      "defaultFormula": "W_s = c / (4 * f_high * sqrt(epsilon_r))",
+      "range": {
+        "min": 0.1,
+        "max": 5
+      }
+    },
+    "taper_rate": {
+      "name": "Exponential Taper Rate",
+      "symbol": "R",
+      "unit": "1/mm",
+      "description": "Rate constant for exponential slot width variation",
+      "defaultFormula": "R = ln(W_a/W_s) / L",
+      "range": {
+        "min": 0.01,
+        "max": 0.2
+      }
+    },
+    "substrate_thickness": {
+      "name": "Substrate Thickness",
+      "symbol": "h",
+      "unit": "mm",
+      "description": "Thickness of the dielectric substrate",
+      "defaultFormula": "h = c / (10 * f_high * sqrt(epsilon_r))",
+      "range": {
+        "min": 0.1,
+        "max": 10
+      }
+    },
+    "dielectric_constant": {
+      "name": "Relative Permittivity",
+      "symbol": "epsilon_r",
+      "unit": "dimensionless",
+      "description": "Relative dielectric constant of substrate material",
+      "defaultFormula": "epsilon_r = 2.2 to 10.2",
+      "range": {
+        "min": 1,
+        "max": 12
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Vivaldi antenna design involves determining the exponential taper profile, optimizing the feed transition, and balancing aperture size with frequency response requirements.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency Range",
+        "description": "Define the required bandwidth and calculate wavelengths at extreme frequencies",
+        "formula": "lambda_low = c / f_low, lambda_high = c / f_high"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Antenna Length",
+        "description": "Set antenna length to ensure proper radiation at lowest frequency",
+        "formula": "L = (0.6 to 0.8) * lambda_low"
+      },
+      {
+        "step": 3,
+        "title": "Design Aperture Width",
+        "description": "Size aperture for desired gain and beamwidth at highest frequency",
+        "formula": "W_a = (0.4 to 0.6) * lambda_low"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Feed Slot Width",
+        "description": "Determine slot width at feed for proper coupling",
+        "formula": "W_s = lambda_high / (4 * sqrt(epsilon_eff))"
+      },
+      {
+        "step": 5,
+        "title": "Define Exponential Taper",
+        "description": "Calculate taper rate for smooth impedance transformation",
+        "formula": "W(x) = W_s * exp(R * x), R = ln(W_a/W_s) / L"
+      },
+      {
+        "step": 6,
+        "title": "Design Feed Transition",
+        "description": "Create gradual transition from transmission line to slot",
+        "formula": "L_trans = lambda_high / (2 * sqrt(epsilon_r))"
+      },
+      {
+        "step": 7,
+        "title": "Optimize Substrate Parameters",
+        "description": "Select substrate thickness and material for desired performance",
+        "formula": "h = lambda_high / (8 * sqrt(epsilon_r))"
+      },
+      {
+        "step": 8,
+        "title": "Validate VSWR Performance",
+        "description": "Verify impedance matching across the entire bandwidth",
+        "formula": "VSWR = (1 + |Gamma|) / (1 - |Gamma|) < 2"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_res = c / (2 * L_eff * sqrt(epsilon_eff))",
+    "inputImpedance": "Z_in = Z_0 * sqrt(epsilon_eff) * (W_a/W_s)^0.5",
+    "gain": "G = 10 * log10(4 * pi * A_eff / lambda^2), A_eff = 0.8 * L * W_a",
+    "radiationPattern": "E(theta) = cos(theta) * sinc(k * W_a * sin(theta) / 2)",
+    "bandwidth": "BW = 2 * (f_high - f_low) / (f_high + f_low) * 100%"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use transmission line theory with exponential impedance transformation along the taper length, accounting for substrate dispersion effects",
+    "radiationModel": "Apply aperture field integration method with Huygens principle, considering the exponentially varying aperture illumination",
+    "keyAssumptions": [
+      "TEM mode propagation in slot",
+      "Exponential taper provides smooth impedance transformation",
+      "Aperture field approximation valid for electrically large antennas",
+      "Substrate losses negligible at design frequencies"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Wiley, 2016",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Wiley, 2012",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, McGraw-Hill, 2007",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Wiley, 2011"
+  ]
+}
