@@ -2,7 +2,7 @@
   "id": "log_periodic",
   "name": "Log-Periodic Dipole Array (wire)",
   "category": "wire",
-  "description": "A frequency-independent antenna consisting of multiple dipole elements arranged in a logarithmic progression of lengths and spacings. The active region shifts along the array as frequency changes, maintaining consistent radiation characteristics over a wide bandwidth. Commonly used for broadband applications requiring stable gain and impedance.",
+  "description": "A frequency-independent antenna consisting of multiple dipole elements arranged in a logarithmic progression. The elements are fed through a transmission line with alternating phase connections, creating a traveling wave structure that maintains consistent radiation characteristics over a wide frequency range.",
   "frequencyRange": {
     "min": 30000000,
     "max": 3000000000,
@@ -16,49 +16,49 @@
   "typicalBandwidth": ">50%",
   "polarization": "linear",
   "applications": [
-    "Television reception",
-    "EMC testing",
     "Broadband communications",
-    "Direction finding",
-    "Spectrum monitoring",
-    "Wideband radar"
+    "EMC testing",
+    "Television reception",
+    "Radio astronomy",
+    "Wideband surveillance",
+    "Frequency scanning systems"
   ],
   "parameters": {
     "tau": {
-      "name": "Scale factor",
+      "name": "Scale Factor",
       "symbol": "τ",
       "unit": "dimensionless",
       "description": "Ratio between consecutive element lengths and spacings",
-      "defaultFormula": "0.8 to 0.95",
+      "defaultFormula": "0.8 to 0.9",
       "range": {
         "min": 0.7,
-        "max": 0.98
+        "max": 0.95
       }
     },
     "sigma": {
-      "name": "Spacing factor",
+      "name": "Spacing Factor",
       "symbol": "σ",
       "unit": "dimensionless",
-      "description": "Ratio of spacing to element length",
-      "defaultFormula": "0.1 to 0.2",
+      "description": "Ratio of element spacing to element length",
+      "defaultFormula": "0.15 to 0.25",
       "range": {
-        "min": 0.05,
+        "min": 0.1,
         "max": 0.3
       }
     },
     "alpha": {
-      "name": "Half apex angle",
+      "name": "Half Apex Angle",
       "symbol": "α",
       "unit": "degrees",
-      "description": "Half angle of the log-periodic structure",
-      "defaultFormula": "atan(1/(4*sigma))",
+      "description": "Half angle of the log-periodic structure cone",
+      "defaultFormula": "atan(sigma/(4*tau))",
       "range": {
-        "min": 10,
-        "max": 45
+        "min": 5,
+        "max": 30
       }
     },
-    "num_elements": {
-      "name": "Number of elements",
+    "N": {
+      "name": "Number of Elements",
       "symbol": "N",
       "unit": "dimensionless",
       "description": "Total number of dipole elements in the array",
@@ -68,87 +68,97 @@
         "max": 50
       }
     },
-    "element_diameter": {
-      "name": "Element diameter",
-      "symbol": "d",
-      "unit": "m",
-      "description": "Diameter of dipole elements",
-      "defaultFormula": "lambda_min/200",
+    "L1": {
+      "name": "Longest Element Length",
+      "symbol": "L1",
+      "unit": "meters",
+      "description": "Length of the longest dipole element",
+      "defaultFormula": "0.5*c/f_min",
       "range": {
-        "min": 0.001,
-        "max": 0.02
+        "min": 0.01,
+        "max": 10
+      }
+    },
+    "Zc": {
+      "name": "Characteristic Impedance",
+      "symbol": "Zc",
+      "unit": "ohms",
+      "description": "Characteristic impedance of the feeder transmission line",
+      "defaultFormula": "120*ln(cot(alpha*pi/180))",
+      "range": {
+        "min": 50,
+        "max": 300
       }
     }
   },
   "designMethodology": {
-    "overview": "Design process involves selecting scale and spacing factors, calculating element dimensions, and optimizing for desired bandwidth and gain characteristics.",
+    "overview": "Design process involves selecting scale and spacing factors, calculating element dimensions, determining feeder line impedance, and optimizing for desired bandwidth and gain characteristics.",
     "steps": [
       {
         "step": 1,
-        "title": "Determine frequency range and bandwidth",
-        "description": "Define operating frequency range and calculate required bandwidth ratio",
-        "formula": "B = f_max/f_min"
+        "title": "Determine Frequency Range and Scale Factor",
+        "description": "Define operating frequency range and select scale factor tau for desired bandwidth",
+        "formula": "tau = 0.8 to 0.9 for good performance, B = f_max/f_min"
       },
       {
         "step": 2,
-        "title": "Select design parameters",
-        "description": "Choose scale factor tau and spacing factor sigma based on gain and bandwidth requirements",
-        "formula": "tau = 0.8 to 0.95, sigma = 0.1 to 0.2"
+        "title": "Calculate Spacing Factor and Apex Angle",
+        "description": "Select spacing factor sigma and calculate half apex angle alpha",
+        "formula": "sigma = 0.15 to 0.25, alpha = atan(sigma/(4*tau)) * 180/pi"
       },
       {
         "step": 3,
-        "title": "Calculate number of elements",
-        "description": "Determine required number of elements for specified bandwidth",
-        "formula": "N = ceil(log(B)/log(1/tau)) + 2"
+        "title": "Determine Number of Elements",
+        "description": "Calculate required number of elements based on bandwidth ratio",
+        "formula": "N = ceil(log(f_max/f_min)/log(1/tau)) + 2"
       },
       {
         "step": 4,
-        "title": "Calculate element lengths",
-        "description": "Compute length of each dipole element using geometric progression",
-        "formula": "L_n = L_1 * tau^(n-1), where L_1 = lambda_max/2"
+        "title": "Calculate Element Lengths",
+        "description": "Determine length of each dipole element using geometric progression",
+        "formula": "L_n = L1 * tau^(n-1), where L1 = 0.5*c/f_min"
       },
       {
         "step": 5,
-        "title": "Calculate element spacings",
+        "title": "Calculate Element Spacings",
         "description": "Determine spacing between consecutive elements",
-        "formula": "d_n = sigma * L_n"
+        "formula": "d_n = sigma * L_n = sigma * L1 * tau^(n-1)"
       },
       {
         "step": 6,
-        "title": "Design feed system",
-        "description": "Design transmission line feed with alternating phase connections",
-        "formula": "Z_feed = 200 to 300 ohms, balanced transmission line"
+        "title": "Design Feeder Line",
+        "description": "Calculate characteristic impedance of the transmission line feeder",
+        "formula": "Zc = 120 * ln(cot(alpha * pi/180))"
       },
       {
         "step": 7,
-        "title": "Optimize element diameter",
-        "description": "Select appropriate element diameter for mechanical and electrical performance",
-        "formula": "d_wire = lambda_min/200 to lambda_min/100"
+        "title": "Optimize Performance",
+        "description": "Fine-tune tau and sigma for desired gain, VSWR, and pattern characteristics",
+        "formula": "Adjust tau ± 0.05 and sigma ± 0.02 based on simulation results"
       }
     ]
   },
   "equations": {
-    "resonantFrequency": "f_n = c/(2*L_n) where L_n = L_1 * tau^(n-1)",
-    "inputImpedance": "Z_in ≈ 200 to 300 ohms (relatively constant over bandwidth)",
-    "gain": "G ≈ 10*log10(sigma*tau/(1-tau)^2) + 3 dBi",
-    "radiationPattern": "E(theta,phi) = sum(I_n * exp(j*k*r_n*cos(theta)) * sin(theta))",
-    "bandwidth": "BW = (1/tau)^N where N is number of active elements"
+    "resonantFrequency": "f_n = c/(2*L_n) = c/(2*L1*tau^(n-1))",
+    "inputImpedance": "Z_in ≈ Zc * sqrt(tau) for active region",
+    "gain": "G ≈ 10*log10(sigma*tau) + 7.5 dBi",
+    "radiationPattern": "E(theta,phi) = sum(I_n * exp(-jk*r_n*cos(theta)) * sin(theta))",
+    "bandwidth": "BW = (1-tau)/(1+tau) * 100% per octave"
   },
   "mockSolverHints": {
-    "impedanceModel": "Use transmission line model with mutual coupling between adjacent elements. Model each dipole as series RLC circuit with coupling matrix.",
-    "radiationModel": "Apply superposition of individual dipole radiation patterns with progressive phase shifts. Use method of moments for current distribution.",
+    "impedanceModel": "Use transmission line theory with alternating phase connections and mutual coupling between adjacent elements",
+    "radiationModel": "Apply superposition of individual dipole patterns with progressive phase shifts and amplitude tapering",
     "keyAssumptions": [
-      "Only 3-5 elements are active at any frequency",
-      "Elements are thin wire dipoles (length >> diameter)",
-      "Ground plane effects negligible for elevated mounting",
-      "Mutual coupling decreases exponentially with element separation",
-      "Feed line losses are small compared to radiation resistance"
+      "Only elements near resonance contribute significantly to radiation",
+      "Mutual coupling effects can be approximated using method of moments",
+      "Feeder line acts as a traveling wave transmission line",
+      "Ground plane effects negligible for elevated mounting"
     ]
   },
   "references": [
-    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 10",
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 9",
     "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 8",
     "Carrel, R., 'The Design of Log-Periodic Dipole Antennas', IRE International Convention Record, 1961",
-    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 14"
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 10"
   ]
 }
