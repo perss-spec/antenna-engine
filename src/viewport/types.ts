@@ -1,5 +1,36 @@
 import { Point3D, AntennaGeometry } from '../types/antenna';
 import { FieldResult } from '../types/simulation';
+import type { Scene, PerspectiveCamera, WebGLRenderer, Material, BufferGeometry } from 'three';
+
+// Extended types for viewport rendering (not in core antenna.ts)
+export type Vec3 = Point3D;
+
+export interface ViewportAntennaElement {
+  id: string;
+  type: 'wire' | 'patch' | 'qfh' | 'monopole';
+  vertices: Point3D[];
+  radius?: number;
+  thickness?: number;
+  material?: string;
+}
+
+export interface ViewportAntennaGeometry {
+  elements: ViewportAntennaElement[];
+  feedPoints?: Point3D[];
+  boundingBox?: [Point3D, Point3D];
+}
+
+export interface RadiationPatternData {
+  frequency: number;
+  theta: number[];
+  phi: number[];
+  gain: number[][];
+}
+
+export interface FieldData {
+  positions: Vec3[];
+  magnitude: number[];
+}
 
 export interface ViewportSettings {
   showGrid: boolean;
@@ -61,22 +92,22 @@ export interface ViewportProps {
 
 // Three.js specific types
 export interface ThreeJSContext {
-  scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
-  renderer: THREE.WebGLRenderer;
+  scene: Scene;
+  camera: PerspectiveCamera;
+  renderer: WebGLRenderer;
   controls: any; // OrbitControls type
 }
 
 export interface MaterialLibrary {
-  wire: THREE.Material;
-  surface: THREE.Material;
-  feedPoint: THREE.Material;
-  ground: THREE.Material;
-  substrate: THREE.Material;
+  wire: Material;
+  surface: Material;
+  feedPoint: Material;
+  ground: Material;
+  substrate: Material;
 }
 
 export interface GeometryCache {
-  [key: string]: THREE.BufferGeometry;
+  [key: string]: BufferGeometry;
 }
 
 // Animation types

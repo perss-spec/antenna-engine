@@ -1,11 +1,8 @@
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen } from '@tauri-apps/api/event';
 import { useCallback, useEffect, useState } from 'react';
 import {
   AntennaElement,
   AntennaTemplate,
   Material,
-  ProjectFile
 } from '../types/antenna';
 import {
   FrequencySweepParams,
@@ -14,39 +11,82 @@ import {
   BatchSimulationParams,
   TouchstoneData
 } from '../types/simulation';
-import { AIPredictionRequest, AIPredictionResponse } from '../types/ai';
+
+// Local types for Tauri commands not in core types
+interface ProjectFile {
+  version: string;
+  antenna: AntennaElement;
+  simulationParams?: FrequencySweepParams;
+  results?: SimulationResult;
+}
+
+interface AIPredictionRequest {
+  antennaType: string;
+  targetFrequency: number;
+  constraints?: Record<string, number>;
+}
+
+interface AIPredictionResponse {
+  suggestedParams: Record<string, number>;
+  confidence: number;
+  explanation: string;
+}
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+
+async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauri) {
+    throw new Error('Tauri is not available');
+  }
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<T>(cmd, args);
+}
+
+async function tauriListen<T>(event: string, handler: (payload: T) => void): Promise<() => void> {
+  if (!isTauri) {
+    return () => {};
+  }
+  const { listen } = await import('@tauri-apps/api/event');
+  const unlisten = await listen<T>(event, (ev) => handler(ev.payload));
+  return unlisten;
+}
 
 export const useTauriCommands = () => {
   const [simulationProgress, setSimulationProgress] = useState<SimulationProgress | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // Listen to Tauri events
   useEffect(() => {
-    const unlistenProgress = listen<SimulationProgress>('simulation_progress', (event) => {
-      setSimulationProgress(event.payload);
-    });
+    let unlistenProgress: (() => void) | null = null;
+    let unlistenComplete: (() => void) | null = null;
+    let unlistenError: (() => void) | null = null;
 
-    const unlistenComplete = listen<SimulationResult>('simulation_complete', (event) => {
-      setIsSimulating(false);
-      setSimulationProgress(null);
-    });
+    (async () => {
+      unlistenProgress = await tauriListen<SimulationProgress>('simulation_progress', (payload) => {
+        setSimulationProgress(payload);
+      });
 
-    const unlistenError = listen<string>('simulation_error', (event) => {
-      setIsSimulating(false);
-      setSimulationProgress(null);
-      console.error('Simulation error:', event.payload);
-    });
+      unlistenComplete = await tauriListen<SimulationResult>('simulation_complete', (_payload) => {
+        setIsSimulating(false);
+        setSimulationProgress(null);
+      });
+
+      unlistenError = await tauriListen<string>('simulation_error', (payload) => {
+        setIsSimulating(false);
+        setSimulationProgress(null);
+        console.error('Simulation error:', payload);
+      });
+    })();
 
     return () => {
-      unlistenProgress.then(fn => fn());
-      unlistenComplete.then(fn => fn());
-      unlistenError.then(fn => fn());
+      unlistenProgress?.();
+      unlistenComplete?.();
+      unlistenError?.();
     };
   }, []);
 
   const createAntenna = useCallback(async (element: AntennaElement): Promise<string> => {
     try {
-      const result = await invoke<string>('create_antenna', { params: element });
+      const result = await tauriInvoke<string>('create_antenna', { params: element });
       return result;
     } catch (error) {
       throw new Error(`Failed to create antenna: ${error}`);
@@ -56,7 +96,7 @@ export const useTauriCommands = () => {
   const runSimulation = useCallback(async (params: FrequencySweepParams): Promise<SimulationResult> => {
     try {
       setIsSimulating(true);
-      const result = await invoke<string>('run_simulation', { config: params });
+      const result = await tauriInvoke<string>('run_simulation', { config: params });
       return JSON.parse(result) as SimulationResult;
     } catch (error) {
       setIsSimulating(false);
@@ -66,7 +106,7 @@ export const useTauriCommands = () => {
 
   const getSimulationStatus = useCallback(async (): Promise<SimulationProgress> => {
     try {
-      const result = await invoke<string>('get_simulation_status');
+      const result = await tauriInvoke<string>('get_simulation_status');
       return JSON.parse(result) as SimulationProgress;
     } catch (error) {
       throw new Error(`Failed to get simulation status: ${error}`);
@@ -75,7 +115,7 @@ export const useTauriCommands = () => {
 
   const loadTouchstone = useCallback(async (path: string): Promise<TouchstoneData> => {
     try {
-      const result = await invoke<string>('load_touchstone', { path });
+      const result = await tauriInvoke<string>('load_touchstone', { path });
       return JSON.parse(result) as TouchstoneData;
     } catch (error) {
       throw new Error(`Failed to load Touchstone file: ${error}`);
@@ -84,7 +124,7 @@ export const useTauriCommands = () => {
 
   const saveProject = useCallback(async (path: string, project: ProjectFile): Promise<void> => {
     try {
-      await invoke<string>('save_project', { path, data: project });
+      await tauriInvoke<string>('save_project', { path, data: project });
     } catch (error) {
       throw new Error(`Failed to save project: ${error}`);
     }
@@ -92,7 +132,7 @@ export const useTauriCommands = () => {
 
   const loadProject = useCallback(async (path: string): Promise<ProjectFile> => {
     try {
-      const result = await invoke<string>('load_project', { path });
+      const result = await tauriInvoke<string>('load_project', { path });
       return JSON.parse(result) as ProjectFile;
     } catch (error) {
       throw new Error(`Failed to load project: ${error}`);
@@ -101,7 +141,7 @@ export const useTauriCommands = () => {
 
   const getAntennaTemplates = useCallback(async (): Promise<AntennaTemplate[]> => {
     try {
-      const result = await invoke<string>('get_antenna_templates');
+      const result = await tauriInvoke<string>('get_antenna_templates');
       return JSON.parse(result) as AntennaTemplate[];
     } catch (error) {
       throw new Error(`Failed to get antenna templates: ${error}`);
@@ -110,7 +150,7 @@ export const useTauriCommands = () => {
 
   const predictAntenna = useCallback(async (request: AIPredictionRequest): Promise<AIPredictionResponse> => {
     try {
-      const result = await invoke<string>('predict_antenna', { params: request });
+      const result = await tauriInvoke<string>('predict_antenna', { params: request });
       return JSON.parse(result) as AIPredictionResponse;
     } catch (error) {
       throw new Error(`AI prediction failed: ${error}`);
@@ -119,7 +159,7 @@ export const useTauriCommands = () => {
 
   const exportTouchstone = useCallback(async (path: string, data: SimulationResult): Promise<void> => {
     try {
-      await invoke<string>('export_touchstone', { path, data });
+      await tauriInvoke<string>('export_touchstone', { path, data });
     } catch (error) {
       throw new Error(`Failed to export Touchstone: ${error}`);
     }
@@ -127,7 +167,7 @@ export const useTauriCommands = () => {
 
   const startBatchSimulation = useCallback(async (params: BatchSimulationParams): Promise<string> => {
     try {
-      const result = await invoke<string>('start_batch_simulation', { params });
+      const result = await tauriInvoke<string>('start_batch_simulation', { params });
       return result;
     } catch (error) {
       throw new Error(`Failed to start batch simulation: ${error}`);
@@ -136,7 +176,7 @@ export const useTauriCommands = () => {
 
   const getMaterials = useCallback(async (): Promise<Material[]> => {
     try {
-      const result = await invoke<string>('get_materials');
+      const result = await tauriInvoke<string>('get_materials');
       return JSON.parse(result) as Material[];
     } catch (error) {
       throw new Error(`Failed to get materials: ${error}`);
@@ -144,7 +184,6 @@ export const useTauriCommands = () => {
   }, []);
 
   return {
-    // Commands
     createAntenna,
     runSimulation,
     getSimulationStatus,
@@ -156,8 +195,6 @@ export const useTauriCommands = () => {
     exportTouchstone,
     startBatchSimulation,
     getMaterials,
-    
-    // State
     simulationProgress,
     isSimulating
   };

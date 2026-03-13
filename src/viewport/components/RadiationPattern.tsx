@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { BufferGeometry, BufferAttribute } from 'three'
-import type { RadiationPattern as RadiationPatternData } from '../../types/antenna'
+import type { RadiationPatternData } from '../types'
 
 interface RadiationPatternProps {
   pattern: RadiationPatternData

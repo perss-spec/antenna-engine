@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { RadiationPattern } from '../../types/antenna'
+import type { RadiationPatternData } from '../types'
 
 interface FrequencySweepProps {
-  patterns: RadiationPattern[]
-  onPatternChange: (pattern: RadiationPattern) => void
+  patterns: RadiationPatternData[]
+  onPatternChange: (pattern: RadiationPatternData) => void
   autoPlay?: boolean
   duration?: number // seconds for full sweep
 }

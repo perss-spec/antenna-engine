@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { Vector3 as ThreeVec3, CatmullRomCurve3, TubeGeometry } from 'three';
-import type { AntennaElement, Vec3 } from '../../../types/antenna';
+import type { ViewportAntennaElement, Vec3 } from '../../types';
 
 export interface QFHElementProps {
-  element: AntennaElement;
+  element: ViewportAntennaElement;
   selected: boolean;
   showWireframe: boolean;
   onClick: () => void;
@@ -11,30 +11,27 @@ export interface QFHElementProps {
 
 export function QFHElement({ element, selected, showWireframe, onClick }: QFHElementProps) {
   const helixGeometry = useMemo(() => {
-    if (element.vertices.length < 4) return null;
+    if (!element.vertices || element.vertices.length < 4) return null;
 
-    // Convert vertices to Three.js Vector3
     const points = element.vertices.map(
       (vertex: Vec3) => new ThreeVec3(vertex.x, vertex.y, vertex.z)
     );
 
-    // Create smooth curve through points
     const curve = new CatmullRomCurve3(points, false, 'catmullrom', 0.5);
-    
-    // Create tube geometry along the curve
+
     const radius = element.radius || 0.001;
     const tubularSegments = Math.max(64, points.length * 8);
     const radialSegments = 8;
-    
+
     return new TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
   }, [element.vertices, element.radius]);
 
   const materialColor = useMemo(() => {
-    if (selected) return '#ffff00'; // Yellow when selected
+    if (selected) return '#ffff00';
     switch (element.material) {
-      case 'copper': return '#ff7f00'; // Orange
-      case 'pec': return '#c0c0c0'; // Silver
-      default: return '#808080'; // Gray
+      case 'copper': return '#ff7f00';
+      case 'pec': return '#c0c0c0';
+      default: return '#808080';
     }
   }, [element.material, selected]);
 

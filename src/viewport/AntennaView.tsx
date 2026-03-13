@@ -4,10 +4,10 @@ import { OrbitControls, Grid } from '@react-three/drei'
 import { AntennaRenderer } from './components/AntennaRenderer'
 import { RadiationPattern } from './components/RadiationPattern'
 import { FrequencySweep } from './components/FrequencySweep'
-import type { AntennaGeometry, RadiationPattern as RadiationPatternData } from '../types/antenna'
+import type { ViewportAntennaGeometry, RadiationPatternData } from './types'
 
 interface AntennaViewProps {
-  geometry: AntennaGeometry
+  geometry: ViewportAntennaGeometry
   radiationPatterns?: RadiationPatternData[]
   showRadiationPattern?: boolean
   className?: string

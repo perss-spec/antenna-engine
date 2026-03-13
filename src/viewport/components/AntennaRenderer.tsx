@@ -1,20 +1,20 @@
 import { useMemo } from 'react'
 import { BufferGeometry, BufferAttribute, CylinderGeometry, BoxGeometry, Vector3 as ThreeVec3, Quaternion, Matrix4 } from 'three'
-import type { AntennaGeometry, AntennaElement } from '../../types/antenna'
+import type { ViewportAntennaGeometry, ViewportAntennaElement } from '../types'
 
 interface AntennaRendererProps {
-  geometry: AntennaGeometry
+  geometry: ViewportAntennaGeometry
   selectedElementId?: string
   onElementClick?: (elementId: string) => void
 }
 
 function WireElement({ element, isSelected, onClick }: {
-  element: AntennaElement
+  element: ViewportAntennaElement
   isSelected: boolean
   onClick?: () => void
 }) {
   const { geometry, position, rotation } = useMemo(() => {
-    if (element.vertices.length < 2) {
+    if (!element.vertices || element.vertices.length < 2) {
       return { geometry: new CylinderGeometry(), position: [0, 0, 0] as [number, number, number], rotation: [0, 0, 0, 1] as [number, number, number, number] }
     }
 
@@ -23,16 +23,14 @@ function WireElement({ element, isSelected, onClick }: {
     const direction = new ThreeVec3().subVectors(end, start)
     const length = direction.length()
     const center = new ThreeVec3().addVectors(start, end).multiplyScalar(0.5)
-    
+
     const radius = element.radius || 0.001
     const geometry = new CylinderGeometry(radius, radius, length, 8)
-    
-    // Orient cylinder along wire direction
+
     const orientation = new Matrix4().lookAt(start, end, new ThreeVec3(0, 1, 0))
     const quaternion = new Quaternion().setFromRotationMatrix(orientation)
-    // CylinderGeometry is Y-axis aligned, rotate to Z-axis
     quaternion.multiply(new Quaternion().setFromAxisAngle(new ThreeVec3(1, 0, 0), Math.PI / 2))
-    
+
     return {
       geometry,
       position: [center.x, center.y, center.z] as [number, number, number],
@@ -40,7 +38,7 @@ function WireElement({ element, isSelected, onClick }: {
     }
   }, [element])
 
-  const color = element.material === 'copper' ? '#ff6600' : '#c0c0c0' // copper or PEC
+  const color = element.material === 'copper' ? '#ff6600' : '#c0c0c0'
 
   return (
     <mesh
@@ -58,13 +56,13 @@ function WireElement({ element, isSelected, onClick }: {
   )
 }
 
-function PatchElement({ element, isSelected, onClick }: {
-  element: AntennaElement
+function PatchElementRenderer({ element, isSelected, onClick }: {
+  element: ViewportAntennaElement
   isSelected: boolean
   onClick?: () => void
 }) {
   const { patchGeometry, substrateGeometry, patchPosition, substratePosition } = useMemo(() => {
-    if (element.vertices.length < 4) {
+    if (!element.vertices || element.vertices.length < 4) {
       return {
         patchGeometry: new BoxGeometry(),
         substrateGeometry: new BoxGeometry(),
@@ -73,23 +71,21 @@ function PatchElement({ element, isSelected, onClick }: {
       }
     }
 
-    // Calculate patch dimensions from vertices
     const v0 = element.vertices[0]
     const v1 = element.vertices[1]
     const v2 = element.vertices[2]
-    
+
     const width = Math.sqrt((v1.x - v0.x) ** 2 + (v1.y - v0.y) ** 2 + (v1.z - v0.z) ** 2)
     const height = Math.sqrt((v2.x - v0.x) ** 2 + (v2.y - v0.y) ** 2 + (v2.z - v0.z) ** 2)
     const thickness = element.thickness || 0.001
-    
-    // Center position
+
     const centerX = (v0.x + v1.x + v2.x + element.vertices[3].x) / 4
     const centerY = (v0.y + v1.y + v2.y + element.vertices[3].y) / 4
     const centerZ = (v0.z + v1.z + v2.z + element.vertices[3].z) / 4
-    
+
     const patchGeometry = new BoxGeometry(width, height, thickness)
     const substrateGeometry = new BoxGeometry(width * 1.2, height * 1.2, thickness * 10)
-    
+
     return {
       patchGeometry,
       substrateGeometry,
@@ -100,16 +96,9 @@ function PatchElement({ element, isSelected, onClick }: {
 
   return (
     <group onClick={onClick}>
-      {/* Substrate */}
       <mesh geometry={substrateGeometry} position={substratePosition}>
-        <meshPhongMaterial
-          color="#228B22"
-          transparent
-          opacity={0.3}
-        />
+        <meshPhongMaterial color="#228B22" transparent opacity={0.3} />
       </mesh>
-      
-      {/* Patch */}
       <mesh geometry={patchGeometry} position={patchPosition}>
         <meshPhongMaterial
           color={element.material === 'copper' ? '#ff6600' : '#c0c0c0'}
@@ -123,7 +112,7 @@ function PatchElement({ element, isSelected, onClick }: {
 
 export function AntennaRenderer({ geometry, selectedElementId, onElementClick }: AntennaRendererProps) {
   const allVertices = useMemo(() => {
-    return geometry.elements.flatMap(el => el.vertices)
+    return geometry.elements.flatMap((el: ViewportAntennaElement) => el.vertices || [])
   }, [geometry])
 
   const meshGeometry = useMemo(() => {
@@ -148,22 +137,16 @@ export function AntennaRenderer({ geometry, selectedElementId, onElementClick }:
 
   return (
     <group>
-      {/* Main antenna mesh */}
       {allVertices.length > 0 && (
         <mesh geometry={meshGeometry}>
-          <meshPhongMaterial
-            color="#ff6600"
-            shininess={100}
-            wireframe={false}
-          />
+          <meshPhongMaterial color="#ff6600" shininess={100} wireframe={false} />
         </mesh>
       )}
 
-      {/* Individual elements for interaction */}
-      {geometry.elements.map(element => {
+      {geometry.elements.map((element: ViewportAntennaElement) => {
         const isSelected = element.id === selectedElementId
         const handleClick = () => onElementClick?.(element.id)
-        
+
         if (element.type === 'wire') {
           return (
             <WireElement
@@ -175,7 +158,7 @@ export function AntennaRenderer({ geometry, selectedElementId, onElementClick }:
           )
         } else if (element.type === 'patch') {
           return (
-            <PatchElement
+            <PatchElementRenderer
               key={element.id}
               element={element}
               isSelected={isSelected}
@@ -183,7 +166,7 @@ export function AntennaRenderer({ geometry, selectedElementId, onElementClick }:
             />
           )
         }
-        
+
         return null
       })}
     </group>

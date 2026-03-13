@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub type Result<T> = std::result::Result<T, AntennaError>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Point3D {
     pub x: f64,
