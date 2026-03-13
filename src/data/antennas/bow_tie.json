@@ -1,0 +1,149 @@
+{
+  "id": "bow_tie",
+  "name": "Bow-Tie Antenna (broadband)",
+  "category": "broadband",
+  "description": "A planar broadband antenna consisting of two triangular conducting elements arranged in a bow-tie configuration. The antenna provides excellent broadband characteristics due to its self-complementary properties and gradual impedance transition. It is widely used in UWB applications, EMC testing, and time-domain measurements where constant impedance and stable radiation patterns across wide frequency ranges are required.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 18000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2,
+    "max": 8,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": ">100%",
+  "polarization": "linear",
+  "applications": [
+    "Ultra-wideband communications",
+    "EMC testing",
+    "Time-domain measurements",
+    "Ground penetrating radar",
+    "Impulse radar systems",
+    "Broadband direction finding",
+    "Wideband jamming systems"
+  ],
+  "parameters": {
+    "flare_angle": {
+      "name": "Flare Angle",
+      "symbol": "α",
+      "unit": "degrees",
+      "description": "Half-angle of each triangular element from the feed point",
+      "defaultFormula": "60",
+      "range": {
+        "min": 30,
+        "max": 90
+      }
+    },
+    "length": {
+      "name": "Antenna Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Total length of the bow-tie from tip to tip",
+      "defaultFormula": "0.5 * c / f_low",
+      "range": {
+        "min": 0.1,
+        "max": 2
+      }
+    },
+    "feed_gap": {
+      "name": "Feed Gap",
+      "symbol": "g",
+      "unit": "m",
+      "description": "Gap between the two triangular elements at the feed point",
+      "defaultFormula": "0.01 * c / f_center",
+      "range": {
+        "min": 0.001,
+        "max": 0.05
+      }
+    },
+    "substrate_thickness": {
+      "name": "Substrate Thickness",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Thickness of the dielectric substrate for printed versions",
+      "defaultFormula": "0.005 * c / f_center",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "substrate_permittivity": {
+      "name": "Relative Permittivity",
+      "symbol": "εr",
+      "unit": "dimensionless",
+      "description": "Relative permittivity of the substrate material",
+      "defaultFormula": "4.4",
+      "range": {
+        "min": 1,
+        "max": 12
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process focuses on achieving broadband impedance matching through proper flare angle selection and dimensional scaling based on the lowest operating frequency.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency Range",
+        "description": "Define the required frequency band and calculate the wavelength at the lowest frequency",
+        "formula": "λ_low = c / f_low"
+      },
+      {
+        "step": 2,
+        "title": "Select Flare Angle",
+        "description": "Choose flare angle for optimal impedance matching, typically 60° for 50Ω systems",
+        "formula": "Z0 ≈ 188.5 / sqrt(εr) * sin(α/2) for small angles"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Antenna Length",
+        "description": "Set total length to approximately half wavelength at lowest frequency",
+        "formula": "L = 0.5 * λ_low / sqrt(εr_eff)"
+      },
+      {
+        "step": 4,
+        "title": "Determine Feed Gap",
+        "description": "Size the feed gap to maintain 50Ω impedance and minimize reflections",
+        "formula": "g = 0.01 * λ_center"
+      },
+      {
+        "step": 5,
+        "title": "Optimize Substrate Parameters",
+        "description": "Select substrate thickness and permittivity for printed versions",
+        "formula": "h < 0.1 * λ_high / sqrt(εr)"
+      },
+      {
+        "step": 6,
+        "title": "Verify Bandwidth Performance",
+        "description": "Check VSWR across the band and adjust dimensions if needed",
+        "formula": "VSWR < 2 for |Γ| < 0.33"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_res = c / (2 * L * sqrt(εr_eff))",
+    "inputImpedance": "Z_in ≈ 188.5 / sqrt(εr) * sin(α/2) * (1 + j * tan(β*L/2))",
+    "gain": "G(θ,φ) ≈ 1.64 * sin²(θ) * [sin(π*L*sin(θ)*cos(φ)/λ) / (π*L*sin(θ)*cos(φ)/λ)]²",
+    "radiationPattern": "E(θ,φ) = j * η * I0 * exp(-jkr) / (4πr) * sin(θ) * sinc(π*L*sin(θ)*cos(φ)/λ)",
+    "bandwidth": "BW = 2 * (f_high - f_low) / (f_high + f_low) * 100%"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use method of moments with triangular basis functions on the conducting surfaces, accounting for edge effects and current distribution tapering",
+    "radiationModel": "Apply Huygens principle with equivalent magnetic currents on the aperture, considering the finite flare angle and substrate effects",
+    "keyAssumptions": [
+      "Thin substrate approximation for printed versions",
+      "Perfect conductor assumption for metal elements",
+      "Uniform current distribution approximation for initial analysis",
+      "Far-field radiation pattern calculation",
+      "Linear polarization in the E-plane"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Wiley, 2016",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Wiley, 2012",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, McGraw-Hill, 2007",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Wiley, 2011"
+  ]
+}
