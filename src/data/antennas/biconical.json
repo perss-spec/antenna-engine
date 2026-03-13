@@ -1,0 +1,136 @@
+{
+  "id": "biconical",
+  "name": "Biconical Antenna",
+  "category": "broadband",
+  "description": "A biconical antenna consists of two conical conductors positioned apex-to-apex, forming a symmetric structure that provides extremely wide bandwidth operation. The antenna exhibits excellent broadband characteristics due to its frequency-independent geometry and smooth impedance transition from the feed point to free space.",
+  "frequencyRange": {
+    "min": 30000000,
+    "max": 3000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2,
+    "max": 6,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": ">100%",
+  "polarization": "linear",
+  "applications": [
+    "EMC testing",
+    "broadband communications",
+    "UWB systems",
+    "frequency-independent measurements",
+    "antenna calibration",
+    "wideband direction finding"
+  ],
+  "parameters": {
+    "cone_angle": {
+      "name": "Cone Half-Angle",
+      "symbol": "α",
+      "unit": "degrees",
+      "description": "Half-angle of each conical section measured from the axis",
+      "defaultFormula": "30",
+      "range": {
+        "min": 15,
+        "max": 60
+      }
+    },
+    "cone_length": {
+      "name": "Cone Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Physical length of each conical section",
+      "defaultFormula": "0.25 * c / f_min",
+      "range": {
+        "min": 0.1,
+        "max": 2
+      }
+    },
+    "feed_gap": {
+      "name": "Feed Gap",
+      "symbol": "g",
+      "unit": "m",
+      "description": "Gap between cone apexes at the feed point",
+      "defaultFormula": "0.01 * c / f_center",
+      "range": {
+        "min": 0.001,
+        "max": 0.05
+      }
+    },
+    "base_diameter": {
+      "name": "Base Diameter",
+      "symbol": "D",
+      "unit": "m",
+      "description": "Diameter of the cone base",
+      "defaultFormula": "2 * L * tan(α * π / 180)",
+      "range": {
+        "min": 0.05,
+        "max": 3
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design a biconical antenna by determining cone geometry for desired bandwidth and impedance matching, considering the frequency-independent properties of the conical structure.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Bandwidth",
+        "description": "Define minimum and maximum frequencies based on application requirements",
+        "formula": "BW = (f_max - f_min) / f_center * 100%"
+      },
+      {
+        "step": 2,
+        "title": "Select Cone Half-Angle",
+        "description": "Choose cone angle for desired impedance, typically 30° for 50Ω systems",
+        "formula": "Z0 = 120 * ln(cot(α/2)) for small angles"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Minimum Cone Length",
+        "description": "Determine cone length based on lowest operating frequency",
+        "formula": "L_min = 0.25 * c / f_min"
+      },
+      {
+        "step": 4,
+        "title": "Design Feed Gap",
+        "description": "Set gap between cone apexes for proper impedance transition",
+        "formula": "g = 0.01 * c / f_center"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Base Diameter",
+        "description": "Determine cone base diameter from length and angle",
+        "formula": "D = 2 * L * tan(α)"
+      },
+      {
+        "step": 6,
+        "title": "Verify Impedance Bandwidth",
+        "description": "Check VSWR across operating band using transmission line theory",
+        "formula": "VSWR = (1 + |Γ|) / (1 - |Γ|)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_res = c / (4 * L * cos(α)) for dominant mode",
+    "inputImpedance": "Z_in = 120 * ln(cot(α/2)) for α < 45°",
+    "gain": "G = 1.64 / sin²(α) for small cone angles",
+    "radiationPattern": "E(θ) = sin(θ) / (1 - cos(θ) * cos(α)) for θ > α",
+    "bandwidth": "BW = f_max / f_min = (L * tan(α)) / (g + L * tan(α))"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use transmission line model with tapered impedance transformation from feed gap to cone base, accounting for frequency-dependent effects",
+    "radiationModel": "Apply method of moments with triangular basis functions on conical surfaces, or use spherical wave expansion for far-field patterns",
+    "keyAssumptions": [
+      "Perfect electric conductor surfaces",
+      "Thin wire feed at apex gap",
+      "Far-field approximation for radiation patterns",
+      "Frequency-independent geometry scaling"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 9",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 8",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 6",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Chapter 12"
+  ]
+}
