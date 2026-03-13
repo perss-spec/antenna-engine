@@ -1,0 +1,143 @@
+{
+  "id": "uniform_linear_array",
+  "name": "Uniform Linear Array",
+  "category": "array",
+  "description": "A uniform linear array consists of identical antenna elements arranged in a straight line with equal spacing and uniform amplitude/phase excitation. This configuration provides directional radiation patterns with controllable beamwidth and sidelobe levels through proper element spacing and excitation.",
+  "frequencyRange": {
+    "min": 30000000,
+    "max": 300000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 3,
+    "max": 25,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "10-30%",
+  "polarization": "linear",
+  "applications": [
+    "Radar systems",
+    "Wireless communications",
+    "Radio astronomy",
+    "Direction finding",
+    "Beamforming networks",
+    "Base station antennas"
+  ],
+  "parameters": {
+    "num_elements": {
+      "name": "Number of Elements",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Total number of identical elements in the linear array",
+      "defaultFormula": "4",
+      "range": {
+        "min": 2,
+        "max": 100
+      }
+    },
+    "element_spacing": {
+      "name": "Element Spacing",
+      "symbol": "d",
+      "unit": "m",
+      "description": "Distance between adjacent array elements",
+      "defaultFormula": "0.5 * lambda",
+      "range": {
+        "min": 0.25,
+        "max": 1
+      }
+    },
+    "array_length": {
+      "name": "Array Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Total physical length of the array",
+      "defaultFormula": "(N-1) * d",
+      "range": {
+        "min": 0.5,
+        "max": 50
+      }
+    },
+    "progressive_phase": {
+      "name": "Progressive Phase Shift",
+      "symbol": "beta",
+      "unit": "radians",
+      "description": "Phase difference between adjacent elements for beam steering",
+      "defaultFormula": "0",
+      "range": {
+        "min": -3.14159,
+        "max": 3.14159
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves selecting element type, determining spacing for desired radiation characteristics, calculating excitation coefficients, and optimizing for specific performance requirements.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Element Selection",
+        "description": "Choose appropriate radiating element based on frequency and polarization requirements",
+        "formula": "f_element = f_operating"
+      },
+      {
+        "step": 2,
+        "title": "Spacing Determination",
+        "description": "Set element spacing to avoid grating lobes while achieving desired beamwidth",
+        "formula": "d <= lambda / (1 + |sin(theta_max)|)"
+      },
+      {
+        "step": 3,
+        "title": "Array Factor Calculation",
+        "description": "Compute array factor for uniform amplitude and progressive phase",
+        "formula": "AF = sin(N*psi/2) / (N*sin(psi/2))"
+      },
+      {
+        "step": 4,
+        "title": "Beamwidth Estimation",
+        "description": "Calculate half-power beamwidth for broadside radiation",
+        "formula": "HPBW = 0.886 * lambda / L"
+      },
+      {
+        "step": 5,
+        "title": "Directivity Calculation",
+        "description": "Determine maximum directivity for uniform illumination",
+        "formula": "D = 2*L/lambda"
+      },
+      {
+        "step": 6,
+        "title": "Impedance Matching",
+        "description": "Design feed network to match array impedance to transmission line",
+        "formula": "Z_array = Z_element / N"
+      },
+      {
+        "step": 7,
+        "title": "Sidelobe Optimization",
+        "description": "Apply amplitude tapering if lower sidelobes are required",
+        "formula": "SLL = -13.26 dB (uniform)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_r = c / lambda_element",
+    "inputImpedance": "Z_in = Z_element / N + j*X_mutual",
+    "gain": "G = eta * D = eta * 2*L/lambda",
+    "radiationPattern": "E(theta) = E_element(theta) * sin(N*psi/2) / (N*sin(psi/2))",
+    "bandwidth": "BW = BW_element * sqrt(1 - (d*sin(theta)/lambda)^2)"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use mutual coupling matrix with self and mutual impedances between elements, account for feed network transformation",
+    "radiationModel": "Pattern multiplication of element pattern and array factor, include mutual coupling effects on element patterns",
+    "keyAssumptions": [
+      "Identical elements",
+      "Linear arrangement",
+      "Far-field approximation",
+      "Uniform excitation amplitude",
+      "Progressive phase shift for beam steering"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 6",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 7",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 11",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition, Chapter 12"
+  ]
+}
