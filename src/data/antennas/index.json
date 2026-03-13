@@ -1,7 +1,306 @@
 {
-  "generatedAt": "2026-03-13T15:24:37.866Z",
-  "count": 8,
+  "generatedAt": "2026-03-13T15:35:27.679Z",
+  "count": 31,
   "antennas": [
+    {
+      "id": "conical_horn",
+      "name": "Conical Horn",
+      "category": "aperture",
+      "description": "A conical horn antenna is a circular waveguide that gradually flares outward in a conical shape to provide impedance matching between the waveguide and free space. It offers moderate gain with good circular symmetry and is commonly used as a feed for reflector antennas. The conical geometry provides uniform illumination with relatively low sidelobes.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 10,
+        "max": 25,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "20-40%"
+    },
+    {
+      "id": "open_waveguide",
+      "name": "Open-Ended Waveguide",
+      "category": "aperture",
+      "description": "An open-ended waveguide antenna formed by terminating a rectangular or circular waveguide with an open aperture. It radiates electromagnetic energy directly from the waveguide opening, creating a directional beam with moderate gain. The radiation characteristics depend on the waveguide dimensions and the field distribution at the aperture.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 6,
+        "max": 15,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-20%"
+    },
+    {
+      "id": "parabolic_reflector",
+      "name": "Parabolic Reflector",
+      "category": "aperture",
+      "description": "A parabolic reflector antenna consists of a parabolic-shaped conducting surface that focuses electromagnetic waves to or from a feed antenna located at the focal point. The parabolic geometry provides high directivity and gain by creating a uniform phase front across the aperture when illuminated by a point source at the focus.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 20,
+        "max": 60,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-20%"
+    },
+    {
+      "id": "pyramidal_horn",
+      "name": "Pyramidal Horn",
+      "category": "aperture",
+      "description": "A pyramidal horn antenna is a flared waveguide structure that provides a smooth transition from a rectangular waveguide to free space. It features flaring in both E-plane and H-plane dimensions, creating a pyramidal shape that improves impedance matching and directivity compared to an open waveguide. The horn provides moderate to high gain with good impedance matching over a wide frequency range.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 10,
+        "max": 25,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "30-50%"
+    },
+    {
+      "id": "rectangular_slot",
+      "name": "Rectangular Slot Antenna",
+      "category": "aperture",
+      "description": "A rectangular aperture cut into a conducting ground plane that radiates electromagnetic energy. The slot acts as a magnetic dipole with radiation characteristics complementary to a wire dipole of similar dimensions.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2,
+        "max": 6,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-15%"
+    },
+    {
+      "id": "butler_matrix_array",
+      "name": "Butler Matrix Array",
+      "category": "array",
+      "description": "A Butler matrix array is a beamforming network that uses a matrix of hybrid couplers and phase shifters to create multiple simultaneous beams from an array of antenna elements. The Butler matrix provides orthogonal beams with fixed beam directions, making it ideal for multi-beam applications. This passive beamforming network enables simultaneous reception or transmission in multiple directions without requiring active phase shifters.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 10,
+        "max": 25,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-20%"
+    },
+    {
+      "id": "phased_array",
+      "name": "Phased Array",
+      "category": "array",
+      "description": "A phased array antenna consists of multiple radiating elements with controllable phase relationships to electronically steer the beam direction without physical movement. The array can achieve high gain, narrow beamwidth, and rapid beam scanning through precise phase control of individual elements.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 15,
+        "max": 50,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-30%"
+    },
+    {
+      "id": "planar_patch_array",
+      "name": "Planar Patch Array",
+      "category": "array",
+      "description": "A planar array of microstrip patch antennas arranged in a regular grid pattern to achieve high gain and beam steering capabilities. The array combines multiple patch elements with controlled amplitude and phase distributions to form desired radiation patterns. Commonly used in phased array radar systems, satellite communications, and wireless base stations.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 15,
+        "max": 35,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "2-5%"
+    },
+    {
+      "id": "uniform_linear_array",
+      "name": "Uniform Linear Array",
+      "category": "array",
+      "description": "A uniform linear array consists of identical antenna elements arranged in a straight line with equal spacing and uniform amplitude/phase excitation. This configuration provides directional radiation patterns with controllable beamwidth and sidelobe levels through proper element spacing and excitation.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 3,
+        "max": 25,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-30%"
+    },
+    {
+      "id": "archimedean_spiral",
+      "name": "Archimedean Spiral",
+      "category": "broadband",
+      "description": "A frequency-independent spiral antenna where the radius increases linearly with angle, providing broadband operation with circular polarization. The self-complementary structure maintains constant impedance and radiation characteristics over multiple octaves. Widely used in applications requiring ultra-wideband performance with circular polarization.",
+      "polarization": "circular",
+      "typicalGain": {
+        "min": 3,
+        "max": 8,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": ">100%"
+    },
+    {
+      "id": "biconical",
+      "name": "Biconical Antenna",
+      "category": "broadband",
+      "description": "A biconical antenna consists of two conical conductors positioned apex-to-apex, forming a symmetric structure that provides extremely wide bandwidth operation. The antenna exhibits excellent broadband characteristics due to its frequency-independent geometry and smooth impedance transition from the feed point to free space.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2,
+        "max": 6,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": ">100%"
+    },
+    {
+      "id": "bow_tie",
+      "name": "Bow-Tie Antenna (broadband)",
+      "category": "broadband",
+      "description": "A planar broadband antenna consisting of two triangular conducting elements arranged in a bow-tie configuration. The antenna provides excellent broadband characteristics due to its self-complementary properties and gradual impedance transition. It is widely used in UWB applications, EMC testing, and time-domain measurements where constant impedance and stable radiation patterns across wide frequency ranges are required.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2,
+        "max": 8,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": ">100%"
+    },
+    {
+      "id": "discone",
+      "name": "Discone Antenna",
+      "category": "broadband",
+      "description": "A broadband omnidirectional antenna consisting of a disc and cone configuration that provides wide frequency coverage with consistent radiation patterns. The disc acts as a ground plane while the cone serves as the radiating element, creating a vertically polarized antenna with excellent broadband characteristics. Commonly used in applications requiring wide frequency coverage from VHF through microwave frequencies.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 0,
+        "max": 6,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": ">80%"
+    },
+    {
+      "id": "vivaldi_tsa",
+      "name": "Vivaldi Tapered Slot Antenna",
+      "category": "broadband",
+      "description": "The Vivaldi antenna is an exponentially tapered slot antenna that provides ultra-wideband performance with excellent gain and directional characteristics. It consists of a gradually flared slot cut into a metallic substrate, creating a traveling wave structure that radiates efficiently across multiple octaves. The exponential taper profile enables smooth impedance transformation and minimizes reflections over an extremely wide frequency range.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 6,
+        "max": 15,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": ">80%"
+    },
+    {
+      "id": "circular_patch",
+      "name": "Circular Microstrip Patch",
+      "category": "microstrip",
+      "description": "A circular microstrip patch antenna consists of a circular conducting patch printed on a grounded dielectric substrate. It radiates primarily in the broadside direction with moderate gain and is widely used in wireless communication systems due to its low profile, light weight, and ease of fabrication.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 3,
+        "max": 9,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "1-5%"
+    },
+    {
+      "id": "inset_fed_patch",
+      "name": "Inset-Fed Patch (microstrip)",
+      "category": "microstrip",
+      "description": "A rectangular microstrip patch antenna fed by a microstrip line inserted into the patch at a specific distance from the edge to achieve impedance matching. The inset feed eliminates the need for external matching networks by positioning the feed point at the desired input impedance location along the patch.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 6,
+        "max": 9,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "2-5%"
+    },
+    {
+      "id": "inverted_f",
+      "name": "Inverted-F Antenna (microstrip)",
+      "category": "microstrip",
+      "description": "A compact planar antenna consisting of a horizontal radiating element connected to a ground plane through a shorting pin, with a separate feed point. The inverted-F configuration provides good impedance matching and compact size, making it ideal for mobile communications. The antenna exhibits monopole-like radiation characteristics with linear polarization.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 0,
+        "max": 5,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-15%"
+    },
+    {
+      "id": "pifa",
+      "name": "Planar Inverted-F Antenna (microstrip)",
+      "category": "microstrip",
+      "description": "A compact microstrip antenna consisting of a rectangular patch with a shorting pin and feed point, creating an inverted-F configuration. The shorting pin reduces the resonant length and provides impedance matching flexibility. Widely used in mobile communications due to its low profile and good impedance characteristics.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2,
+        "max": 6,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "5-15%"
+    },
+    {
+      "id": "rectangular_patch",
+      "name": "Rectangular Microstrip Patch",
+      "category": "microstrip",
+      "description": "A rectangular conducting patch printed on a grounded dielectric substrate, operating as a resonant cavity antenna. The patch radiates primarily from the fringing fields at the edges perpendicular to the current flow. It is one of the most widely used microstrip antenna configurations due to its simple geometry and predictable performance.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 3,
+        "max": 9,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "1-5%"
+    },
+    {
+      "id": "dielectric_resonator",
+      "name": "Dielectric Resonator Antenna",
+      "category": "special",
+      "description": "A dielectric resonator antenna (DRA) consists of a high permittivity dielectric material that acts as both the resonator and radiator. The antenna operates by exciting electromagnetic modes within the dielectric resonator, which then radiate into free space. DRAs offer high radiation efficiency, wide bandwidth, and compact size with excellent temperature stability.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 3,
+        "max": 8,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-30%"
+    },
+    {
+      "id": "metamaterial_antenna",
+      "name": "Metamaterial Antenna",
+      "category": "special",
+      "description": "An antenna that incorporates metamaterial structures with engineered electromagnetic properties not found in natural materials, typically exhibiting negative permittivity or permeability. These antennas can achieve enhanced directivity, bandwidth, or miniaturization through the manipulation of electromagnetic wave propagation. Metamaterial antennas enable novel functionalities such as beam steering, cloaking, and super-resolution imaging.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 3,
+        "max": 25,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-30%"
+    },
+    {
+      "id": "reconfigurable_antenna",
+      "name": "Reconfigurable Antenna",
+      "category": "special",
+      "description": "An adaptive antenna system capable of dynamically altering its radiation characteristics including frequency, polarization, and beam direction through electronic or mechanical switching mechanisms. These antennas employ variable components such as PIN diodes, varactors, MEMS switches, or tunable materials to achieve real-time reconfiguration. They enable cognitive radio systems, adaptive beamforming, and multi-standard wireless communications.",
+      "polarization": "dual",
+      "typicalGain": {
+        "min": -5,
+        "max": 25,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "10-40%"
+    },
+    {
+      "id": "sierpinski_fractal",
+      "name": "Sierpinski Fractal",
+      "category": "special",
+      "description": "A fractal antenna based on the Sierpinski triangle geometry, exhibiting self-similar multiband characteristics with logarithmically periodic frequency response. The fractal structure provides multiple resonances at frequencies related by the scaling factor, typically offering 3-5 distinct operating bands with similar radiation patterns.",
+      "polarization": "linear",
+      "typicalGain": {
+        "min": 2,
+        "max": 6,
+        "unit": "dBi"
+      },
+      "typicalBandwidth": "15-25% per band"
+    },
     {
       "id": "axial_helix",
       "name": "Axial Mode Helical (wire)",
@@ -56,9 +355,9 @@
     },
     {
       "id": "quadrifilar_helix",
-      "name": "Quadrifilar Helix Antenna",
+      "name": "Quadrifilar Helical (wire)",
       "category": "wire",
-      "description": "A four-wire helical antenna wound in a helical configuration with 90-degree phase differences between adjacent elements. Provides excellent circular polarization characteristics and hemispherical coverage patterns. Commonly used for satellite communications and GPS applications due to its compact size and broad beamwidth.",
+      "description": "A quadrifilar helical antenna consists of four helical wire elements wound around a cylindrical support structure, typically fed in quadrature phase to produce circular polarization. This antenna type provides excellent circular polarization purity and hemispherical coverage patterns. It is widely used in satellite communications, GPS applications, and mobile communications where circular polarization and broad beamwidth are required.",
       "polarization": "circular",
       "typicalGain": {
         "min": 0,
