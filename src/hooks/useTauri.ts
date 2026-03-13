@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useCallback, useEffect, useState } from 'react';
 import type { 
@@ -21,7 +21,7 @@ export const useTauri = () => {
       setSimulationProgress(event.payload);
     });
 
-    const unlistenComplete = listen<SimulationResult>('simulation_complete', (event) => {
+    const unlistenComplete = listen<SimulationResult>('simulation_complete', (_event) => {
       setIsSimulating(false);
       setSimulationProgress(null);
     });

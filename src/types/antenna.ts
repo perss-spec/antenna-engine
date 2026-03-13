@@ -80,6 +80,17 @@ export interface AntennaElement {
   params: AntennaParams;
 }
 
+export interface AntennaTemplate {
+  id: string;
+  name: string;
+  type: AntennaType;
+  defaultFrequency: number;
+  defaultParams: Record<string, number>;
+  description: string;
+  frequencyRange: [number, number];
+  typicalApplications: string[];
+}
+
 export enum AntennaError {
   InvalidGeometry = 'InvalidGeometry',
   SimulationFailed = 'SimulationFailed',

@@ -87,10 +87,11 @@ class Trainer:
                 self.best_val_loss = val_loss
                 print(f"  -> New best validation loss. Saving model to {self.checkpoint_path}")
                 checkpoint = {
-                    'epoch': epoch + 1,
+                    'epoch': epoch,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'best_val_loss': self.best_val_loss,
+                    'history': self.history,
                     **training_artifacts,
                 }
                 torch.save(checkpoint, self.checkpoint_path)

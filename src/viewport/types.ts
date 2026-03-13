@@ -1,4 +1,4 @@
-import { Point3D, AntennaGeometry } from '../types/antenna';
+import { Point3D } from '../types/antenna';
 import { FieldResult } from '../types/simulation';
 import type { Scene, PerspectiveCamera, WebGLRenderer, Material, BufferGeometry } from 'three';
 
@@ -64,6 +64,12 @@ export interface FieldVisualizationSettings {
   colorMap: 'viridis' | 'plasma' | 'jet' | 'hot';
   opacity: number;
   vectorDensity: number;
+}
+
+export interface AntennaGeometry {
+  elements: ViewportAntennaElement[];
+  feedPoints?: Point3D[];
+  boundingBox?: [Point3D, Point3D];
 }
 
 export interface AntennaModelProps {

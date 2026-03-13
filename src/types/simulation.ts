@@ -90,6 +90,29 @@ export interface OptimizationResult {
   optimizationTimeMs: number;
 }
 
+export interface FrequencySweepParams {
+  startFrequency: number;
+  stopFrequency: number;
+  numPoints: number;
+  referenceImpedance: number;
+  resolution: number;
+}
+
+export interface BatchSimulationParams {
+  parameterRanges: Record<string, [number, number]>;
+  numSamples: number;
+  frequencySweep: FrequencySweepParams;
+  samplingMethod: 'Random' | 'LatinHypercube' | 'Grid' | 'Sobol';
+}
+
+export interface TouchstoneData {
+  frequencies: number[];
+  s11Re: number[];
+  s11Im: number[];
+  referenceImpedance: number;
+  comments: string[];
+}
+
 export interface ProjectData {
   name: string;
   version: string;
