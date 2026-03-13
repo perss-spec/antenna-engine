@@ -85,10 +85,9 @@ class SurrogateMLP(nn.Module):
             opset_version=14,  # A reasonably modern opset version
             do_constant_folding=True,
             input_names=['antenna_params'],
-            output_names=['s11_real_imag_interleaved'],
+            output_names=['s11_real_imag'],
             dynamic_axes={
                 'antenna_params': {0: 'batch_size'},
-                's11_real_imag_interleaved': {0: 'batch_size'},
+                's11_real_imag': {0: 'batch_size'},
             },
         )
-        print("Export complete.")

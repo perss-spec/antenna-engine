@@ -86,19 +86,16 @@ class Trainer:
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 print(f"  -> New best validation loss. Saving model to {self.checkpoint_path}")
-
                 checkpoint = {
+                    'epoch': epoch + 1,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
-                    'epoch': epoch,
                     'best_val_loss': self.best_val_loss,
-                    'history': self.history,
                     **training_artifacts,
                 }
                 torch.save(checkpoint, self.checkpoint_path)
 
         end_time = time.time()
-        print("\n--- Training Finished ---")
-        print(f"Total training time: {end_time - start_time:.2f} seconds")
+        print(f"\nTraining finished in {end_time - start_time:.2f} seconds.")
         print(f"Best validation loss: {self.best_val_loss:.6f}")
-        print(f"Best model and training artifacts saved to {self.checkpoint_path}")
+        print(f"Model checkpoint saved at: {self.checkpoint_path}")

@@ -79,12 +79,10 @@ def main():
         "n_hidden_layers": 3,  # From architecture guidelines
     }
     model = SurrogateMLP(**model_config).to(DEVICE)
-    print(f"Model created with input_dim={model_config['input_dim']}, output_dim={model_config['output_dim']}")
-
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.MSELoss()
 
-    # 4. Instantiate and Run Trainer
+    # 4. Create and run Trainer
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -95,17 +93,21 @@ def main():
         checkpoint_path=str(CHECKPOINT_PATH),
     )
 
-    # Prepare artifacts to be saved with the model checkpoint
+    # Artifacts to save with the model checkpoint
     training_artifacts = {
-        "model_config": model_config,
-        "normalizer_state": {
-            "min_vals": normalizer.min_vals,
-            "max_vals": normalizer.max_vals,
-            "param_keys": normalizer.param_keys,
+        'model_config': model_config,
+        'normalizer_state': {
+            'param_keys': normalizer.param_keys,
+            'min_vals': normalizer.min_vals,
+            'max_vals': normalizer.max_vals,
         },
     }
 
     trainer.train(epochs=EPOCHS, training_artifacts=training_artifacts)
+
+    print("\n--- Training Complete ---")
+    print(f"Best model saved to {CHECKPOINT_PATH}")
+    print("To export this model to ONNX, run: python python/scripts/export_onnx.py")
 
 if __name__ == "__main__":
     main()
