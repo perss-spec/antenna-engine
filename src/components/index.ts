@@ -12,3 +12,5 @@ export { default as StatCard } from './StatCard/StatCard';
 export type { StatCardProps } from './StatCard/StatCard';
 export { default as ColorPalette } from './ColorPalette/ColorPalette';
 export { default as KeyboardShortcuts } from './KeyboardShortcuts/KeyboardShortcuts';
+export { default as SimProgress } from './SimProgress/SimProgress';
+export { default as ComparisonPanel } from './ComparisonPanel/ComparisonPanel';
