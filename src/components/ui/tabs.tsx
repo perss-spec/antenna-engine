@@ -70,7 +70,14 @@ const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
   ({ className, value, ...props }, ref) => {
     const ctx = React.useContext(TabsContext)
     if (ctx.value !== value) return null
-    return <div ref={ref} className={cn("mt-4", className)} {...props} />
+    return (
+      <div
+        ref={ref}
+        className={cn("mt-4", className)}
+        style={{ animation: "fadeIn 0.2s ease-in" }}
+        {...props}
+      />
+    )
   }
 )
 TabsContent.displayName = "TabsContent"

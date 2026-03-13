@@ -105,7 +105,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
               <option key={key} value={key}>{val.name}</option>
             ))}
           </Select>
-          <span className="text-[11px] text-text-dim">{preset.description}</span>
+          <span className="text-[11px] text-accent/70 bg-accent/5 px-2 py-0.5 rounded">{preset.description}</span>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -144,6 +144,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="radius">Wire Radius (mm)</Label>
+              <span className="text-[10px] text-text-dim">Typical: 0.5-3mm. Affects impedance bandwidth.</span>
               <Input
                 id="radius"
                 type="number"
@@ -193,6 +194,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="substrateEr">Substrate Er</Label>
+              <span className="text-[10px] text-text-dim">Dielectric constant. FR-4=4.4, Rogers=2.2-10.2</span>
               <Input
                 id="substrateEr"
                 type="number"

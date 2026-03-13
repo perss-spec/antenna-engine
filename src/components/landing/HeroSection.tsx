@@ -86,10 +86,10 @@ export function HeroSection({ onLaunch }: HeroSectionProps) {
 
         <button
           onClick={onLaunch}
-          className="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 hover:bg-green-400 hover:text-black"
-          style={{ borderColor: "#76b900", color: "#76b900" }}
+          className="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 hover:bg-green-400/10"
+          style={{ borderColor: "rgba(118,185,0,0.35)", color: "#76b900" }}
         >
-          Launch App
+          Docs
         </button>
       </nav>
 

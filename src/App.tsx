@@ -449,7 +449,7 @@ function App() {
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-auto">
         {/* Top Bar */}
-        <div className="px-6 py-3 border-b border-border flex items-center justify-between bg-[#0e0e15]">
+        <div className="px-6 py-3 border-b border-border flex items-center justify-between bg-background">
           <div className="flex gap-2 items-center">
             <span className="text-sm font-semibold">Simulation Results</span>
             {isSimulating && (
