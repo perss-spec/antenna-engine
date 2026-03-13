@@ -17,17 +17,17 @@ A quarter-wavelength vertical wire antenna mounted over a ground plane, represen
 | Parameter | Symbol | Unit | Default Formula | Range |
 |-----------|--------|------|----------------|-------|
 | Physical Length | L | m | 0.95 * c / (4 * f) | 0.001 - 100 |
-| Wire Radius | a | m | lambda / 1000 | 0.0001 - 0.01 |
-| Ground Plane Radius | Rg | m | lambda / 4 | 0.01 - 10 |
+| Wire Radius | a | m | lambda / 1000 | 0.0001 - 0.1 |
+| Ground Plane Radius | Rg | m | lambda / 4 | 0.01 - 1000 |
 | Feed Height | h | m | 0 | 0 - 0.1 |
 
 ## Design Methodology
 
-Design process involves determining the physical length for resonance, selecting appropriate wire diameter, sizing the ground plane, and optimizing the feed structure for desired impedance matching.
+Design process involves determining the optimal monopole length for resonance, selecting appropriate wire diameter, sizing the ground plane, and matching the input impedance to the feed system.
 
-### Step 1: Calculate Resonant Length
+### Step 1: Calculate Quarter-Wave Length
 
-Determine the physical length for quarter-wave resonance including end effects
+Determine the physical length accounting for end effects
 
 **Formula:** `L = 0.95 * c / (4 * f)`
 
@@ -39,50 +39,50 @@ Choose wire radius based on bandwidth and mechanical requirements
 
 ### Step 3: Size Ground Plane
 
-Design ground plane radius for proper radiation pattern and impedance
+Determine minimum ground plane radius for proper operation
 
 **Formula:** `Rg >= lambda / 4`
 
 ### Step 4: Calculate Input Impedance
 
-Determine theoretical input impedance at resonance
+Estimate the feed point impedance
 
-**Formula:** `Zin = 36.5 + j * X`
+**Formula:** `Zin = 36.5 + j * 21.25 * ln(lambda / (2 * pi * a))`
 
-### Step 5: Design Feed Structure
+### Step 5: Design Matching Network
 
-Design coaxial feed connection and matching network if needed
+Match 36.5 ohm impedance to 50 ohm system
 
-**Formula:** `VSWR = (1 + |Gamma|) / (1 - |Gamma|)`
+**Formula:** `VSWR = 50 / 36.5 = 1.37`
 
 ### Step 6: Optimize for Bandwidth
 
 Adjust wire diameter and length for desired bandwidth
 
-**Formula:** `BW = 2 * (f2 - f1) / f0`
+**Formula:** `BW = 2 * a / lambda * 100%`
 
 ## Equations
 
-- **resonantFrequency:** `f0 = c / (4 * L_eff) where L_eff = L + delta_L`
-- **inputImpedance:** `Zin = 36.5 + j * 21.25 * tan(beta * L) for thin wire over infinite ground`
-- **gain:** `G = 5.15 dBi for infinite ground plane, G = 2.15 dBi for small ground plane`
-- **radiationPattern:** `E_theta = j * 60 * I0 * cos(beta * L * cos(theta)) / (r * sin(theta))`
-- **bandwidth:** `BW = 4 * a / (lambda * ln(L/a)) for VSWR < 2`
+- **resonantFrequency:** `f_r = c / (4 * L_eff) where L_eff = L + delta_L`
+- **inputImpedance:** `Z_in = 36.5 + j * 21.25 * ln(lambda / (2 * pi * a))`
+- **gain:** `G = 5.15 dBi (over infinite ground plane)`
+- **radiationPattern:** `E_theta = j * 60 * I_0 * cos(pi/2 * cos(theta)) / sin(theta) * exp(-j*k*r) / r`
+- **bandwidth:** `BW = 4 * a / lambda * 100% (approximate)`
 
 ## Mock Solver Hints
 
 - **Impedance Model:** Method of moments with thin wire approximation and image theory for ground plane effects
-- **Radiation Model:** Far-field integration using current distribution I(z) = I0 * cos(beta * z) with image currents
+- **Radiation Model:** Far-field pattern using image theory with ground plane reflection coefficient
 - **Key Assumptions:**
-  - Perfect conducting ground plane
+  - Perfect ground plane
   - Thin wire approximation (L >> a)
   - Far-field radiation
   - Linear current distribution
 
 ## References
 
-- Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 4
-- Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 4
-- Kraus, J.D. & Marhefka, R.J. 'Antennas for All Applications', 3rd Edition, Chapter 8
-- Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 5
+- Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition
+- Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition
+- Kraus, J.D. & Marhefka, R.J. 'Antennas for All Applications', 3rd Edition
+- Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition
 
