@@ -1,0 +1,176 @@
+{
+  "id": "axial_helix",
+  "name": "Axial Helix Antenna (wire)",
+  "category": "wire",
+  "description": "A helical antenna operating in axial mode where the helix circumference is approximately one wavelength, producing circularly polarized radiation along the helix axis. The antenna consists of a wire wound in a helical coil above a ground plane, providing excellent circular polarization purity and moderate gain.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 10000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 10,
+    "max": 18,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "20-50%",
+  "polarization": "circular",
+  "applications": [
+    "Satellite communications",
+    "GPS receivers",
+    "Telemetry systems",
+    "Space communications",
+    "Radio astronomy",
+    "Circular polarization applications"
+  ],
+  "parameters": {
+    "circumference": {
+      "name": "Helix Circumference",
+      "symbol": "C",
+      "unit": "m",
+      "description": "Circumference of the helical coil, typically close to one wavelength for axial mode operation",
+      "defaultFormula": "C = λ",
+      "range": {
+        "min": 0.8,
+        "max": 1.3
+      }
+    },
+    "pitch_angle": {
+      "name": "Pitch Angle",
+      "symbol": "α",
+      "unit": "degrees",
+      "description": "Angle between the helix wire and a plane perpendicular to the helix axis",
+      "defaultFormula": "α = arctan(S/(π*D))",
+      "range": {
+        "min": 12,
+        "max": 14
+      }
+    },
+    "spacing": {
+      "name": "Turn Spacing",
+      "symbol": "S",
+      "unit": "m",
+      "description": "Axial distance between adjacent turns of the helix",
+      "defaultFormula": "S = λ/4",
+      "range": {
+        "min": 0.2,
+        "max": 0.3
+      }
+    },
+    "diameter": {
+      "name": "Helix Diameter",
+      "symbol": "D",
+      "unit": "m",
+      "description": "Diameter of the helical coil",
+      "defaultFormula": "D = λ/π",
+      "range": {
+        "min": 0.25,
+        "max": 0.4
+      }
+    },
+    "num_turns": {
+      "name": "Number of Turns",
+      "symbol": "N",
+      "unit": "dimensionless",
+      "description": "Total number of helical turns, affects gain and bandwidth",
+      "defaultFormula": "N = 6 to 12",
+      "range": {
+        "min": 3,
+        "max": 20
+      }
+    },
+    "wire_diameter": {
+      "name": "Wire Diameter",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Diameter of the wire used to construct the helix",
+      "defaultFormula": "a = λ/100",
+      "range": {
+        "min": 0.005,
+        "max": 0.02
+      }
+    },
+    "ground_plane_diameter": {
+      "name": "Ground Plane Diameter",
+      "symbol": "Dg",
+      "unit": "m",
+      "description": "Diameter of the ground plane reflector",
+      "defaultFormula": "Dg = λ",
+      "range": {
+        "min": 0.75,
+        "max": 2
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process for axial mode helical antenna involves determining helix dimensions for desired frequency, calculating number of turns for required gain, and optimizing impedance matching.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency and Wavelength",
+        "description": "Calculate free space wavelength at the center frequency",
+        "formula": "λ = c/f"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Helix Circumference",
+        "description": "Set circumference close to one wavelength for axial mode operation",
+        "formula": "C = λ, D = C/π = λ/π"
+      },
+      {
+        "step": 3,
+        "title": "Determine Turn Spacing and Pitch Angle",
+        "description": "Calculate spacing for optimal circular polarization, typically λ/4",
+        "formula": "S = λ/4, α = arctan(S/(π*D)) ≈ 13°"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Number of Turns",
+        "description": "Determine turns based on desired gain and bandwidth requirements",
+        "formula": "G(dBi) ≈ 10*log10(15*N*S²/λ²), N = 6 to 12 typical"
+      },
+      {
+        "step": 5,
+        "title": "Design Ground Plane",
+        "description": "Size ground plane for proper reflection and pattern control",
+        "formula": "Dg ≥ λ for good performance"
+      },
+      {
+        "step": 6,
+        "title": "Calculate Input Impedance",
+        "description": "Estimate impedance for matching network design",
+        "formula": "Zin ≈ 140*(C/λ) ohms"
+      },
+      {
+        "step": 7,
+        "title": "Optimize Wire Diameter",
+        "description": "Select wire diameter for mechanical stability and bandwidth",
+        "formula": "a = λ/100 to λ/50 for good bandwidth"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f = c/λ where C ≈ λ",
+    "inputImpedance": "Zin ≈ 140*(C/λ) ohms",
+    "gain": "G(dBi) ≈ 10*log10(15*N*S²/λ²)",
+    "radiationPattern": "E(θ) ∝ sin(θ)*exp(-j*N*π*cos(θ)*S/λ)",
+    "bandwidth": "BW ≈ 2*(a/λ)*100% for VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use transmission line model with helical geometry corrections and ground plane effects",
+    "radiationModel": "Apply Hansen-Woodyard condition with helical current distribution and axial mode assumptions",
+    "keyAssumptions": [
+      "Axial mode operation with C ≈ λ",
+      "Uniform current distribution along helix",
+      "Perfect ground plane reflection",
+      "Far-field approximation for radiation pattern",
+      "Circular polarization in axial direction"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 10",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 8",
+    "Kraus, J.D., 'Antennas for All Applications', 3rd Edition, Chapter 7",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 5"
+  ]
+}
