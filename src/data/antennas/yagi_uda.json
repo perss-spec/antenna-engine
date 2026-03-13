@@ -1,0 +1,176 @@
+{
+  "id": "yagi_uda",
+  "name": "Yagi-Uda Array",
+  "category": "wire",
+  "description": "A directional antenna array consisting of a driven element (typically a dipole) and multiple parasitic elements including reflectors and directors. The parasitic elements are not directly connected to the transmission line but are electromagnetically coupled to the driven element, creating a highly directional radiation pattern with significant forward gain.",
+  "frequencyRange": {
+    "min": 30000000,
+    "max": 3000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 6,
+    "max": 20,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "5-15%",
+  "polarization": "linear",
+  "applications": [
+    "Television reception",
+    "Amateur radio",
+    "Point-to-point communication",
+    "Radar systems",
+    "Wireless communication",
+    "Satellite communication"
+  ],
+  "parameters": {
+    "driven_length": {
+      "name": "Driven Element Length",
+      "symbol": "L_d",
+      "unit": "m",
+      "description": "Length of the driven dipole element, typically close to half wavelength",
+      "defaultFormula": "0.47 * lambda",
+      "range": {
+        "min": 0.4,
+        "max": 0.5
+      }
+    },
+    "reflector_length": {
+      "name": "Reflector Length",
+      "symbol": "L_r",
+      "unit": "m",
+      "description": "Length of the reflector element, typically 5% longer than driven element",
+      "defaultFormula": "0.49 * lambda",
+      "range": {
+        "min": 0.48,
+        "max": 0.52
+      }
+    },
+    "director_length": {
+      "name": "Director Length",
+      "symbol": "L_dir",
+      "unit": "m",
+      "description": "Length of director elements, typically 5-10% shorter than driven element",
+      "defaultFormula": "0.43 * lambda",
+      "range": {
+        "min": 0.35,
+        "max": 0.45
+      }
+    },
+    "reflector_spacing": {
+      "name": "Reflector Spacing",
+      "symbol": "S_r",
+      "unit": "m",
+      "description": "Distance between driven element and reflector",
+      "defaultFormula": "0.25 * lambda",
+      "range": {
+        "min": 0.15,
+        "max": 0.35
+      }
+    },
+    "director_spacing": {
+      "name": "Director Spacing",
+      "symbol": "S_d",
+      "unit": "m",
+      "description": "Distance between driven element and first director, or between directors",
+      "defaultFormula": "0.2 * lambda",
+      "range": {
+        "min": 0.1,
+        "max": 0.35
+      }
+    },
+    "wire_radius": {
+      "name": "Wire Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Radius of the wire elements",
+      "defaultFormula": "0.001 * lambda",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "num_directors": {
+      "name": "Number of Directors",
+      "symbol": "N_d",
+      "unit": "dimensionless",
+      "description": "Number of director elements in the array",
+      "defaultFormula": "3",
+      "range": {
+        "min": 1,
+        "max": 20
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves optimizing element lengths and spacings to achieve desired gain and impedance matching through electromagnetic coupling between parasitic elements.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency",
+        "description": "Calculate free-space wavelength and establish design frequency",
+        "formula": "lambda = c / f"
+      },
+      {
+        "step": 2,
+        "title": "Design Driven Element",
+        "description": "Set driven element length for resonance, accounting for mutual coupling effects",
+        "formula": "L_d = 0.47 * lambda"
+      },
+      {
+        "step": 3,
+        "title": "Position and Size Reflector",
+        "description": "Place reflector behind driven element with appropriate length for maximum reflection",
+        "formula": "L_r = 0.49 * lambda, S_r = 0.25 * lambda"
+      },
+      {
+        "step": 4,
+        "title": "Design Director Elements",
+        "description": "Size and position directors for progressive phase shift and beam focusing",
+        "formula": "L_dir = 0.43 * lambda, S_d = 0.2 * lambda"
+      },
+      {
+        "step": 5,
+        "title": "Optimize Element Spacing",
+        "description": "Adjust spacings to maximize forward gain while maintaining impedance match",
+        "formula": "S_opt = 0.15 * lambda + 0.1 * lambda * n"
+      },
+      {
+        "step": 6,
+        "title": "Calculate Input Impedance",
+        "description": "Determine driving point impedance considering mutual coupling between all elements",
+        "formula": "Z_in = R_in + j*X_in"
+      },
+      {
+        "step": 7,
+        "title": "Verify Radiation Pattern",
+        "description": "Calculate directivity and front-to-back ratio to confirm performance",
+        "formula": "D = 4*pi*U_max / P_rad"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_r = c / (2 * L_eff) where L_eff accounts for end effects and coupling",
+    "inputImpedance": "Z_in = V_1 / I_1 = Z_11 + sum(Z_1n * I_n / I_1) for n = 2 to N",
+    "gain": "G = D * eta where D = 4*pi / (integral of |F(theta,phi)|^2 over 4*pi)",
+    "radiationPattern": "E(theta,phi) = sum(I_n * exp(-j*k*r_n*cos(theta)) * f_n(theta,phi)) for all elements n",
+    "bandwidth": "BW = 2 * (f_2 - f_1) / f_0 where VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Method of moments with mutual impedance matrix Z_mn between elements m and n",
+    "radiationModel": "Superposition of individual element patterns with appropriate phase relationships",
+    "keyAssumptions": [
+      "Thin wire approximation valid for wire radius << wavelength",
+      "Ground plane effects negligible for elevated arrays",
+      "Linear current distribution approximation on each element",
+      "Far-field radiation pattern calculation",
+      "Lossless conductors assumed for gain calculations"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 10",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 7",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 11",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Chapter 14"
+  ]
+}
