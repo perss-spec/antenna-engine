@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot, ReferenceArea, Label } from 'recharts';
 import type { FC } from 'react';
 import { useMemo, useState } from 'react';
 
@@ -13,6 +13,18 @@ interface S11ChartProps {
   touchstoneData?: S11DataPoint[];
   className?: string;
 }
+
+const CustomTriangleDot = (props: any) => {
+  const { cx, cy } = props;
+  return (
+    <polygon
+      points={`${cx},${cy + 6} ${cx - 5},${cy - 4} ${cx + 5},${cy - 4}`}
+      fill="#6366f1"
+      stroke="#fff"
+      strokeWidth={2}
+    />
+  );
+};
 
 const S11Chart: FC<S11ChartProps> = ({
   data,
@@ -29,6 +41,41 @@ const S11Chart: FC<S11ChartProps> = ({
   const minPoint = useMemo(() => {
     if (data.length === 0) return null;
     return data.reduce((min, p) => p.s11_db < min.s11_db ? p : min, data[0]);
+  }, [data]);
+
+  const bandwidthData = useMemo(() => {
+    if (data.length === 0) return null;
+
+    // Find -10dB crossover points
+    const crossovers: number[] = [];
+    for (let i = 0; i < data.length - 1; i++) {
+      const p1 = data[i];
+      const p2 = data[i + 1];
+      
+      // Check if line crosses -10dB threshold
+      if ((p1.s11_db > -10 && p2.s11_db <= -10) || (p1.s11_db <= -10 && p2.s11_db > -10)) {
+        // Linear interpolation to find exact crossover frequency
+        const ratio = (-10 - p1.s11_db) / (p2.s11_db - p1.s11_db);
+        const crossoverFreq = p1.frequency + ratio * (p2.frequency - p1.frequency);
+        crossovers.push(crossoverFreq);
+      }
+    }
+
+    if (crossovers.length < 2) return null;
+
+    // Take first and last crossover points for bandwidth calculation
+    const f1 = Math.min(...crossovers);
+    const f2 = Math.max(...crossovers);
+    const bandwidth = f2 - f1;
+    const centerFreq = (f1 + f2) / 2;
+
+    return {
+      f1,
+      f2,
+      bandwidth,
+      centerFreq,
+      bandwidthLabel: bandwidth >= 1000 ? `${(bandwidth / 1000).toFixed(2)} GHz` : `${bandwidth.toFixed(1)} MHz`
+    };
   }, [data]);
 
   const yAxisDomain = useMemo(() => {
@@ -142,6 +189,15 @@ const S11Chart: FC<S11ChartProps> = ({
           />
           <Legend content={customLegend} />
 
+          {bandwidthData && (
+            <ReferenceArea
+              x1={bandwidthData.f1}
+              x2={bandwidthData.f2}
+              fill="#22c55e"
+              fillOpacity={0.05}
+            />
+          )}
+
           <ReferenceLine
             y={-10}
             stroke="#ef4444"
@@ -150,15 +206,61 @@ const S11Chart: FC<S11ChartProps> = ({
             label={{ value: '-10 dB', position: 'right', fill: '#ef4444', fontSize: 10 }}
           />
 
+          {bandwidthData && (
+            <>
+              <ReferenceLine
+                x={bandwidthData.f1}
+                stroke="#22c55e"
+                strokeDasharray="4 2"
+                strokeWidth={1}
+              />
+              <ReferenceLine
+                x={bandwidthData.f2}
+                stroke="#22c55e"
+                strokeDasharray="4 2"
+                strokeWidth={1}
+              />
+              <ReferenceDot
+                x={bandwidthData.centerFreq}
+                y={-5}
+                r={0}
+                fill="transparent"
+              >
+                <Label
+                  value={`BW: ${bandwidthData.bandwidthLabel}`}
+                  position="top"
+                  fill="#22c55e"
+                  fontSize={10}
+                  fontWeight="bold"
+                />
+              </ReferenceDot>
+            </>
+          )}
+
           {minPoint && (
-            <ReferenceDot
-              x={minPoint.frequency}
-              y={minPoint.s11_db}
-              r={5}
-              fill="#6366f1"
-              stroke="#fff"
-              strokeWidth={2}
-            />
+            <>
+              <ReferenceDot
+                x={minPoint.frequency}
+                y={minPoint.s11_db}
+                r={0}
+                fill="transparent"
+                shape={<CustomTriangleDot />}
+              />
+              <ReferenceDot
+                x={minPoint.frequency}
+                y={minPoint.s11_db + 3}
+                r={0}
+                fill="transparent"
+              >
+                <Label
+                  value={`${formatXAxis(minPoint.frequency)}Hz`}
+                  position="top"
+                  fill="#6366f1"
+                  fontSize={9}
+                  fontWeight="bold"
+                />
+              </ReferenceDot>
+            </>
           )}
 
           {data.length > 0 && visibleLines.current && (
