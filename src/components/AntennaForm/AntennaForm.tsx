@@ -16,6 +16,9 @@ export interface AntennaParameters {
   radius: number;
   height: number;
   material: string;
+  substrateEr?: number;
+  substrateHeight?: number;
+  patchWidth?: number;
 }
 
 interface AntennaFormProps {
@@ -26,12 +29,12 @@ interface AntennaFormProps {
   className?: string;
 }
 
-const ANTENNA_PRESETS: Record<AntennaType, { name: string; frequency: number; length: number; radius: number; description: string }> = {
-  dipole: { name: 'Half-Wave Dipole', frequency: 145, length: 1034, radius: 1, description: 'Classic half-wave dipole' },
-  monopole: { name: 'Quarter-Wave Monopole', frequency: 433, length: 173, radius: 1, description: 'Monopole over ground plane' },
-  patch: { name: 'Rectangular Patch', frequency: 2400, length: 29, radius: 0, description: 'Microstrip patch on FR-4' },
-  qfh: { name: 'QFH (Quadrifilar Helix)', frequency: 137.5, length: 350, radius: 1, description: 'Circular polarization helix' },
-  yagi: { name: '3-Element Yagi-Uda', frequency: 145, length: 1034, radius: 3, description: 'Directional beam antenna' },
+const ANTENNA_PRESETS: Record<AntennaType, { name: string; frequency: number; length: number; radius: number; height: number; description: string; substrateEr?: number; substrateHeight?: number; patchWidth?: number }> = {
+  dipole: { name: 'Half-Wave Dipole', frequency: 145, length: 1034, radius: 1, height: 0, description: 'Classic half-wave dipole' },
+  monopole: { name: 'Quarter-Wave Monopole', frequency: 433, length: 173, radius: 1, height: 0, description: 'Monopole over ground plane' },
+  patch: { name: 'Rectangular Patch', frequency: 2400, length: 29, radius: 0, height: 0, description: 'Microstrip patch on FR-4', substrateEr: 4.4, substrateHeight: 1.6, patchWidth: 38 },
+  qfh: { name: 'QFH (Quadrifilar Helix)', frequency: 137.5, length: 350, radius: 1, height: 550, description: 'Circular polarization helix' },
+  yagi: { name: '3-Element Yagi-Uda', frequency: 145, length: 1034, radius: 3, height: 0, description: 'Directional beam antenna' },
 };
 
 const AntennaForm: FC<AntennaFormProps> = ({
@@ -68,6 +71,10 @@ const AntennaForm: FC<AntennaFormProps> = ({
       frequency: preset.frequency,
       length: preset.length,
       radius: preset.radius,
+      height: preset.height,
+      substrateEr: preset.substrateEr,
+      substrateHeight: preset.substrateHeight,
+      patchWidth: preset.patchWidth,
     };
     setLocalParams(updatedParams);
     onParametersChange(updatedParams);
@@ -79,7 +86,9 @@ const AntennaForm: FC<AntennaFormProps> = ({
   }, [localParams, onSubmit]);
 
   const preset = ANTENNA_PRESETS[localParams.antennaType];
-  const showWireParams = ['dipole', 'monopole', 'yagi'].includes(localParams.antennaType);
+  const showWireParams = ['dipole', 'monopole', 'yagi', 'qfh'].includes(localParams.antennaType);
+  const showPatchParams = localParams.antennaType === 'patch';
+  const showHeightParam = localParams.antennaType === 'qfh';
 
   return (
     <div className={cn('flex flex-col gap-3 px-6 py-4', className)}>
@@ -145,6 +154,67 @@ const AntennaForm: FC<AntennaFormProps> = ({
                 step={0.01}
                 disabled={isSimulating}
                 required
+              />
+            </div>
+          </>
+        )}
+
+        {showHeightParam && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="height">Height (mm)</Label>
+            <Input
+              id="height"
+              type="number"
+              value={localParams.height}
+              onChange={handleInputChange('height')}
+              min={1}
+              max={10000}
+              step={1}
+              disabled={isSimulating}
+              required
+            />
+          </div>
+        )}
+
+        {showPatchParams && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="patchWidth">Patch Width (mm)</Label>
+              <Input
+                id="patchWidth"
+                type="number"
+                value={localParams.patchWidth || 38}
+                onChange={handleInputChange('patchWidth')}
+                min={1}
+                max={500}
+                step={0.1}
+                disabled={isSimulating}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="substrateEr">Substrate Er</Label>
+              <Input
+                id="substrateEr"
+                type="number"
+                value={localParams.substrateEr || 4.4}
+                onChange={handleInputChange('substrateEr')}
+                min={1}
+                max={20}
+                step={0.1}
+                disabled={isSimulating}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="substrateHeight">Substrate Height (mm)</Label>
+              <Input
+                id="substrateHeight"
+                type="number"
+                value={localParams.substrateHeight || 1.6}
+                onChange={handleInputChange('substrateHeight')}
+                min={0.1}
+                max={10}
+                step={0.1}
+                disabled={isSimulating}
               />
             </div>
           </>

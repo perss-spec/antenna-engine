@@ -171,6 +171,7 @@ function App() {
   const [summary, setSummary] = useState<{ resonantFreq: number; minS11: number; bandwidth: number } | null>(null);
   const [simTime, setSimTime] = useState<number | null>(null);
   const [impedanceData, setImpedanceData] = useState<{ real: number[]; imag: number[]; freq: number[] }>({ real: [], imag: [], freq: [] });
+  const [s11Data, setS11Data] = useState<{ real: number[]; imag: number[] }>({ real: [], imag: [] });
   const [activeTab, setActiveTab] = useState('s-parameters');
 
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -205,10 +206,11 @@ function App() {
       height_m: formParams.antennaType === 'monopole' ? lengthM : heightM,
     };
 
-    // Patch-specific defaults
+    // Patch-specific params from form
     if (formParams.antennaType === 'patch') {
-      antennaParams.substrate_er = 4.4;
-      antennaParams.substrate_height_m = 0.0016;
+      antennaParams.substrate_er = formParams.substrateEr || 4.4;
+      antennaParams.substrate_height_m = (formParams.substrateHeight || 1.6) / 1000;
+      if (formParams.patchWidth) antennaParams.width_m = formParams.patchWidth / 1000;
     }
 
     return invoke<SimulateResponse>('simulate_sweep', {
@@ -237,6 +239,7 @@ function App() {
       }));
 
       setChartData(data);
+      setS11Data({ real: result.s11Real, imag: result.s11Imag });
       setImpedanceData({
         real: result.impedanceReal,
         imag: result.impedanceImag,
@@ -247,6 +250,19 @@ function App() {
         minS11: result.minS11,
         bandwidth: result.bandwidth,
       });
+
+      // Save to history
+      const historyItem: HistoryItem = {
+        id: new Date().toISOString(),
+        timestamp: Date.now(),
+        parameters: formParams,
+        result: { minS11: result.minS11, resonantFrequency: result.resonantFreq },
+      };
+      try {
+        const existing: HistoryItem[] = JSON.parse(localStorage.getItem('promin_simulation_history') || '[]');
+        existing.push(historyItem);
+        localStorage.setItem('promin_simulation_history', JSON.stringify(existing.slice(-50)));
+      } catch { /* localStorage full or unavailable */ }
     } catch (e: any) {
       setError(typeof e === 'string' ? e : e.message || 'Simulation failed');
     } finally {
@@ -260,32 +276,59 @@ function App() {
     setOptimizationResults([]);
     optimizationAbortRef.current = false;
 
-    const totalSteps = 10;
-    const baseLength = params.length;
-    const baseRadius = params.radius;
+    const totalSteps = 15;
+    let curLength = params.length;
+    let curRadius = params.radius;
+    let curS11 = 0;
     const results: OptimizationResult[] = [];
+
+    const evaluate = async (len: number, rad: number) => {
+      return runSweep({ ...params, frequency: optParams.targetFrequency, length: len, radius: rad });
+    };
+
+    // Initial evaluation
+    try {
+      const init = await evaluate(curLength, curRadius);
+      curS11 = init.minS11;
+    } catch { /* use 0 */ }
 
     for (let step = 0; step < totalSteps; step++) {
       if (optimizationAbortRef.current) break;
 
-      const bestS11SoFar = results.length > 0
-        ? Math.min(...results.map(r => r.s11))
-        : 0;
-      const bestIdx = results.findIndex(r => r.s11 === bestS11SoFar);
-      const refLength = bestIdx >= 0 ? results[bestIdx].length * 1000 : baseLength;
-      const refRadius = bestIdx >= 0 ? results[bestIdx].radius * 1000 : baseRadius;
+      let trialLength: number, trialRadius: number;
 
-      const perturbScale = optParams.method === 'random' ? 0.15 : 0.05;
-      const trialLength = refLength * (1 + (Math.random() - 0.5) * perturbScale);
-      const trialRadius = refRadius * (1 + (Math.random() - 0.5) * perturbScale);
+      if (optParams.method === 'gradient') {
+        // Finite-difference gradient descent
+        const eps = curLength * 0.005; // 0.5% perturbation for gradient
+        const stepSize = curLength * 0.02; // 2% step
+        try {
+          const rPlus = await evaluate(curLength + eps, curRadius);
+          const rMinus = await evaluate(curLength - eps, curRadius);
+          const grad = (rPlus.minS11 - rMinus.minS11) / (2 * eps); // want to minimize S11
+          trialLength = curLength - stepSize * Math.sign(grad);
+          trialRadius = curRadius;
+        } catch {
+          trialLength = curLength * (1 + (Math.random() - 0.5) * 0.05);
+          trialRadius = curRadius;
+        }
+      } else if (optParams.method === 'bayesian') {
+        // Narrowing search: start wide, converge
+        const scale = 0.15 * Math.pow(0.7, step); // shrink each iteration
+        const bestResult = results.length > 0
+          ? results.reduce((a, b) => a.s11 < b.s11 ? a : b)
+          : null;
+        const refLen = bestResult ? bestResult.length * 1000 : curLength;
+        const refRad = bestResult ? bestResult.radius * 1000 : curRadius;
+        trialLength = refLen * (1 + (Math.random() - 0.5) * scale);
+        trialRadius = refRad * (1 + (Math.random() - 0.5) * scale);
+      } else {
+        // Random search
+        trialLength = curLength * (1 + (Math.random() - 0.5) * 0.15);
+        trialRadius = curRadius * (1 + (Math.random() - 0.5) * 0.15);
+      }
 
       try {
-        const result = await runSweep({
-          ...params,
-          frequency: optParams.targetFrequency,
-          length: trialLength,
-          radius: trialRadius,
-        });
+        const result = await evaluate(trialLength, trialRadius);
 
         const optResult: OptimizationResult = {
           iteration: step + 1,
@@ -300,13 +343,18 @@ function App() {
         setOptimizationResults([...results]);
         setOptimizationProgress(((step + 1) / totalSteps) * 100);
 
-        const best = results.reduce((a, b) => a.s11 < b.s11 ? a : b);
-        if (optResult === best) {
+        // Update current best for gradient descent
+        if (result.minS11 < curS11) {
+          curS11 = result.minS11;
+          curLength = trialLength;
+          curRadius = trialRadius;
+
           const data: S11DataPoint[] = result.frequencies.map((f: number, i: number) => ({
             frequency: f / 1e6,
             s11_db: result.s11Db[i],
           }));
           setChartData(data);
+          setS11Data({ real: result.s11Real, imag: result.s11Imag });
           setImpedanceData({
             real: result.impedanceReal,
             imag: result.impedanceImag,
@@ -357,7 +405,7 @@ function App() {
           </div>
           <div>
             <div className="text-base font-bold text-white tracking-tight">PROMIN</div>
-            <div className="text-[11px] text-text-dim mt-0.5">Antenna Studio v0.2</div>
+            <div className="text-[11px] text-text-dim mt-0.5">Antenna Studio v0.3</div>
           </div>
         </div>
 
@@ -421,20 +469,17 @@ function App() {
             )}
           </div>
           <div className="flex gap-3 items-center text-xs text-text-dim">
+            {!isTauri && (
+              <span className="text-warning">Browser Preview</span>
+            )}
             {simTime && <span>Time: {simTime}ms</span>}
             <span>Points: {chartData.length || '-'}</span>
             {chartData.length > 0 && (
               <ExportPanel
                 frequencies={impedanceData.freq}
                 s11Db={chartData.map(d => d.s11_db)}
-                s11Real={impedanceData.real.map((_, i) => {
-                  const s11lin = Math.pow(10, chartData[i]?.s11_db / 20);
-                  return s11lin * Math.cos(0);
-                })}
-                s11Imag={impedanceData.real.map((_, i) => {
-                  const s11lin = Math.pow(10, chartData[i]?.s11_db / 20);
-                  return s11lin * Math.sin(0);
-                })}
+                s11Real={s11Data.real}
+                s11Imag={s11Data.imag}
                 impedanceReal={impedanceData.real}
                 impedanceImag={impedanceData.imag}
                 disabled={isSimulating}
@@ -458,7 +503,6 @@ function App() {
                 <TabsTrigger value="impedance">Impedance</TabsTrigger>
                 <TabsTrigger value="3d-view">3D View</TabsTrigger>
                 <TabsTrigger value="radiation">Radiation</TabsTrigger>
-                <TabsTrigger value="optimization">Optimization</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
 
@@ -556,16 +600,6 @@ function App() {
                 <RadiationPatternView
                   antennaType={params.antennaType}
                   frequency={params.frequency * 1e6}
-                />
-              </TabsContent>
-
-              <TabsContent value="optimization" className="flex-1 flex flex-col">
-                <OptimizationPanel
-                  onStartOptimization={handleStartOptimization}
-                  onStopOptimization={handleStopOptimization}
-                  isOptimizing={isOptimizing}
-                  progress={optimizationProgress}
-                  results={optimizationResults}
                 />
               </TabsContent>
 

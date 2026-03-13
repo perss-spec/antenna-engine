@@ -52,7 +52,12 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
   onClose,
   className
 }) => {
-  const [settings, setSettings] = useState<SettingsData>(defaultSettings);
+  const [settings, setSettings] = useState<SettingsData>(() => {
+    try {
+      const stored = localStorage.getItem('promin_settings');
+      return stored ? { ...defaultSettings, ...JSON.parse(stored) } : defaultSettings;
+    } catch { return defaultSettings; }
+  });
   const [hasChanges, setHasChanges] = useState(false);
 
   const updateSettings = useCallback((section: keyof SettingsData, key: string, value: any) => {
@@ -99,6 +104,7 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
   }, [updateSettings]);
 
   const handleSave = useCallback(() => {
+    try { localStorage.setItem('promin_settings', JSON.stringify(settings)); } catch { /* */ }
     onSettingsChange?.(settings);
     setHasChanges(false);
   }, [settings, onSettingsChange]);
