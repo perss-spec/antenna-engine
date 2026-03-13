@@ -486,6 +486,7 @@ function App() {
               <TabsContent value="3d-view" className="flex-1 flex flex-col">
                 <div className="bg-surface border border-border rounded-lg flex-1 min-h-[400px] overflow-hidden">
                   <AntennaViewport
+                    antennaType={params.antennaType}
                     length={params.length / 1000}
                     frequency={params.frequency * 1e6}
                     radius={params.radius / 1000}
