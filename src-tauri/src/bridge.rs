@@ -179,6 +179,83 @@ pub fn simulate_sweep(
 }
 
 #[tauri::command]
+pub fn compute_radiation_pattern(
+    antenna_type: String,
+    frequency: f64,
+    theta_points: usize,
+    phi_points: usize,
+) -> Result<serde_json::Value, String> {
+    if frequency <= 0.0 {
+        return Err("Frequency must be positive".into());
+    }
+    let n_theta = if theta_points < 2 { 37 } else { theta_points }; // 0..180, step 5
+    let n_phi = if phi_points < 2 { 73 } else { phi_points };       // 0..360, step 5
+    let wl = C0 / frequency;
+
+    let mut pattern = Vec::with_capacity(n_theta);
+    let mut max_gain = f64::NEG_INFINITY;
+
+    for it in 0..n_theta {
+        let theta = std::f64::consts::PI * it as f64 / (n_theta - 1) as f64;
+        let mut row = Vec::with_capacity(n_phi);
+        for ip in 0..n_phi {
+            let _phi = 2.0 * std::f64::consts::PI * ip as f64 / (n_phi - 1) as f64;
+            let gain = match antenna_type.to_lowercase().as_str() {
+                "dipole" => {
+                    // E-plane pattern: cos(pi/2 * cos(theta)) / sin(theta)
+                    let st = theta.sin();
+                    if st.abs() < 1e-6 { -40.0 }
+                    else {
+                        let f_theta = ((std::f64::consts::FRAC_PI_2 * theta.cos()).cos()) / st;
+                        2.15 + 20.0 * f_theta.abs().max(1e-10).log10()
+                    }
+                }
+                "monopole" => {
+                    let st = theta.sin();
+                    if st.abs() < 1e-6 || theta > std::f64::consts::FRAC_PI_2 { -40.0 }
+                    else {
+                        let f_theta = ((std::f64::consts::FRAC_PI_2 * theta.cos()).cos()) / st;
+                        5.15 + 20.0 * f_theta.abs().max(1e-10).log10()
+                    }
+                }
+                "patch" => {
+                    // Broadside pattern: cos^2(theta)
+                    let g = theta.cos().powi(2);
+                    6.0 + 10.0 * g.max(1e-10).log10()
+                }
+                "qfh" => {
+                    // Cardioid-like: (1 + cos(theta))/2
+                    let g = ((1.0 + theta.cos()) / 2.0).powi(2);
+                    3.0 + 10.0 * g.max(1e-10).log10()
+                }
+                "yagi" => {
+                    // Endfire beam pattern
+                    let cos_t = theta.cos();
+                    let d = 0.25 * wl;
+                    let psi = 2.0 * std::f64::consts::PI * d / wl * cos_t;
+                    let af = if (1.0 + 2.0 * psi.cos()).abs() < 1e-6 { 1e-10 }
+                             else { ((1.0 + 2.0 * psi.cos()) / 3.0).abs() };
+                    7.1 + 20.0 * af.max(1e-10).log10()
+                }
+                _ => -40.0,
+            };
+            if gain > max_gain { max_gain = gain; }
+            row.push(gain);
+        }
+        pattern.push(row);
+    }
+
+    Ok(json!({
+        "pattern": pattern,
+        "maxGain": max_gain,
+        "thetaPoints": n_theta,
+        "phiPoints": n_phi,
+        "antennaType": antenna_type,
+        "frequency": frequency,
+    }))
+}
+
+#[tauri::command]
 pub fn get_simulation_status() -> serde_json::Value {
     json!({
         "stage": "idle",

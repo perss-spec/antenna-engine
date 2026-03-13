@@ -9,6 +9,7 @@ import FrequencyPresets from './components/FrequencyPresets/FrequencyPresets';
 import SimulationHistory from './components/SimulationHistory/SimulationHistory';
 import type { HistoryItem } from './components/SimulationHistory/SimulationHistory';
 import AntennaViewport from './viewport/AntennaViewport';
+import { RadiationPatternView } from './components/RadiationPatternView';
 import ExportPanel from './components/ExportPanel/ExportPanel';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -401,6 +402,7 @@ function App() {
                 <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
                 <TabsTrigger value="impedance">Impedance</TabsTrigger>
                 <TabsTrigger value="3d-view">3D View</TabsTrigger>
+                <TabsTrigger value="radiation">Radiation</TabsTrigger>
                 <TabsTrigger value="optimization">Optimization</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
@@ -493,6 +495,13 @@ function App() {
                     className="h-full"
                   />
                 </div>
+              </TabsContent>
+
+              <TabsContent value="radiation" className="flex-1 flex flex-col">
+                <RadiationPatternView
+                  antennaType={params.antennaType}
+                  frequency={params.frequency * 1e6}
+                />
               </TabsContent>
 
               <TabsContent value="optimization" className="flex-1 flex flex-col">
