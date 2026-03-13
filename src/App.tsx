@@ -598,7 +598,7 @@ function App() {
       {/* ═══ Main Content — Resizable Panels ═══ */}
       <PanelGroup orientation="horizontal" className="flex-1">
         {/* ─── Sidebar ─── */}
-        <Panel defaultSize={22} minSize={15} maxSize={35}>
+        <Panel defaultSize="22%" minSize="15%" maxSize="35%">
           <div className="h-full bg-surface flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <AntennaForm
@@ -634,7 +634,7 @@ function App() {
         <PanelResizeHandle className="w-[3px] bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize" />
 
         {/* ─── Main Area ─── */}
-        <Panel minSize={40}>
+        <Panel minSize="40%">
           <div className="h-full flex flex-col overflow-auto">
             <div className="flex-1 p-5 flex flex-col gap-4">
               {error && (
