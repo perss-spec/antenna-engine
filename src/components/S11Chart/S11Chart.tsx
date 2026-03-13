@@ -1,5 +1,6 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import type { FC } from 'react';
+import { useMemo } from 'react';
 
 interface S11DataPoint {
   frequency: number;
@@ -19,6 +20,11 @@ const S11Chart: FC<S11ChartProps> = ({
   touchstoneData,
   className
 }) => {
+  const minPoint = useMemo(() => {
+    if (data.length === 0) return null;
+    return data.reduce((min, p) => p.s11_db < min.s11_db ? p : min, data[0]);
+  }, [data]);
+
   const formatTooltip = (value: number, name: string) => {
     if (name.includes('s11')) {
       return [`${value.toFixed(2)} dB`, name];
@@ -45,6 +51,7 @@ const S11Chart: FC<S11ChartProps> = ({
             tickFormatter={formatXAxis}
             stroke="#555"
             tick={{ fill: '#666', fontSize: 11 }}
+            label={{ value: 'Frequency (MHz)', position: 'insideBottom', offset: -10, fill: '#666', fontSize: 11 }}
           />
           <YAxis
             domain={[-40, 0]}
@@ -64,6 +71,25 @@ const S11Chart: FC<S11ChartProps> = ({
             }}
           />
           <Legend wrapperStyle={{ color: '#888', fontSize: '12px' }} />
+
+          <ReferenceLine
+            y={-10}
+            stroke="#ef4444"
+            strokeDasharray="6 3"
+            strokeWidth={1}
+            label={{ value: '-10 dB', position: 'right', fill: '#ef4444', fontSize: 10 }}
+          />
+
+          {minPoint && (
+            <ReferenceDot
+              x={minPoint.frequency}
+              y={minPoint.s11_db}
+              r={5}
+              fill="#6366f1"
+              stroke="#fff"
+              strokeWidth={2}
+            />
+          )}
 
           {data.length > 0 && (
             <Line
