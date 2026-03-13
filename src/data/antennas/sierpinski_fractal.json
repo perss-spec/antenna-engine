@@ -1,0 +1,154 @@
+{
+  "id": "sierpinski_fractal",
+  "name": "Sierpinski Fractal",
+  "category": "special",
+  "description": "A fractal antenna based on the Sierpinski triangle geometry, exhibiting self-similar multiband characteristics with logarithmically periodic frequency response. The fractal structure provides multiple resonances at frequencies related by the scaling factor, typically offering 3-5 distinct operating bands with similar radiation patterns.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 6000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2,
+    "max": 6,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "15-25% per band",
+  "polarization": "linear",
+  "applications": [
+    "Multiband wireless communications",
+    "Software defined radio",
+    "Cognitive radio systems",
+    "Compact multiband base stations",
+    "RFID readers",
+    "Ultra-wideband applications"
+  ],
+  "parameters": {
+    "iteration_level": {
+      "name": "Iteration Level",
+      "symbol": "n",
+      "unit": "dimensionless",
+      "description": "Number of fractal iterations, determines complexity and number of resonant bands",
+      "defaultFormula": "3",
+      "range": {
+        "min": 1,
+        "max": 5
+      }
+    },
+    "scaling_factor": {
+      "name": "Scaling Factor",
+      "symbol": "δ",
+      "unit": "dimensionless",
+      "description": "Geometric scaling ratio between successive iterations",
+      "defaultFormula": "0.5",
+      "range": {
+        "min": 0.3,
+        "max": 0.7
+      }
+    },
+    "base_length": {
+      "name": "Base Triangle Side Length",
+      "symbol": "L0",
+      "unit": "m",
+      "description": "Side length of the largest triangle in the fractal structure",
+      "defaultFormula": "0.25 * λ0",
+      "range": {
+        "min": 0.1,
+        "max": 0.5
+      }
+    },
+    "wire_radius": {
+      "name": "Wire Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Radius of the wire elements forming the fractal structure",
+      "defaultFormula": "0.001 * λ0",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "feed_gap": {
+      "name": "Feed Gap",
+      "symbol": "g",
+      "unit": "m",
+      "description": "Gap width at the feed point of the base triangle",
+      "defaultFormula": "0.01 * λ0",
+      "range": {
+        "min": 0.001,
+        "max": 0.05
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining the fractal geometry parameters, calculating resonant frequencies for each iteration level, optimizing the scaling factor for desired frequency ratios, and adjusting feed structure for impedance matching across multiple bands.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Base Frequency and Triangle Size",
+        "description": "Calculate the base triangle dimensions for the lowest operating frequency",
+        "formula": "L0 = 0.25 * c / f0"
+      },
+      {
+        "step": 2,
+        "title": "Select Iteration Level",
+        "description": "Choose fractal iteration level based on desired number of operating bands",
+        "formula": "Number_of_bands ≈ n + 1"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Scaling Factor",
+        "description": "Determine scaling factor for desired frequency spacing between bands",
+        "formula": "δ = f_n / f_(n+1)"
+      },
+      {
+        "step": 4,
+        "title": "Generate Fractal Geometry",
+        "description": "Create successive iterations using the scaling factor",
+        "formula": "L_n = L0 * δ^n"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Resonant Frequencies",
+        "description": "Determine resonant frequencies for each iteration level",
+        "formula": "f_n = c / (4 * L_n)"
+      },
+      {
+        "step": 6,
+        "title": "Design Feed Structure",
+        "description": "Optimize feed gap and matching network for multiband operation",
+        "formula": "g = 0.01 * c / f0"
+      },
+      {
+        "step": 7,
+        "title": "Impedance Matching",
+        "description": "Adjust wire radius and feed structure for acceptable VSWR across bands",
+        "formula": "Z_in ≈ 120 * ln(L/a)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_n = c / (4 * L0 * δ^n)",
+    "inputImpedance": "Z_in ≈ 120 * ln(L_eff / a) - j * X_gap",
+    "gain": "G ≈ 1.64 + 10 * log10(L_eff / λ)",
+    "radiationPattern": "E(θ,φ) = Σ I_n * sin(k * L_n * cos(θ)) / (k * L_n * cos(θ))",
+    "bandwidth": "BW_n ≈ 2 * a / L_n * 100%"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use method of moments with triangular basis functions for wire segments, include mutual coupling between fractal elements",
+    "radiationModel": "Superposition of radiation from all wire segments with appropriate phase relationships, account for fractal self-similarity",
+    "keyAssumptions": [
+      "Thin wire approximation valid for a << λ",
+      "Perfect conductor assumption",
+      "Fractal elements are electrically small at lowest frequency",
+      "Self-similarity provides logarithmic periodicity",
+      "Feed point located at base of largest triangle"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 14",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 20",
+    "Werner, D.H. 'Fractal Antenna Engineering Handbook', Artech House",
+    "Puente, C. 'Fractal Antennas: A Novel Antenna Miniaturization Technique', IEEE Antennas and Propagation Magazine"
+  ]
+}
