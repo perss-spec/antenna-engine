@@ -66,8 +66,8 @@ const FrequencyPresets: FC<FrequencyPresetsProps> = ({ onSelect, className, disa
                 onClick={() => onSelect(preset.frequency)}
                 disabled={disabled}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
-                  'border border-border/60 bg-surface hover:border-accent hover:bg-accent/10 hover:text-accent',
+                  'px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all duration-200',
+                  'border border-border/40 bg-surface-hover/50 hover:border-accent/40 hover:bg-accent/10 hover:text-accent hover:shadow-sm hover:shadow-accent/10',
                   'disabled:pointer-events-none disabled:opacity-40',
                 )}
                 title={`${preset.frequency} MHz`}
