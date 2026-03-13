@@ -1,0 +1,136 @@
+{
+  "id": "quarter_wave_monopole",
+  "name": "Quarter-Wave Monopole (wire)",
+  "category": "wire",
+  "description": "A quarter-wavelength vertical wire antenna mounted over a ground plane, representing half of a dipole antenna. It exhibits omnidirectional radiation pattern in the horizontal plane with vertical polarization. The ground plane acts as an image plane, creating the effect of a full half-wave dipole.",
+  "frequencyRange": {
+    "min": 1000000,
+    "max": 10000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2.15,
+    "max": 5.15,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "5-15%",
+  "polarization": "linear",
+  "applications": [
+    "Mobile communications",
+    "Base station antennas",
+    "Vehicle antennas",
+    "Portable radios",
+    "IoT devices",
+    "Amateur radio"
+  ],
+  "parameters": {
+    "length": {
+      "name": "Physical Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Physical length of the monopole wire",
+      "defaultFormula": "0.95 * c / (4 * f)",
+      "range": {
+        "min": 0.001,
+        "max": 100
+      }
+    },
+    "wire_radius": {
+      "name": "Wire Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Radius of the monopole wire conductor",
+      "defaultFormula": "lambda / 1000",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "ground_plane_radius": {
+      "name": "Ground Plane Radius",
+      "symbol": "Rg",
+      "unit": "m",
+      "description": "Radius of the circular ground plane",
+      "defaultFormula": "lambda / 4",
+      "range": {
+        "min": 0.01,
+        "max": 10
+      }
+    },
+    "feed_height": {
+      "name": "Feed Height",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Height of feed point above ground plane",
+      "defaultFormula": "0",
+      "range": {
+        "min": 0,
+        "max": 0.1
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining the physical length for resonance, selecting appropriate wire diameter, sizing the ground plane, and optimizing the feed structure for desired impedance matching.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Resonant Length",
+        "description": "Determine the physical length for quarter-wave resonance including end effects",
+        "formula": "L = 0.95 * c / (4 * f)"
+      },
+      {
+        "step": 2,
+        "title": "Select Wire Diameter",
+        "description": "Choose wire radius based on bandwidth and mechanical requirements",
+        "formula": "a = lambda / (200 to 2000)"
+      },
+      {
+        "step": 3,
+        "title": "Size Ground Plane",
+        "description": "Design ground plane radius for proper radiation pattern and impedance",
+        "formula": "Rg >= lambda / 4"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Input Impedance",
+        "description": "Determine theoretical input impedance at resonance",
+        "formula": "Zin = 36.5 + j * X"
+      },
+      {
+        "step": 5,
+        "title": "Design Feed Structure",
+        "description": "Design coaxial feed connection and matching network if needed",
+        "formula": "VSWR = (1 + |Gamma|) / (1 - |Gamma|)"
+      },
+      {
+        "step": 6,
+        "title": "Optimize for Bandwidth",
+        "description": "Adjust wire diameter and length for desired bandwidth",
+        "formula": "BW = 2 * (f2 - f1) / f0"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c / (4 * L_eff) where L_eff = L + delta_L",
+    "inputImpedance": "Zin = 36.5 + j * 21.25 * tan(beta * L) for thin wire over infinite ground",
+    "gain": "G = 5.15 dBi for infinite ground plane, G = 2.15 dBi for small ground plane",
+    "radiationPattern": "E_theta = j * 60 * I0 * cos(beta * L * cos(theta)) / (r * sin(theta))",
+    "bandwidth": "BW = 4 * a / (lambda * ln(L/a)) for VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Method of moments with thin wire approximation and image theory for ground plane effects",
+    "radiationModel": "Far-field integration using current distribution I(z) = I0 * cos(beta * z) with image currents",
+    "keyAssumptions": [
+      "Perfect conducting ground plane",
+      "Thin wire approximation (L >> a)",
+      "Far-field radiation",
+      "Linear current distribution"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 4",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 4",
+    "Kraus, J.D. & Marhefka, R.J. 'Antennas for All Applications', 3rd Edition, Chapter 8",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 5"
+  ]
+}
