@@ -1,0 +1,183 @@
+{
+  "name": "ae-ui-design-spec",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/ui-design-spec",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst SRC = path.join(PROJECT, 'src');\n\nconst readFile = (rel) => {\n  try { return fs.readFileSync(path.join(SRC, rel), 'utf8'); }\n  catch { return '// FILE NOT FOUND'; }\n};\n\n// Read design brief from previous pipeline\nlet designBrief = '{}';\ntry {\n  designBrief = fs.readFileSync(path.join(PROJECT, '.claude/design-brief.json'), 'utf8');\n} catch (e) {\n  designBrief = JSON.stringify({ error: 'design-brief.json not found — run ae-ui-research first' });\n}\n\n// Read current UI files for context\nconst files = {\n  'index.css': readFile('index.css'),\n  'App.tsx': readFile('App.tsx'),\n  'button.tsx': readFile('components/ui/button.tsx'),\n  'input.tsx': readFile('components/ui/input.tsx'),\n  'select.tsx': readFile('components/ui/select.tsx'),\n  'card.tsx': readFile('components/ui/card.tsx'),\n  'tabs.tsx': readFile('components/ui/tabs.tsx'),\n  'label.tsx': readFile('components/ui/label.tsx'),\n  'badge.tsx': readFile('components/ui/badge.tsx'),\n  'AntennaForm.tsx': readFile('components/AntennaForm/AntennaForm.tsx'),\n  'FrequencyPresets.tsx': readFile('components/FrequencyPresets/FrequencyPresets.tsx'),\n  'OptimizationPanel.tsx': readFile('components/OptimizationPanel/OptimizationPanel.tsx'),\n  'SmithChart.tsx': readFile('components/SmithChart/SmithChart.tsx'),\n  'RadiationPatternView.tsx': readFile('components/RadiationPatternView.tsx'),\n  'AntennaViewport.tsx': readFile('viewport/AntennaViewport.tsx'),\n};\n\nreturn [{ json: { designBrief, files } }];"
+      },
+      "id": "read-all",
+      "name": "Read Brief + Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.2,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1100, 520]
+    },
+    {
+      "parameters": {
+        "text": "You are the Layout Architect for PROMIN Antenna Studio redesign.\n\nDesign Brief:\n{{ $json.designBrief }}\n\nCurrent App.tsx layout:\n{{ $json.files['App.tsx'] }}\n\nDesign the complete layout system. Specify:\n\n1. **Grid System** — CSS Grid template for 3-column layout (sidebar | main | optional inspector)\n2. **Sidebar** — width (min/default/max), resizable via drag divider, sections order\n3. **Main Area** — tabs layout, chart grid, viewport area allocation\n4. **Panel Dimensions** — header height, footer height, section header height, content padding\n5. **Resize Behavior** — divider width, snap points, min widths per panel\n6. **Breakpoints** — when sidebar collapses, when inspector hides, mobile behavior\n7. **Z-index Layers** — base, panels, overlays, modals, toasts\n\nOutput JSON:\n```json\n{\n  \"grid\": { \"template\": \"...\", \"gap\": \"...\" },\n  \"sidebar\": { \"minWidth\": 280, \"defaultWidth\": 340, \"maxWidth\": 480, \"sections\": [\"antenna-type\", \"parameters\", \"frequency\", \"optimization\"] },\n  \"main_area\": { \"tabs\": [\"3D View\", \"S11\", \"Smith Chart\", \"Radiation\", \"Results\"], \"chart_grid\": \"...\" },\n  \"panel_dimensions\": { \"headerHeight\": 48, \"sectionHeaderHeight\": 36, \"contentPadding\": 16 },\n  \"resize\": { \"dividerWidth\": 4, \"snapPoints\": [], \"minWidths\": {} },\n  \"breakpoints\": { \"sm\": 768, \"md\": 1024, \"lg\": 1280, \"xl\": 1536 },\n  \"z_index\": { \"base\": 0, \"panels\": 10, \"overlays\": 20, \"modals\": 30, \"toasts\": 40 }\n}\n```\n\nOutput ONLY valid JSON.",
+        "options": {
+          "systemMessage": "You are a layout architect for engineering simulation software. You design responsive, dockable panel systems. Output structured JSON only."
+        }
+      },
+      "id": "layout-architect",
+      "name": "Layout Architect",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are the Form UX Designer for PROMIN Antenna Studio redesign.\n\nDesign Brief:\n{{ $('Read Brief + Files').item.json.designBrief }}\n\nLayout Architect output:\n{{ $('Layout Architect').item.json.output }}\n\nCurrent form components:\nAntennaForm.tsx:\n{{ $('Read Brief + Files').item.json.files['AntennaForm.tsx'] }}\n\nFrequencyPresets.tsx:\n{{ $('Read Brief + Files').item.json.files['FrequencyPresets.tsx'] }}\n\nOptimizationPanel.tsx:\n{{ $('Read Brief + Files').item.json.files['OptimizationPanel.tsx'] }}\n\nCurrent primitives:\ninput.tsx: {{ $('Read Brief + Files').item.json.files['input.tsx'] }}\nselect.tsx: {{ $('Read Brief + Files').item.json.files['select.tsx'] }}\nlabel.tsx: {{ $('Read Brief + Files').item.json.files['label.tsx'] }}\n\nDesign the form UX system:\n\n1. **Input Sizing** — height variants (sm: h-7, md: h-8, lg: h-9), padding, font sizes\n2. **Label System** — positioning (top/left), size, color, required indicator, help tooltip\n3. **Grouping** — section headers, collapsible groups, visual separators\n4. **2-Column Grid** — when to use 2-col (related params like length+radius, width+height)\n5. **Validation States** — error, warning, info styles (border color, message, icon)\n6. **Unit Display** — suffix badges for units (mm, MHz, dB, ohm)\n7. **Frequency Presets** — chip/pill layout, compact inline chips vs tall buttons\n8. **Optimization Panel** — compact table, 3-col grid for min/max/step, toggle for enable/disable\n9. **Select Styling** — optgroup support, search/filter for long lists, compact mode\n10. **Spacing Rules** — gap between form fields, between sections, between label and input\n\nOutput JSON:\n```json\n{\n  \"input_sizes\": { \"sm\": {}, \"md\": {}, \"lg\": {} },\n  \"label_system\": { ... },\n  \"grouping\": { ... },\n  \"two_column_grid\": { \"when\": [...], \"gap\": \"...\" },\n  \"validation\": { \"error\": {}, \"warning\": {}, \"info\": {} },\n  \"unit_display\": { ... },\n  \"frequency_presets\": { ... },\n  \"optimization_panel\": { ... },\n  \"select_styling\": { ... },\n  \"spacing\": { \"field_gap\": \"...\", \"section_gap\": \"...\", \"label_gap\": \"...\" }\n}\n```\n\nOutput ONLY valid JSON.",
+        "options": {
+          "systemMessage": "You are a form UX designer for engineering tools. You design compact, information-dense forms that feel spacious. Output structured JSON only."
+        }
+      },
+      "id": "form-designer",
+      "name": "Form UX Designer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are the Chart/Viz Designer for PROMIN Antenna Studio redesign.\n\nDesign Brief:\n{{ $('Read Brief + Files').item.json.designBrief }}\n\nCurrent chart components:\nSmithChart.tsx:\n{{ $('Read Brief + Files').item.json.files['SmithChart.tsx'] }}\n\nRadiationPatternView.tsx:\n{{ $('Read Brief + Files').item.json.files['RadiationPatternView.tsx'] }}\n\nDesign the chart and visualization system:\n\n1. **S11 Chart** — responsive sizing, axis styling, grid lines, marker colors, hover tooltip, legend\n2. **Smith Chart** — circle colors, impedance point styling, grid opacity, responsive sizing\n3. **Radiation Pattern** — 2D polar plot styling, 3D view colors, dB scale, lobe highlighting\n4. **Chart Container** — card wrapper, header with title + controls, responsive height\n5. **Color Palette** — chart-specific colors: primary trace, secondary trace, reference lines, grid, markers\n6. **Chart Grid Layout** — how multiple charts arrange (1x1, 2x1, 2x2), tab-based vs grid-based\n7. **Interactive Controls** — zoom buttons, reset view, export chart, fullscreen toggle\n8. **Axis Styling** — tick labels, axis titles, units, number formatting\n9. **Annotations** — resonance markers, bandwidth indicators, reference lines (50 ohm)\n10. **Loading/Empty States** — skeleton placeholder, \"Run simulation\" prompt\n\nOutput JSON:\n```json\n{\n  \"s11_chart\": { ... },\n  \"smith_chart\": { ... },\n  \"radiation_pattern\": { ... },\n  \"chart_container\": { ... },\n  \"chart_palette\": { \"trace_primary\": \"...\", \"trace_secondary\": \"...\", ... },\n  \"chart_grid\": { ... },\n  \"interactive_controls\": { ... },\n  \"axis_styling\": { ... },\n  \"annotations\": { ... },\n  \"loading_states\": { ... }\n}\n```\n\nOutput ONLY valid JSON.",
+        "options": {
+          "systemMessage": "You are a data visualization designer for scientific/engineering software. You design charts that are both beautiful and information-dense. Output structured JSON only."
+        }
+      },
+      "id": "chart-designer",
+      "name": "Chart/Viz Designer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are the 3D Viewport Designer for PROMIN Antenna Studio redesign.\n\nDesign Brief:\n{{ $('Read Brief + Files').item.json.designBrief }}\n\nCurrent viewport:\nAntennaViewport.tsx:\n{{ $('Read Brief + Files').item.json.files['AntennaViewport.tsx'] }}\n\nDesign the 3D viewport UI overlay system:\n\n1. **Toolbar Overlay** — position (top-left), buttons: rotate/pan/zoom, view presets (front/top/iso), wireframe toggle, grid toggle\n2. **Camera Controls** — orbit sensitivity, zoom limits, auto-frame on antenna change\n3. **Gizmo** — orientation cube position (top-right), click-to-snap behavior\n4. **Viewport Header** — antenna name, dimensions summary, minimize button\n5. **Ground Plane** — grid spacing, opacity, extend distance, color\n6. **Lighting** — ambient + directional setup for antenna visibility\n7. **Dimension Overlays** — antenna length/width labels in 3D space\n8. **Background** — gradient (dark), subtle grid pattern, or solid\n9. **Selection Highlight** — color, outline thickness for selected elements\n10. **Performance** — LOD hints, when to simplify mesh, loading indicator\n\nOutput JSON:\n```json\n{\n  \"toolbar\": { \"position\": \"...\", \"buttons\": [...], \"style\": {} },\n  \"camera\": { \"orbit_speed\": 0.5, \"zoom_limits\": {}, \"auto_frame\": true },\n  \"gizmo\": { \"position\": \"...\", \"size\": 80 },\n  \"viewport_header\": { ... },\n  \"ground_plane\": { ... },\n  \"lighting\": { ... },\n  \"dimension_overlays\": { ... },\n  \"background\": { ... },\n  \"selection\": { ... },\n  \"performance\": { ... }\n}\n```\n\nOutput ONLY valid JSON.",
+        "options": {
+          "systemMessage": "You are a 3D viewport UI designer for CAE software. You design intuitive 3D interaction overlays using React Three Fiber. Output structured JSON only."
+        }
+      },
+      "id": "viewport-designer",
+      "name": "3D Viewport Designer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are the Design Token Designer for PROMIN Antenna Studio redesign.\n\nDesign Brief:\n{{ $('Read Brief + Files').item.json.designBrief }}\n\nCurrent tokens (index.css):\n{{ $('Read Brief + Files').item.json.files['index.css'] }}\n\nDesign a complete token system covering ALL visual properties:\n\n1. **Colors** — background (4 levels: base, surface, surface-hover, elevated), border (3 levels), text (4 levels: primary, secondary, muted, dim), accent (default, hover, muted), status (success, warning, error, info)\n2. **Spacing** — scale based on 4px base: 0.5(2px), 1(4px), 1.5(6px), 2(8px), 3(12px), 4(16px), 5(20px), 6(24px), 8(32px), 10(40px), 12(48px)\n3. **Typography** — sizes: xs(10px), sm(11px), base(13px), md(14px), lg(16px), xl(18px), 2xl(22px). Weights: normal(400), medium(500), semibold(600), bold(700). Line heights: tight(1.2), normal(1.4), relaxed(1.6)\n4. **Border Radius** — none(0), xs(2px), sm(4px), md(6px), lg(8px), xl(12px), full(9999px)\n5. **Shadows** — none, xs(subtle), sm(card), md(dropdown), lg(modal), xl(overlay)\n6. **Transitions** — duration: fast(100ms), normal(150ms), slow(200ms). Easing: ease-out\n7. **Z-index** — base(0), dropdown(10), sticky(20), overlay(30), modal(40), toast(50)\n8. **Sizes** — input-sm(28px), input-md(32px), input-lg(36px), button-sm(28px), button-md(32px), button-lg(36px), icon-sm(14px), icon-md(16px), icon-lg(20px)\n9. **Chart Colors** — trace palette (6 distinct colors for data series), grid, axis, marker\n\nOutput JSON with the EXACT CSS custom property names to use in @theme block:\n```json\n{\n  \"colors\": { \"--color-background\": \"#...\", ... },\n  \"spacing\": { \"--spacing-0-5\": \"2px\", ... },\n  \"typography\": { \"--font-size-xs\": \"10px\", ... },\n  \"radius\": { \"--radius-none\": \"0\", ... },\n  \"shadows\": { \"--shadow-xs\": \"...\", ... },\n  \"transitions\": { \"--duration-fast\": \"100ms\", ... },\n  \"z_index\": { \"--z-dropdown\": \"10\", ... },\n  \"sizes\": { \"--size-input-sm\": \"28px\", ... },\n  \"chart_colors\": { \"--chart-1\": \"...\", ... }\n}\n```\n\nOutput ONLY valid JSON.",
+        "options": {
+          "systemMessage": "You are a design token specialist. You create comprehensive, consistent token systems for dark-themed engineering software. Tokens must work with Tailwind CSS 4's @theme directive. Output structured JSON only."
+        }
+      },
+      "id": "token-designer",
+      "name": "Design Token Designer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are the Merge + Conflict Resolution agent. Combine 5 designer outputs into one unified UI specification.\n\n--- LAYOUT ARCHITECT ---\n{{ $('Layout Architect').item.json.output }}\n\n--- FORM UX DESIGNER ---\n{{ $('Form UX Designer').item.json.output }}\n\n--- CHART/VIZ DESIGNER ---\n{{ $('Chart/Viz Designer').item.json.output }}\n\n--- 3D VIEWPORT DESIGNER ---\n{{ $('3D Viewport Designer').item.json.output }}\n\n--- DESIGN TOKEN DESIGNER ---\n{{ $('Design Token Designer').item.json.output }}\n\nMerge all 5 into a single ui-spec.json. Resolve any conflicts:\n- If two designers specified different spacing values, use the Token Designer's values\n- If layout conflicts with form sizing, layout takes priority\n- Ensure chart colors align with the token palette\n- Ensure viewport overlay z-index matches the layout z-index system\n\nThe output must be a complete spec that the codegen pipeline can use directly.\n\nOutput JSON:\n```json\n{\n  \"layout\": { ... },\n  \"forms\": { ... },\n  \"charts\": { ... },\n  \"viewport\": { ... },\n  \"tokens\": { ... },\n  \"conflicts_resolved\": [ \"description of each conflict and resolution\" ],\n  \"implementation_order\": [\n    { \"step\": 1, \"target\": \"index.css\", \"description\": \"Apply design tokens\" },\n    { \"step\": 2, \"target\": \"ui/*.tsx\", \"description\": \"Update primitives\" },\n    ...\n  ]\n}\n```\n\nOutput ONLY valid JSON.",
+        "options": {
+          "systemMessage": "You are a design system integrator. You merge multiple design specifications into a coherent whole, resolving conflicts and ensuring consistency. Output structured JSON only."
+        }
+      },
+      "id": "merge-spec",
+      "name": "Merge Spec",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst CLAUDE_DIR = path.join(PROJECT, '.claude');\n\nif (!fs.existsSync(CLAUDE_DIR)) fs.mkdirSync(CLAUDE_DIR, { recursive: true });\n\nconst output = $('Merge Spec').item.json.output || '';\n\n// Parse and write ui-spec.json\nlet specJson = output;\ntry {\n  specJson = specJson.replace(/^```json\\n?/m, '').replace(/\\n?```$/m, '').trim();\n  const parsed = JSON.parse(specJson);\n  specJson = JSON.stringify(parsed, null, 2);\n} catch (e) {\n  specJson = JSON.stringify({ raw_output: output, parse_error: e.message }, null, 2);\n}\n\nconst specPath = path.join(CLAUDE_DIR, 'ui-spec.json');\nfs.writeFileSync(specPath, specJson);\n\n// Save all intermediate outputs\nconst allOutputs = {\n  layout: $('Layout Architect').item.json.output || '',\n  forms: $('Form UX Designer').item.json.output || '',\n  charts: $('Chart/Viz Designer').item.json.output || '',\n  viewport: $('3D Viewport Designer').item.json.output || '',\n  tokens: $('Design Token Designer').item.json.output || '',\n  merged: specJson,\n};\n\nconst fullPath = path.join(CLAUDE_DIR, 'ui-design-spec-full.json');\nfs.writeFileSync(fullPath, JSON.stringify(allOutputs, null, 2));\n\nreturn [{ json: { status: 'OK', spec_path: specPath, full_path: fullPath, spec_preview: specJson.substring(0, 500) + '...' } }];"
+      },
+      "id": "write-spec",
+      "name": "Write Spec",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Read Brief + Files", "type": "main", "index": 0 }]]
+    },
+    "Read Brief + Files": {
+      "main": [[{ "node": "Layout Architect", "type": "main", "index": 0 }]]
+    },
+    "Layout Architect": {
+      "main": [[{ "node": "Form UX Designer", "type": "main", "index": 0 }]]
+    },
+    "Form UX Designer": {
+      "main": [[{ "node": "Chart/Viz Designer", "type": "main", "index": 0 }]]
+    },
+    "Chart/Viz Designer": {
+      "main": [[{ "node": "3D Viewport Designer", "type": "main", "index": 0 }]]
+    },
+    "3D Viewport Designer": {
+      "main": [[{ "node": "Design Token Designer", "type": "main", "index": 0 }]]
+    },
+    "Design Token Designer": {
+      "main": [[{ "node": "Merge Spec", "type": "main", "index": 0 }]]
+    },
+    "Merge Spec": {
+      "main": [[{ "node": "Write Spec", "type": "main", "index": 0 }]]
+    },
+    "Write Spec": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "Layout Architect", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Form UX Designer", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Chart/Viz Designer", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "3D Viewport Designer", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Design Token Designer", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Merge Spec", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }]
+}

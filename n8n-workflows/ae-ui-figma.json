@@ -1,0 +1,154 @@
+{
+  "name": "ae-ui-figma",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/ui-figma",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Webhook').item.json.body || {};\nconst figmaUrl = body.figma_url || '';\n\n// Extract file key from Figma URL\n// Format: https://www.figma.com/file/FILEKEY/name or https://www.figma.com/design/FILEKEY/name\nconst match = figmaUrl.match(/figma\\.com\\/(?:file|design)\\/([a-zA-Z0-9]+)/);\nconst fileKey = match ? match[1] : body.file_key || '';\n\nif (!fileKey) {\n  return [{ json: { error: 'No Figma file key found. Send POST with { \"figma_url\": \"https://figma.com/file/KEY/name\" } or { \"file_key\": \"KEY\" }' } }];\n}\n\nreturn [{ json: { fileKey, figmaUrl } }];"
+      },
+      "id": "parse-url",
+      "name": "Parse Figma URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.figma.com/v1/files/{{ $json.fileKey }}/styles",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "figma-styles",
+      "name": "Figma Get Styles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 200],
+      "credentials": {
+        "httpHeaderAuth": { "id": "figma-token", "name": "Figma API Token" }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.figma.com/v1/files/{{ $('Parse Figma URL').item.json.fileKey }}?depth=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "figma-file",
+      "name": "Figma Get File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 400],
+      "credentials": {
+        "httpHeaderAuth": { "id": "figma-token", "name": "Figma API Token" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\n\n// Read current index.css\nlet currentCss = '';\ntry {\n  currentCss = fs.readFileSync(path.join(PROJECT, 'src/index.css'), 'utf8');\n} catch { currentCss = '// FILE NOT FOUND'; }\n\n// Get Figma data from both HTTP nodes\nlet stylesData = '{}';\nlet fileData = '{}';\ntry {\n  stylesData = JSON.stringify($('Figma Get Styles').item.json, null, 2);\n} catch { stylesData = '{ \"error\": \"styles not available\" }'; }\ntry {\n  fileData = JSON.stringify($('Figma Get File').item.json, null, 2).substring(0, 10000);\n} catch { fileData = '{ \"error\": \"file not available\" }'; }\n\nreturn [{ json: { currentCss, stylesData, fileData, fileKey: $('Parse Figma URL').item.json.fileKey } }];"
+      },
+      "id": "merge-data",
+      "name": "Merge Figma Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1100, 520]
+    },
+    {
+      "parameters": {
+        "text": "You are mapping Figma design tokens to CSS custom properties for PROMIN Antenna Studio.\n\nFigma Styles API response:\n{{ $json.stylesData }}\n\nFigma File structure (truncated):\n{{ $json.fileData }}\n\nCurrent index.css:\n{{ $json.currentCss }}\n\nExtract design tokens from the Figma data and generate a new index.css.\n\n1. Map Figma color styles → --color-* tokens\n2. Map Figma text styles → --font-size-*, --font-weight-*, --line-height-* tokens\n3. Map Figma effect styles → --shadow-* tokens\n4. Map any spacing/grid values found → --spacing-* tokens\n5. Keep the `@import \"tailwindcss\";` and `@theme { }` structure\n6. If Figma data is incomplete, preserve existing token values and note what's missing\n\nOutput the complete new index.css:\n<file path=\"src/index.css\">\n...complete CSS...\n</file>\n\nAlso output a mapping report:\n<report>\n- Mapped: [list of tokens successfully extracted from Figma]\n- Preserved: [list of tokens kept from current file]\n- Missing: [list of tokens not found in Figma]\n</report>\n\nOutput ONLY the file block and report, no other text.",
+        "options": {
+          "systemMessage": "You are a design token engineer. You extract tokens from Figma API data and generate CSS custom properties for Tailwind CSS 4. Output only file blocks and reports."
+        }
+      },
+      "id": "gen-figma-tokens",
+      "name": "Map Figma Tokens",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst output = $('Map Figma Tokens').item.json.output || '';\n\n// Extract file block\nconst fileMatch = output.match(/<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/);\nconst reportMatch = output.match(/<report>\\n?([\\s\\S]*?)<\\/report>/);\n\nlet writeResult = 'No file block found';\nif (fileMatch) {\n  const filePath = path.join(PROJECT, fileMatch[1]);\n  fs.writeFileSync(filePath, fileMatch[2].trim());\n  writeResult = `Written: ${fileMatch[1]} (${fileMatch[2].length} chars)`;\n}\n\nconst report = reportMatch ? reportMatch[1].trim() : 'No report generated';\n\n// TSC Check\nlet tscResult = '';\ntry {\n  tscResult = execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 120000 }).toString();\n  if (!tscResult.trim()) tscResult = 'OK - no errors';\n} catch (e) {\n  tscResult = e.stdout?.toString() || e.message;\n}\n\n// Git commit if TSC passes\nlet gitResult = '';\nif (tscResult.includes('OK - no errors') || !tscResult.includes('error TS')) {\n  try {\n    execSync('git add -A', { cwd: PROJECT });\n    execSync(`git commit -m \"style: import Figma design tokens\\n\\nExtracted color, typography, shadow tokens from Figma.\\nUpdated index.css @theme block.\"`, { cwd: PROJECT });\n    execSync('git push origin main', { cwd: PROJECT });\n    gitResult = 'Committed and pushed';\n  } catch (e) {\n    gitResult = `Git: ${e.message}`;\n  }\n} else {\n  gitResult = 'Skipped commit — TSC errors';\n}\n\nreturn [{ json: { writeResult, report, tscResult, gitResult, figmaFileKey: $('Parse Figma URL').item.json.fileKey } }];"
+      },
+      "id": "write-tsc-git",
+      "name": "Write + TSC + Git",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1540, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Parse Figma URL", "type": "main", "index": 0 }]]
+    },
+    "Parse Figma URL": {
+      "main": [
+        [
+          { "node": "Figma Get Styles", "type": "main", "index": 0 },
+          { "node": "Figma Get File", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Figma Get Styles": {
+      "main": [[{ "node": "Merge Figma Data", "type": "main", "index": 0 }]]
+    },
+    "Figma Get File": {
+      "main": [[{ "node": "Merge Figma Data", "type": "main", "index": 0 }]]
+    },
+    "Merge Figma Data": {
+      "main": [[{ "node": "Map Figma Tokens", "type": "main", "index": 0 }]]
+    },
+    "Map Figma Tokens": {
+      "main": [[{ "node": "Write + TSC + Git", "type": "main", "index": 0 }]]
+    },
+    "Write + TSC + Git": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "Map Figma Tokens", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }]
+}

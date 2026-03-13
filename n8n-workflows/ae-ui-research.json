@@ -1,0 +1,149 @@
+{
+  "name": "ae-ui-research",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/ui-research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst SRC = path.join(PROJECT, 'src');\n\nconst readFile = (rel) => {\n  try { return fs.readFileSync(path.join(SRC, rel), 'utf8'); }\n  catch { return '// FILE NOT FOUND'; }\n};\n\nconst files = {\n  'index.css': readFile('index.css'),\n  'App.tsx': readFile('App.tsx'),\n  'button.tsx': readFile('components/ui/button.tsx'),\n  'input.tsx': readFile('components/ui/input.tsx'),\n  'select.tsx': readFile('components/ui/select.tsx'),\n  'card.tsx': readFile('components/ui/card.tsx'),\n  'tabs.tsx': readFile('components/ui/tabs.tsx'),\n  'label.tsx': readFile('components/ui/label.tsx'),\n  'badge.tsx': readFile('components/ui/badge.tsx'),\n  'AntennaForm.tsx': readFile('components/AntennaForm/AntennaForm.tsx'),\n  'FrequencyPresets.tsx': readFile('components/FrequencyPresets/FrequencyPresets.tsx'),\n  'OptimizationPanel.tsx': readFile('components/OptimizationPanel/OptimizationPanel.tsx'),\n  'SmithChart.tsx': readFile('components/SmithChart/SmithChart.tsx'),\n  'RadiationPatternView.tsx': readFile('components/RadiationPatternView.tsx'),\n  'AntennaViewport.tsx': readFile('viewport/AntennaViewport.tsx'),\n};\n\nreturn [{ json: { files } }];"
+      },
+      "id": "read-all",
+      "name": "Read All UI Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.3,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [880, 520]
+    },
+    {
+      "parameters": {
+        "text": "Analyze the UI/UX patterns of major antenna simulation and CAE tools. You have deep knowledge of these products:\n\n1. **ANSYS HFSS** — 3D electromagnetic simulation\n2. **CST Studio Suite** — EM simulation (now Dassault)\n3. **Altair FEKO** — EM solver\n4. **4NEC2** — free NEC-based antenna modeler\n5. **MMANA-GAL** — antenna analyzer\n6. **OpenEMS** — open-source FDTD\n7. **ANSYS Discovery** — real-time simulation\n\nFor each tool, analyze:\n- Layout structure (panel arrangement, sidebar vs ribbon, docking system)\n- Parameter input forms (how engineering values are entered, units, validation)\n- 3D viewport integration (toolbar placement, camera controls, overlays)\n- Chart/graph presentation (S-parameters, radiation patterns, Smith charts)\n- Color scheme and theming (dark/light, accent colors)\n- Navigation patterns (tabs, tree views, breadcrumbs, command palette)\n- Toolbar density and icon design\n\nOutput a structured JSON object with this schema:\n```json\n{\n  \"tools\": {\n    \"hfss\": { \"layout\": \"...\", \"forms\": \"...\", \"viewport\": \"...\", \"charts\": \"...\", \"theme\": \"...\", \"navigation\": \"...\", \"toolbar\": \"...\" },\n    ...\n  },\n  \"common_patterns\": [\n    { \"pattern\": \"...\", \"adopted_by\": [\"tool1\", \"tool2\"], \"description\": \"...\" }\n  ],\n  \"modern_trends\": [\"...\"]\n}\n```\n\nOutput ONLY valid JSON, no markdown fences, no explanations.",
+        "options": {
+          "systemMessage": "You are a UI/UX researcher specializing in CAE and electromagnetic simulation software. You have deep expertise in the UIs of HFSS, CST, FEKO, and similar tools. Output structured JSON only."
+        }
+      },
+      "id": "competitor-analysis",
+      "name": "Competitor Analysis",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "text": "Based on the competitor analysis:\n{{ $('Competitor Analysis').item.json.output }}\n\nDefine best-practice UX patterns for a modern antenna simulation desktop app (Electron-style, dark theme, React+Tailwind). Cover:\n\n1. **Layout System** — 3-column layout (sidebar | main | inspector), dockable/collapsible panels, drag-resize dividers\n2. **Command Palette** — Cmd+K pattern, fuzzy search, recent actions\n3. **Form Design** — engineering parameter inputs with units, validation states, grouped sections, 2-column grid for related params\n4. **Data Visualization** — multiple chart types side-by-side (S11, Smith, radiation), responsive sizing, zoom/pan\n5. **3D Viewport** — toolbar overlay, gizmo placement, view presets, snap-to-grid\n6. **Panel System** — collapsible sections with chevrons, scrollable content, fixed headers/footers\n7. **Keyboard Shortcuts** — essential shortcuts for simulation workflow\n8. **Notification/Status** — toast system, progress bars, simulation status\n9. **Dark Theme** — proper contrast ratios, accent color usage, surface hierarchy\n10. **Responsive Behavior** — minimum widths, panel collapse breakpoints\n\nOutput JSON:\n```json\n{\n  \"patterns\": [\n    {\n      \"name\": \"...\",\n      \"category\": \"layout|forms|viz|viewport|panels|shortcuts|theme\",\n      \"description\": \"...\",\n      \"implementation_notes\": \"...\",\n      \"priority\": \"high|medium|low\"\n    }\n  ]\n}\n```\n\nOutput ONLY valid JSON, no markdown fences.",
+        "options": {
+          "systemMessage": "You are a UX design expert specializing in engineering/simulation software. You know React, Tailwind CSS, and modern web app patterns. Output structured JSON only."
+        }
+      },
+      "id": "ux-patterns",
+      "name": "UX Patterns",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "text": "Audit the current PROMIN Antenna Studio UI code. Here are all the source files:\n\n--- index.css (design tokens) ---\n{{ $('Read All UI Files').item.json.files['index.css'] }}\n\n--- App.tsx (main layout) ---\n{{ $('Read All UI Files').item.json.files['App.tsx'] }}\n\n--- UI Primitives ---\nbutton.tsx:\n{{ $('Read All UI Files').item.json.files['button.tsx'] }}\n\ninput.tsx:\n{{ $('Read All UI Files').item.json.files['input.tsx'] }}\n\nselect.tsx:\n{{ $('Read All UI Files').item.json.files['select.tsx'] }}\n\ncard.tsx:\n{{ $('Read All UI Files').item.json.files['card.tsx'] }}\n\ntabs.tsx:\n{{ $('Read All UI Files').item.json.files['tabs.tsx'] }}\n\nlabel.tsx:\n{{ $('Read All UI Files').item.json.files['label.tsx'] }}\n\n--- Key Components ---\nAntennaForm.tsx:\n{{ $('Read All UI Files').item.json.files['AntennaForm.tsx'] }}\n\nFrequencyPresets.tsx:\n{{ $('Read All UI Files').item.json.files['FrequencyPresets.tsx'] }}\n\nOptimizationPanel.tsx:\n{{ $('Read All UI Files').item.json.files['OptimizationPanel.tsx'] }}\n\nSmithChart.tsx:\n{{ $('Read All UI Files').item.json.files['SmithChart.tsx'] }}\n\nRadiationPatternView.tsx:\n{{ $('Read All UI Files').item.json.files['RadiationPatternView.tsx'] }}\n\nAntennaViewport.tsx:\n{{ $('Read All UI Files').item.json.files['AntennaViewport.tsx'] }}\n\nIdentify issues in these categories:\n1. **Spacing** — too tight, inconsistent gaps, elements touching borders\n2. **Visual Hierarchy** — missing size/weight differentiation, flat structure\n3. **Component Sizing** — inputs too small/large, buttons inconsistent\n4. **Interactive States** — missing hover/focus/active/disabled styles\n5. **Layout** — fixed vs fluid, no resize support, sidebar rigidity\n6. **Design Tokens** — missing tokens, hardcoded values, incomplete palette\n7. **Accessibility** — contrast, focus rings, aria labels, keyboard nav\n8. **Typography** — inconsistent sizes, missing scale\n\nOutput JSON:\n```json\n{\n  \"issues\": [\n    {\n      \"severity\": \"critical|major|minor\",\n      \"category\": \"spacing|hierarchy|sizing|interactive|layout|tokens|a11y|typography\",\n      \"file\": \"filename.tsx\",\n      \"line_hint\": \"approximate location\",\n      \"description\": \"...\",\n      \"recommendation\": \"...\"\n    }\n  ],\n  \"summary\": {\n    \"critical_count\": 0,\n    \"major_count\": 0,\n    \"minor_count\": 0,\n    \"top_3_priorities\": [\"...\", \"...\", \"...\"]\n  }\n}\n```\n\nOutput ONLY valid JSON, no markdown fences.",
+        "options": {
+          "systemMessage": "You are a React/Tailwind CSS UI auditor. You specialize in design systems, spacing, accessibility, and visual consistency. Be thorough and specific about issues. Output structured JSON only."
+        }
+      },
+      "id": "ui-audit",
+      "name": "UI Audit",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "text": "Synthesize these three analyses into a comprehensive Design Brief for PROMIN Antenna Studio UI redesign.\n\n--- COMPETITOR ANALYSIS ---\n{{ $('Competitor Analysis').item.json.output }}\n\n--- UX PATTERNS ---\n{{ $('UX Patterns').item.json.output }}\n\n--- UI AUDIT ---\n{{ $('UI Audit').item.json.output }}\n\nCreate a unified Design Brief JSON that will guide the actual UI implementation. Include:\n\n1. **layout_strategy** — overall layout (3-column, panel sizes, sidebar width, resizable dividers)\n2. **spacing_system** — base unit, scale (xs/sm/md/lg/xl/2xl), rules for when to use each\n3. **typography** — font sizes scale, weights, line heights for headings/body/labels/captions\n4. **color_tokens** — expanded palette: backgrounds (4+ levels), borders (3+ levels), text (4+ levels), accent/status colors, chart palette\n5. **component_sizes** — input heights, button sizes (sm/md/lg), icon sizes, border radii\n6. **interactive_states** — hover, focus, active, disabled for each component type\n7. **shadows** — elevation levels (sm/md/lg) for cards, dropdowns, modals\n8. **panel_system** — collapsible sections, header/footer heights, scroll behavior\n9. **responsive_rules** — min sidebar width, collapse breakpoints, panel priorities\n10. **priority_changes** — ordered list of most impactful changes to make, with effort estimate (small/medium/large)\n\nOutput ONLY a valid JSON object. This will be saved as design-brief.json and used by the next pipeline to generate component specs.\n\nSchema:\n```json\n{\n  \"layout_strategy\": { ... },\n  \"spacing_system\": { \"base\": 4, \"scale\": { \"xs\": \"...\", ... } },\n  \"typography\": { ... },\n  \"color_tokens\": { ... },\n  \"component_sizes\": { ... },\n  \"interactive_states\": { ... },\n  \"shadows\": { ... },\n  \"panel_system\": { ... },\n  \"responsive_rules\": { ... },\n  \"priority_changes\": [ { \"change\": \"...\", \"impact\": \"high\", \"effort\": \"small\" }, ... ]\n}\n```\n\nOutput ONLY valid JSON, no markdown fences, no commentary.",
+        "options": {
+          "systemMessage": "You are a design system architect. You create comprehensive, actionable design specifications from research. Your output is machine-parseable JSON that developers can directly implement. Output structured JSON only."
+        }
+      },
+      "id": "merge-brief",
+      "name": "Merge Brief",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst BRIEF_DIR = path.join(PROJECT, '.claude');\n\n// Ensure .claude directory exists\nif (!fs.existsSync(BRIEF_DIR)) fs.mkdirSync(BRIEF_DIR, { recursive: true });\n\nconst output = $('Merge Brief').item.json.output || '';\n\n// Try to parse as JSON, clean up if needed\nlet briefJson = output;\ntry {\n  // Remove markdown fences if present\n  briefJson = briefJson.replace(/^```json\\n?/m, '').replace(/\\n?```$/m, '').trim();\n  // Validate it's valid JSON\n  const parsed = JSON.parse(briefJson);\n  briefJson = JSON.stringify(parsed, null, 2);\n} catch (e) {\n  // If not valid JSON, wrap in an object\n  briefJson = JSON.stringify({ raw_output: output, parse_error: e.message }, null, 2);\n}\n\n// Write design-brief.json\nconst briefPath = path.join(BRIEF_DIR, 'design-brief.json');\nfs.writeFileSync(briefPath, briefJson);\n\n// Also collect intermediate outputs for reference\nconst allOutputs = {\n  competitor_analysis: $('Competitor Analysis').item.json.output || '',\n  ux_patterns: $('UX Patterns').item.json.output || '',\n  ui_audit: $('UI Audit').item.json.output || '',\n  design_brief: briefJson,\n};\n\nconst fullPath = path.join(BRIEF_DIR, 'ui-research-full.json');\nfs.writeFileSync(fullPath, JSON.stringify(allOutputs, null, 2));\n\nreturn [{ json: { status: 'OK', brief_path: briefPath, full_path: fullPath, brief_preview: briefJson.substring(0, 500) + '...' } }];"
+      },
+      "id": "write-brief",
+      "name": "Write Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1760, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Read All UI Files", "type": "main", "index": 0 }]]
+    },
+    "Read All UI Files": {
+      "main": [[{ "node": "Competitor Analysis", "type": "main", "index": 0 }]]
+    },
+    "Competitor Analysis": {
+      "main": [[{ "node": "UX Patterns", "type": "main", "index": 0 }]]
+    },
+    "UX Patterns": {
+      "main": [[{ "node": "UI Audit", "type": "main", "index": 0 }]]
+    },
+    "UI Audit": {
+      "main": [[{ "node": "Merge Brief", "type": "main", "index": 0 }]]
+    },
+    "Merge Brief": {
+      "main": [[{ "node": "Write Brief", "type": "main", "index": 0 }]]
+    },
+    "Write Brief": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "Competitor Analysis", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "UX Patterns", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "UI Audit", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Merge Brief", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }]
+}
