@@ -6,6 +6,7 @@ import { PatchModel } from './PatchModel'
 import { QfhModel } from './QfhModel'
 import { YagiModel } from './models/YagiModel'
 import type { AntennaType } from '@/components/AntennaForm/AntennaForm'
+import { cn } from '@/lib/utils'
 
 const C0 = 299792458
 
@@ -109,17 +110,11 @@ export default function AntennaViewport({
   className,
 }: AntennaViewportProps) {
   return (
-    <div
-      className={className}
-      style={{
-        width: '100%',
-        height: '100vh',
-        background: '#1a1a1a',
-      }}
-    >
+    <div className={cn('w-full h-full', className)}>
       <Canvas
         camera={{ position: [0.5, 0.3, 0.5], fov: 50 }}
-        style={{ background: '#1a1a1a' }}
+        className="h-full"
+        style={{ background: 'transparent' }}
       >
         <AntennaScene
           antennaType={antennaType}
