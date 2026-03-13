@@ -436,12 +436,11 @@ function App() {
               <TabsContent value="impedance" className="flex-1 flex flex-col">
                 <div className="bg-surface border border-border rounded-lg p-5 flex-1 flex items-center justify-center">
                   <SmithChart
-                    impedanceReal={impedanceData.real}
-                    impedanceImag={impedanceData.imag}
-                    frequency={impedanceData.freq}
-                    width={380}
-                    height={380}
-                    title="Smith Chart"
+                    impedancePoints={impedanceData.real.map((re, i) => ({
+                      re,
+                      im: impedanceData.imag[i],
+                      freq: impedanceData.freq[i],
+                    }))}
                   />
                 </div>
               </TabsContent>
