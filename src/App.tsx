@@ -33,22 +33,47 @@ const invoke = isTauri
         ];
       }
 
-      // simulate_sweep mock
+      // simulate_sweep mock — parametrized by antenna dimensions
+      const C0 = 299792458;
       const antennaType = a.antenna_type || a.antennaType || 'dipole';
       const fStart = a.freq_start || a.freqStart;
       const fStop = a.freq_stop || a.freqStop;
       const n = a.freq_points || a.freqPoints || 101;
-      const fCenter = (fStart + fStop) / 2;
+      const ap = a.antenna_params || {};
 
-      // Impedance models per antenna type
-      const models: Record<string, { zr: number; zi_scale: number; gain: number }> = {
-        dipole:   { zr: 73,    zi_scale: 42.5,  gain: 2.15 },
-        monopole: { zr: 36.5,  zi_scale: 21.25, gain: 5.15 },
-        patch:    { zr: 200,   zi_scale: 0,     gain: 6.0 },
-        qfh:     { zr: 50,    zi_scale: 5.0,   gain: 3.0 },
-        yagi:     { zr: 25,    zi_scale: 10.0,  gain: 7.1 },
+      // Compute resonant frequency from physical dimensions
+      const getResonance = (): { fRes: number; zrBase: number; ziScale: number; zrScale: number } => {
+        switch (antennaType) {
+          case 'monopole': {
+            const h = ap.height_m || C0 / ((fStart + fStop) / 2) / 4;
+            return { fRes: C0 / (4 * h), zrBase: 36.5, ziScale: 21.25, zrScale: 20.0 };
+          }
+          case 'patch': {
+            const er = ap.substrate_er || 4.4;
+            const h = ap.substrate_height_m || 0.0016;
+            const w = ap.width_m || C0 / (2 * ((fStart + fStop) / 2)) * Math.sqrt(2 / (er + 1));
+            const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / w, -0.5);
+            const pLen = ap.length_m || C0 / (2 * ((fStart + fStop) / 2) * Math.sqrt(erEff));
+            const fRes = C0 / (2 * pLen * Math.sqrt(erEff));
+            return { fRes, zrBase: 200, ziScale: 0, zrScale: 0 }; // patch uses Q model below
+          }
+          case 'qfh': {
+            const h = ap.height_m || C0 / ((fStart + fStop) / 2) * 0.26;
+            return { fRes: C0 / (4 * h), zrBase: 50.0, ziScale: 25.0, zrScale: 15.0 };
+          }
+          case 'yagi': {
+            const dl = ap.length_m || C0 / ((fStart + fStop) / 2) / 2;
+            return { fRes: C0 / (2 * dl), zrBase: 25.0, ziScale: 10.0, zrScale: 15.0 };
+          }
+          default: { // dipole
+            const l = ap.length_m || C0 / ((fStart + fStop) / 2) / 2;
+            return { fRes: C0 / (2 * l), zrBase: 73.0, ziScale: 42.5, zrScale: 40.0 };
+          }
+        }
       };
-      const m = models[antennaType] || models.dipole;
+
+      const { fRes, zrBase, ziScale, zrScale } = getResonance();
+      const isPatch = antennaType === 'patch';
 
       const frequencies: number[] = [];
       const s11Db: number[] = [];
@@ -59,15 +84,27 @@ const invoke = isTauri
 
       for (let i = 0; i < n; i++) {
         const f = fStart + (fStop - fStart) * i / (n - 1);
-        const delta = (f - fCenter) / fCenter;
+        const ratio = f / fRes;
         frequencies.push(f);
 
-        const zr = m.zr;
-        const zi = m.zi_scale * delta * 10;
+        let zr: number, zi: number;
+        if (isPatch) {
+          const er = ap.substrate_er || 4.4;
+          const h = ap.substrate_height_m || 0.0016;
+          const w = ap.width_m || C0 / (2 * f) * Math.sqrt(2 / (er + 1));
+          const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / w, -0.5);
+          const Q = C0 / (4 * f * h * Math.sqrt(erEff));
+          const detuning = ratio - 1 / ratio;
+          zr = 200 / (1 + Q * Q * detuning * detuning);
+          zi = zr * Q * detuning;
+        } else {
+          zr = zrBase + zrScale * Math.pow(ratio - 1, 2);
+          zi = ziScale * (ratio - 1) * ratio;
+        }
+
         impedanceReal.push(zr);
         impedanceImag.push(zi);
 
-        // Gamma = (Z - 50) / (Z + 50)
         const dr = zr + 50, di = zi;
         const dMag2 = dr * dr + di * di;
         const gr = ((zr - 50) * dr + zi * di) / dMag2;
@@ -157,11 +194,29 @@ function App() {
     const freqStart = centerFreqHz * 0.5;
     const freqStop = centerFreqHz * 1.5;
 
+    // Build antenna_params with physical dimensions in meters
+    const lengthM = formParams.length / 1000;
+    const radiusM = formParams.radius / 1000;
+    const heightM = formParams.height > 0 ? formParams.height / 1000 : lengthM;
+
+    const antennaParams: Record<string, number> = {
+      length_m: lengthM,
+      radius_m: radiusM,
+      height_m: formParams.antennaType === 'monopole' ? lengthM : heightM,
+    };
+
+    // Patch-specific defaults
+    if (formParams.antennaType === 'patch') {
+      antennaParams.substrate_er = 4.4;
+      antennaParams.substrate_height_m = 0.0016;
+    }
+
     return invoke<SimulateResponse>('simulate_sweep', {
       antenna_type: formParams.antennaType,
       freq_start: freqStart,
       freq_stop: freqStop,
       freq_points: 101,
+      antenna_params: antennaParams,
     });
   }, []);
 

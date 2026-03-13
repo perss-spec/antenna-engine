@@ -89,6 +89,7 @@ pub fn simulate_antenna(
     antenna_type: String,
     frequency: f64,
     segments: usize,
+    antenna_params: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     if frequency <= 0.0 {
         return Err("Frequency must be positive".into());
@@ -97,11 +98,35 @@ pub fn simulate_antenna(
     let wavelength = C0 / frequency;
 
     match antenna_type.to_lowercase().as_str() {
-        "dipole" => simulate_dipole(frequency, wavelength, segments),
-        "monopole" => simulate_monopole(frequency, wavelength, segments),
-        "patch" => simulate_patch(frequency, wavelength),
-        "qfh" => simulate_qfh(frequency, wavelength, segments),
-        "yagi" => simulate_yagi(frequency, wavelength, segments),
+        "dipole" => {
+            let length = antenna_params["length_m"].as_f64().unwrap_or(wavelength / 2.0);
+            let radius = antenna_params["radius_m"].as_f64().unwrap_or(0.001);
+            simulate_dipole(frequency, wavelength, segments, length, radius)
+        }
+        "monopole" => {
+            let height = antenna_params["height_m"].as_f64().unwrap_or(wavelength / 4.0);
+            let radius = antenna_params["radius_m"].as_f64().unwrap_or(0.001);
+            simulate_monopole(frequency, wavelength, segments, height, radius)
+        }
+        "patch" => {
+            let width = antenna_params["width_m"].as_f64();
+            let length = antenna_params["length_m"].as_f64();
+            let er = antenna_params["substrate_er"].as_f64().unwrap_or(4.4);
+            let h = antenna_params["substrate_height_m"].as_f64().unwrap_or(0.0016);
+            simulate_patch(frequency, wavelength, width, length, er, h)
+        }
+        "qfh" => {
+            let diameter = antenna_params["diameter_m"].as_f64().unwrap_or(wavelength * 0.16);
+            let height = antenna_params["height_m"].as_f64().unwrap_or(wavelength * 0.26);
+            let wire_radius = antenna_params["radius_m"].as_f64().unwrap_or(0.001);
+            simulate_qfh(frequency, wavelength, segments, diameter, height, wire_radius)
+        }
+        "yagi" => {
+            let driven_length = antenna_params["length_m"].as_f64().unwrap_or(wavelength / 2.0);
+            let spacing = antenna_params["spacing_m"].as_f64().unwrap_or(wavelength * 0.25);
+            let radius = antenna_params["radius_m"].as_f64().unwrap_or(0.003);
+            simulate_yagi(frequency, wavelength, segments, driven_length, spacing, radius)
+        }
         other => Err(format!("Unknown antenna type: {}", other)),
     }
 }
@@ -112,6 +137,7 @@ pub fn simulate_sweep(
     freq_start: f64,
     freq_stop: f64,
     freq_points: usize,
+    antenna_params: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     if freq_start <= 0.0 || freq_stop <= freq_start {
         return Err("Invalid frequency range".into());
@@ -134,7 +160,7 @@ pub fn simulate_sweep(
         let f = freq_start + (freq_stop - freq_start) * i as f64 / (n - 1) as f64;
         frequencies.push(f);
 
-        let result = simulate_antenna(antenna_type.clone(), f, 21)?;
+        let result = simulate_antenna(antenna_type.clone(), f, 21, antenna_params.clone())?;
         let res = result["results"].clone();
 
         let s11_re_val = res["s11"]["re"].as_f64().unwrap_or(0.0);
@@ -188,8 +214,8 @@ pub fn compute_radiation_pattern(
     if frequency <= 0.0 {
         return Err("Frequency must be positive".into());
     }
-    let n_theta = if theta_points < 2 { 37 } else { theta_points }; // 0..180, step 5
-    let n_phi = if phi_points < 2 { 73 } else { phi_points };       // 0..360, step 5
+    let n_theta = if theta_points < 2 { 37 } else { theta_points };
+    let n_phi = if phi_points < 2 { 73 } else { phi_points };
     let wl = C0 / frequency;
 
     let mut pattern = Vec::with_capacity(n_theta);
@@ -199,10 +225,9 @@ pub fn compute_radiation_pattern(
         let theta = std::f64::consts::PI * it as f64 / (n_theta - 1) as f64;
         let mut row = Vec::with_capacity(n_phi);
         for ip in 0..n_phi {
-            let _phi = 2.0 * std::f64::consts::PI * ip as f64 / (n_phi - 1) as f64;
+            let phi = 2.0 * std::f64::consts::PI * ip as f64 / (n_phi - 1) as f64;
             let gain = match antenna_type.to_lowercase().as_str() {
                 "dipole" => {
-                    // E-plane pattern: cos(pi/2 * cos(theta)) / sin(theta)
                     let st = theta.sin();
                     if st.abs() < 1e-6 { -40.0 }
                     else {
@@ -219,23 +244,35 @@ pub fn compute_radiation_pattern(
                     }
                 }
                 "patch" => {
-                    // Broadside pattern: cos^2(theta)
                     let g = theta.cos().powi(2);
                     6.0 + 10.0 * g.max(1e-10).log10()
                 }
                 "qfh" => {
-                    // Cardioid-like: (1 + cos(theta))/2
-                    let g = ((1.0 + theta.cos()) / 2.0).powi(2);
-                    3.0 + 10.0 * g.max(1e-10).log10()
+                    // Shaped cardioid with RHCP: (1+cos(theta))^2/4 with axial ratio
+                    let cos_t = theta.cos();
+                    let g_co = ((1.0 + cos_t) / 2.0).powi(2); // co-pol RHCP
+                    let g_cross = ((1.0 - cos_t) / 2.0).powi(2) * 0.05; // cross-pol suppressed
+                    let g_total = g_co + g_cross;
+                    3.0 + 10.0 * g_total.max(1e-10).log10()
                 }
                 "yagi" => {
-                    // Endfire beam pattern
+                    // Endfire array factor for 3 elements with proper phasing
                     let cos_t = theta.cos();
                     let d = 0.25 * wl;
-                    let psi = 2.0 * std::f64::consts::PI * d / wl * cos_t;
-                    let af = if (1.0 + 2.0 * psi.cos()).abs() < 1e-6 { 1e-10 }
-                             else { ((1.0 + 2.0 * psi.cos()) / 3.0).abs() };
-                    7.1 + 20.0 * af.max(1e-10).log10()
+                    let k = 2.0 * std::f64::consts::PI / wl;
+                    let psi = k * d * cos_t;
+                    // 3-element AF: reflector + driven + director with phase shifts
+                    let af_re = 1.0 + (psi - 0.2).cos() + (2.0 * psi + 0.15).cos();
+                    let af_im = (psi - 0.2).sin() + (2.0 * psi + 0.15).sin();
+                    let af_mag = (af_re * af_re + af_im * af_im).sqrt() / 3.0;
+                    // Element factor (dipole)
+                    let st = theta.sin();
+                    let ef = if st.abs() < 1e-6 { 0.0 }
+                             else { ((std::f64::consts::FRAC_PI_2 * cos_t).cos()) / st };
+                    let g_total = (af_mag * ef).powi(2);
+                    // phi dependence: E-plane vs H-plane
+                    let phi_factor = phi.cos().powi(2) + 0.3 * phi.sin().powi(2);
+                    7.1 + 10.0 * (g_total * phi_factor).max(1e-10).log10()
                 }
                 _ => -40.0,
             };
@@ -266,18 +303,23 @@ pub fn get_simulation_status() -> serde_json::Value {
 }
 
 // ---------------------------------------------------------------------------
-// Analytical simulation models
+// Analytical simulation models — parametrized by physical dimensions
 // ---------------------------------------------------------------------------
 
-fn simulate_dipole(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Value, String> {
-    let length = wl / 2.0;
+fn simulate_dipole(freq: f64, wl: f64, segments: usize, length: f64, _radius: f64) -> Result<serde_json::Value, String> {
     let k = 2.0 * std::f64::consts::PI / wl;
+    let _ = k;
 
-    // Input impedance of half-wave dipole ~73+j42 at resonance
-    let z_re = 73.0;
-    let z_im = 42.5 * (freq / (C0 / (2.0 * length)) - 1.0);
+    // Resonant frequency from FIXED physical length
+    let f_res = C0 / (2.0 * length);
+    let ratio = freq / f_res;
+
+    // Impedance: varies with detuning from resonance
+    let z_re = 73.0 + 40.0 * (ratio - 1.0).powi(2);
+    let z_im = 42.5 * (ratio - 1.0) * ratio;
+
     let (s11_re, s11_im, vswr) = compute_s11(z_re, z_im, 50.0);
-    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).log10();
+    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).max(1e-30).log10();
 
     let mesh = generate_wire_mesh(length, segments);
 
@@ -285,6 +327,8 @@ fn simulate_dipole(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Va
         "antenna_type": "dipole",
         "frequency": freq,
         "wavelength": wl,
+        "physical_length": length,
+        "resonant_frequency": f_res,
         "num_segments": segments,
         "mesh": mesh,
         "results": {
@@ -302,13 +346,16 @@ fn simulate_dipole(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Va
     }))
 }
 
-fn simulate_monopole(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Value, String> {
-    let height = wl / 4.0;
+fn simulate_monopole(freq: f64, wl: f64, segments: usize, height: f64, _radius: f64) -> Result<serde_json::Value, String> {
+    // Resonant frequency from FIXED physical height
+    let f_res = C0 / (4.0 * height);
+    let ratio = freq / f_res;
 
-    let z_re = 36.5;
-    let z_im = 21.25 * (freq / (C0 / (4.0 * height)) - 1.0);
+    let z_re = 36.5 + 20.0 * (ratio - 1.0).powi(2);
+    let z_im = 21.25 * (ratio - 1.0) * ratio;
+
     let (s11_re, s11_im, vswr) = compute_s11(z_re, z_im, 50.0);
-    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).log10();
+    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).max(1e-30).log10();
 
     let mesh = generate_wire_mesh(height, segments / 2 + 1);
 
@@ -316,6 +363,8 @@ fn simulate_monopole(freq: f64, wl: f64, segments: usize) -> Result<serde_json::
         "antenna_type": "monopole",
         "frequency": freq,
         "wavelength": wl,
+        "physical_height": height,
+        "resonant_frequency": f_res,
         "num_segments": segments,
         "mesh": mesh,
         "results": {
@@ -333,28 +382,38 @@ fn simulate_monopole(freq: f64, wl: f64, segments: usize) -> Result<serde_json::
     }))
 }
 
-fn simulate_patch(freq: f64, wl: f64) -> Result<serde_json::Value, String> {
-    // Cavity model approximation for rectangular patch on FR-4
-    let er = 4.4_f64;
-    let h = 0.0016;
-    let w = C0 / (2.0 * freq) * (2.0 / (er + 1.0)).sqrt();
+fn simulate_patch(freq: f64, wl: f64, width_opt: Option<f64>, length_opt: Option<f64>, er: f64, h: f64) -> Result<serde_json::Value, String> {
+    // Use provided dimensions or compute defaults
+    let w = width_opt.unwrap_or_else(|| C0 / (2.0 * freq) * (2.0 / (er + 1.0)).sqrt());
     let er_eff = (er + 1.0) / 2.0 + (er - 1.0) / 2.0 * (1.0 + 12.0 * h / w).powf(-0.5);
-    let l_eff = C0 / (2.0 * freq * er_eff.sqrt());
+    let patch_length = length_opt.unwrap_or_else(|| C0 / (2.0 * freq * er_eff.sqrt()));
 
-    let z_re = 200.0; // edge-fed patch, typical
-    let z_im = 0.0;
+    // Resonant frequency from FIXED physical length
+    let f_res = C0 / (2.0 * patch_length * er_eff.sqrt());
+
+    // Q-factor from cavity model
+    let q = C0 / (4.0 * freq * h * er_eff.sqrt());
+    let ratio = freq / f_res;
+    let detuning = ratio - 1.0 / ratio; // freq/f_res - f_res/freq
+
+    // Impedance: cavity model with Q
+    let z_re = 200.0 / (1.0 + q.powi(2) * detuning.powi(2));
+    let z_im = z_re * q * detuning;
+
     let (s11_re, s11_im, vswr) = compute_s11(z_re, z_im, 50.0);
-    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).log10();
+    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).max(1e-30).log10();
 
     Ok(json!({
         "antenna_type": "patch",
         "frequency": freq,
         "wavelength": wl,
         "patch_width": w,
-        "patch_length": l_eff,
+        "patch_length": patch_length,
         "substrate_er": er,
         "substrate_height": h,
         "er_effective": er_eff,
+        "resonant_frequency": f_res,
+        "q_factor": q,
         "results": {
             "input_impedance": { "re": z_re, "im": z_im },
             "s11": { "re": s11_re, "im": s11_im, "db": s11_db },
@@ -370,14 +429,16 @@ fn simulate_patch(freq: f64, wl: f64) -> Result<serde_json::Value, String> {
     }))
 }
 
-fn simulate_qfh(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Value, String> {
-    let diameter = wl * 0.16;
-    let height = wl * 0.26;
+fn simulate_qfh(freq: f64, wl: f64, segments: usize, diameter: f64, height: f64, _wire_radius: f64) -> Result<serde_json::Value, String> {
+    // QFH resonance from physical height (quarter-turn helix)
+    let f_res = C0 / (4.0 * height);
+    let ratio = freq / f_res;
 
-    let z_re = 50.0;
-    let z_im = 5.0 * (freq / (C0 / (4.0 * height)) - 1.0);
+    let z_re = 50.0 + 15.0 * (ratio - 1.0).powi(2);
+    let z_im = 25.0 * (ratio - 1.0) * ratio;
+
     let (s11_re, s11_im, vswr) = compute_s11(z_re, z_im, 50.0);
-    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).log10();
+    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).max(1e-30).log10();
 
     Ok(json!({
         "antenna_type": "qfh",
@@ -385,6 +446,7 @@ fn simulate_qfh(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Value
         "wavelength": wl,
         "diameter": diameter,
         "height": height,
+        "resonant_frequency": f_res,
         "num_segments": segments,
         "results": {
             "input_impedance": { "re": z_re, "im": z_im },
@@ -401,27 +463,32 @@ fn simulate_qfh(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Value
     }))
 }
 
-fn simulate_yagi(freq: f64, wl: f64, segments: usize) -> Result<serde_json::Value, String> {
-    let driven = wl / 2.0;
-    let reflector = driven * 1.05;
-    let director = driven * 0.91;
-    let spacing = wl * 0.25;
+fn simulate_yagi(freq: f64, wl: f64, segments: usize, driven_length: f64, spacing: f64, _radius: f64) -> Result<serde_json::Value, String> {
+    let reflector = driven_length * 1.05;
+    let director = driven_length * 0.91;
 
-    let z_re = 25.0;
-    let z_im = 10.0 * (freq / (C0 / driven) - 1.0);
+    // Resonant frequency from FIXED driven element length
+    let f_res = C0 / (2.0 * driven_length);
+    let ratio = freq / f_res;
+
+    // Yagi driven element has lower impedance due to mutual coupling
+    let z_re = 25.0 + 15.0 * (ratio - 1.0).powi(2);
+    let z_im = 10.0 * (ratio - 1.0) * ratio;
+
     let (s11_re, s11_im, vswr) = compute_s11(z_re, z_im, 50.0);
-    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).log10();
+    let s11_db = 10.0 * (s11_re * s11_re + s11_im * s11_im).max(1e-30).log10();
 
     Ok(json!({
         "antenna_type": "yagi",
         "frequency": freq,
         "wavelength": wl,
         "elements": {
-            "driven": driven,
+            "driven": driven_length,
             "reflector": reflector,
             "director": director,
             "spacing": spacing
         },
+        "resonant_frequency": f_res,
         "num_segments": segments,
         "results": {
             "input_impedance": { "re": z_re, "im": z_im },
