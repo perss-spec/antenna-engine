@@ -50,18 +50,18 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
 
   /* Input sizes */
-  --size-input-sm: 28px;
-  --size-input-md: 32px;
-  --size-input-lg: 36px;
+  --size-input-sm: 32px;
+  --size-input-md: 36px;
+  --size-input-lg: 40px;
 
   /* Typography */
   --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-md: 14px;
-  --font-size-lg: 16px;
-  --font-size-xl: 18px;
-  --font-size-2xl: 22px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 19px;
+  --font-size-2xl: 24px;
 
   /* Spacing */
   --spacing-1: 4px;

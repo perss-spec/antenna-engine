@@ -13,9 +13,9 @@ const buttonVariants = cva(
         ghost: "hover:bg-surface-hover text-text",
       },
       size: {
-        sm: "h-7 rounded px-3 text-xs",
-        md: "h-8 rounded-md px-4 text-sm",
-        lg: "h-9 rounded-lg px-6 text-sm",
+        sm: "h-8 rounded px-3 text-xs",
+        md: "h-9 rounded-md px-4 text-sm",
+        lg: "h-10 rounded-lg px-6 text-sm",
       },
       radius: {
         sm: "rounded",

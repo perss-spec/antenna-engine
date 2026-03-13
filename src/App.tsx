@@ -248,12 +248,12 @@ function SidebarSection({ title, defaultOpen = false, children }: { title: strin
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-text-dim/70 hover:text-text-muted transition-colors"
+        className="w-full flex items-center justify-between px-7 py-4 text-[11px] font-semibold uppercase tracking-wider text-text-dim/70 hover:text-text-muted transition-colors"
       >
         {title}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="pb-4" style={{ animation: 'fadeIn 0.15s ease-out' }}>{children}</div>}
+      {open && <div className="pb-5" style={{ animation: 'fadeIn 0.15s ease-out' }}>{children}</div>}
     </div>
   );
 }
@@ -539,7 +539,7 @@ function App() {
   return (
     <div
       className="noise h-screen bg-background text-text overflow-hidden"
-      style={{ display: 'grid', gridTemplateColumns: 'var(--sidebar-w, 280px) 1fr', minWidth: 0 }}
+      style={{ display: 'grid', gridTemplateColumns: 'var(--sidebar-w, 340px) 1fr', minWidth: 0 }}
     >
       {/* Sidebar */}
       <div
@@ -550,16 +550,16 @@ function App() {
         <div className="absolute top-0 right-0 w-px h-full bg-gradient-to-b from-accent/10 via-transparent to-accent/5 pointer-events-none" />
 
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-border/40 flex items-center gap-4 shrink-0">
+        <div className="px-7 py-6 border-b border-border/40 flex items-center gap-4 shrink-0">
           <div className="relative">
-            <div className="w-10 h-10 bg-gradient-to-br from-accent to-purple-500 rounded-xl flex items-center justify-center text-lg font-bold text-white shadow-lg shadow-accent/20">
+            <div className="w-11 h-11 bg-gradient-to-br from-accent to-purple-500 rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-accent/20">
               P
             </div>
             <div className="absolute -inset-1 bg-accent/10 rounded-xl blur-md -z-10" />
           </div>
           <div>
-            <div className="text-sm font-bold text-white tracking-tight">PROMIN</div>
-            <div className="text-xs text-text-dim font-medium">Antenna Studio</div>
+            <div className="text-base font-bold text-white tracking-tight">PROMIN</div>
+            <div className="text-sm text-text-dim font-medium">Antenna Studio</div>
           </div>
           <div className="ml-auto">
             <span className="px-2 py-1 rounded text-xs font-medium bg-accent/10 text-accent/70 border border-accent/10">
@@ -578,7 +578,7 @@ function App() {
           />
 
           <SidebarSection title="Frequency Presets" defaultOpen>
-            <div className="px-6">
+            <div className="px-7">
               <FrequencyPresets
                 onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
                 disabled={isSimulating || isOptimizing}
@@ -598,9 +598,9 @@ function App() {
         </div>
 
         {/* Solver Info — fixed at bottom */}
-        <div className="px-6 py-4 border-t border-border/40 shrink-0 flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full bg-success/60 animate-pulse" />
-          <span className="text-xs text-text-dim/50 font-medium">
+        <div className="px-7 py-5 border-t border-border/40 shrink-0 flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-success/60 animate-pulse" />
+          <span className="text-sm text-text-dim/50 font-medium">
             MoM Solver {isTauri ? '| Rust+rayon' : '| Browser mock'}
           </span>
         </div>
@@ -609,9 +609,9 @@ function App() {
       {/* Main */}
       <div className="flex flex-col overflow-auto min-w-0">
         {/* Top Bar */}
-        <div className="px-6 py-3.5 border-b border-border/40 flex items-center justify-between bg-background/80 shrink-0">
-          <div className="flex gap-3 items-center">
-            <span className="text-sm font-semibold text-text/90">Results</span>
+        <div className="px-7 py-4 border-b border-border/40 flex items-center justify-between bg-background/80 shrink-0">
+          <div className="flex gap-4 items-center">
+            <span className="text-base font-semibold text-text/90">Results</span>
             {isSimulating && (
               <Badge variant="warning">
                 <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
@@ -628,7 +628,7 @@ function App() {
               <Badge variant="success">Done</Badge>
             )}
           </div>
-          <div className="flex gap-4 items-center text-xs text-text-dim">
+          <div className="flex gap-5 items-center text-sm text-text-dim">
             {simTime && <span className="tabular-nums font-medium">{simTime}ms</span>}
             {chartData.length > 0 && <span className="tabular-nums">{chartData.length} pts</span>}
             {chartData.length > 0 && (
@@ -646,7 +646,7 @@ function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-5 flex flex-col gap-4">
+        <div className="flex-1 p-6 flex flex-col gap-5">
           {error && (
             <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-xs flex items-center gap-2.5" style={{ animation: 'fadeIn 0.2s ease-out' }}>
               <span className="w-2 h-2 rounded-full bg-error shrink-0" />
@@ -666,7 +666,7 @@ function App() {
 
               <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4">
                 {/* Stats — glass cards */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-4 gap-4">
                   {[
                     { icon: Radio, label: 'Resonant', value: formatFreq(summary.resonantFreq), color: 'accent', glow: 'var(--color-accent, #6366f1)' },
                     { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, color: 'success', glow: 'var(--color-success, #10b981)' },
@@ -675,29 +675,29 @@ function App() {
                   ].map(({ icon: Icon, label, value, color, glow }) => (
                     <div
                       key={label}
-                      className="relative flex items-center gap-3 rounded-xl border border-border/50 bg-surface/80 px-4 py-3.5 overflow-hidden"
+                      className="relative flex items-center gap-4 rounded-xl border border-border/50 bg-surface/80 px-5 py-4 overflow-hidden"
                       style={{ animation: 'fadeInScale 0.3s ease-out' }}
                     >
                       <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 20% 50%, color-mix(in srgb, ${glow} 8%, transparent), transparent 70%)` }} />
-                      <div className={`w-9 h-9 rounded-lg bg-${color}/10 flex items-center justify-center shrink-0`}>
-                        <Icon className={`w-4 h-4 text-${color}`} />
+                      <div className={`w-11 h-11 rounded-lg bg-${color}/10 flex items-center justify-center shrink-0`}>
+                        <Icon className={`w-5 h-5 text-${color}`} />
                       </div>
                       <div className="relative">
-                        <div className="text-xs text-text-muted mb-0.5">{label}</div>
-                        <div className={`text-sm font-bold text-${color} tabular-nums leading-tight`}>{value}</div>
+                        <div className="text-sm text-text-muted mb-1">{label}</div>
+                        <div className={`text-base font-bold text-${color} tabular-nums leading-tight`}>{value}</div>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* S11 Chart */}
-                <div className="bg-surface/80 border border-border/50 rounded-xl p-5 flex-1 min-h-[350px] flex flex-col">
+                <div className="bg-surface/80 border border-border/50 rounded-xl p-6 flex-1 min-h-[350px] flex flex-col">
                   <S11Chart data={chartData} />
                 </div>
               </TabsContent>
 
               <TabsContent value="impedance" className="flex-1 flex flex-col">
-                <div className="bg-surface/80 border border-border/50 rounded-xl p-5 flex-1 flex items-center justify-center">
+                <div className="bg-surface/80 border border-border/50 rounded-xl p-6 flex-1 flex items-center justify-center">
                   <SmithChart
                     impedancePoints={impedanceData.real.map((re, i) => ({
                       re,
@@ -739,7 +739,7 @@ function App() {
             </Tabs>
           ) : (
             /* Empty state */
-            <div className="flex-1 flex flex-col items-center justify-center gap-7 text-text-dim">
+            <div className="flex-1 flex flex-col items-center justify-center gap-8 text-text-dim">
               <div className="relative">
                 <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
                   <rect x="10" y="50" width="4" height="16" rx="2" fill="#1a1a2e" />
@@ -759,12 +759,12 @@ function App() {
                 <div className="absolute inset-0 bg-accent/8 blur-3xl rounded-full scale-150" />
               </div>
               <div className="text-center">
-                <div className="text-sm font-semibold text-text-muted mb-2">No Simulation Data</div>
-                <div className="text-xs text-text-dim/70 max-w-[280px] leading-relaxed">
+                <div className="text-base font-semibold text-text-muted mb-2">No Simulation Data</div>
+                <div className="text-sm text-text-dim/70 max-w-[300px] leading-relaxed">
                   Configure antenna parameters and hit Run
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-text-dim/40 mt-2">
+              <div className="flex items-center gap-3 text-sm text-text-dim/40 mt-2">
                 <span className="w-8 h-px bg-border" />
                 <span>31 antenna types available</span>
                 <span className="w-8 h-px bg-border" />

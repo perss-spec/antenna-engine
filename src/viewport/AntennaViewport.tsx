@@ -244,7 +244,7 @@ export default function AntennaViewport({
       </div>
 
       {/* Toolbar */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1 bg-zinc-900/80 backdrop-blur-sm border border-zinc-700/50 rounded-lg p-1">
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 bg-zinc-900/80 backdrop-blur-sm border border-zinc-700/50 rounded-lg p-1.5">
         {/* View presets */}
         {VIEW_PRESETS.map((p) => (
           <button
@@ -252,7 +252,7 @@ export default function AntennaViewport({
             title={p.key.charAt(0).toUpperCase() + p.key.slice(1) + ' view'}
             onClick={() => handlePreset(p.key)}
             className={cn(
-              'h-7 w-7 flex items-center justify-center rounded transition-colors text-[10px] font-semibold font-mono',
+              'h-8 w-8 flex items-center justify-center rounded transition-colors text-[10px] font-semibold font-mono',
               activePreset === p.key
                 ? 'bg-zinc-600 text-zinc-100'
                 : 'text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100'
@@ -269,22 +269,22 @@ export default function AntennaViewport({
           title="Toggle wireframe"
           onClick={() => setWireframe((v) => !v)}
           className={cn(
-            'h-7 w-7 flex items-center justify-center rounded transition-colors',
+            'h-8 w-8 flex items-center justify-center rounded transition-colors',
             wireframe
               ? 'bg-zinc-600 text-zinc-100'
               : 'text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100'
           )}
         >
-          <Grid3x3 size={14} />
+          <Grid3x3 size={16} />
         </button>
 
         {/* Fit all / reset */}
         <button
           title="Fit all (reset view)"
           onClick={handleFitAll}
-          className="h-7 w-7 flex items-center justify-center rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors"
         >
-          <Maximize size={14} />
+          <Maximize size={16} />
         </button>
       </div>
 
