@@ -1,0 +1,137 @@
+{
+  "id": "folded_dipole",
+  "name": "Folded Dipole",
+  "category": "wire",
+  "description": "A folded dipole consists of two parallel conductors connected at their ends, with one conductor fed at the center and the other acting as a parasitic element. This configuration provides higher input impedance (typically 300 ohms) compared to a simple dipole while maintaining similar radiation characteristics. The folded dipole is widely used in applications requiring impedance matching to higher impedance transmission lines.",
+  "frequencyRange": {
+    "min": 30000000,
+    "max": 3000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2,
+    "max": 2.2,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "5-10%",
+  "polarization": "linear",
+  "applications": [
+    "FM radio antennas",
+    "TV receiving antennas",
+    "Yagi-Uda array elements",
+    "VHF/UHF communications",
+    "RFID readers",
+    "Impedance matching applications"
+  ],
+  "parameters": {
+    "length": {
+      "name": "Total Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Total length of each conductor in the folded dipole",
+      "defaultFormula": "0.5 * lambda",
+      "range": {
+        "min": 0.45,
+        "max": 0.52
+      }
+    },
+    "spacing": {
+      "name": "Conductor Spacing",
+      "symbol": "d",
+      "unit": "m",
+      "description": "Distance between the two parallel conductors",
+      "defaultFormula": "0.01 * lambda",
+      "range": {
+        "min": 0.005,
+        "max": 0.05
+      }
+    },
+    "wireRadius": {
+      "name": "Wire Radius",
+      "symbol": "a",
+      "unit": "m",
+      "description": "Radius of the conductor wire",
+      "defaultFormula": "0.001 * lambda",
+      "range": {
+        "min": 0.0005,
+        "max": 0.01
+      }
+    },
+    "stepUpRatio": {
+      "name": "Step-up Ratio",
+      "symbol": "n",
+      "unit": "dimensionless",
+      "description": "Impedance transformation ratio compared to simple dipole",
+      "defaultFormula": "4",
+      "range": {
+        "min": 2,
+        "max": 6
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining conductor dimensions, spacing, and feed point configuration to achieve desired impedance and radiation characteristics while maintaining resonance at the operating frequency.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Wavelength",
+        "description": "Calculate free-space wavelength at the design frequency",
+        "formula": "lambda = c / f"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Initial Length",
+        "description": "Set initial conductor length to half wavelength with velocity factor correction",
+        "formula": "L = 0.5 * lambda * k_v"
+      },
+      {
+        "step": 3,
+        "title": "Determine Conductor Spacing",
+        "description": "Choose spacing based on desired impedance and mechanical constraints",
+        "formula": "d = 0.01 * lambda to 0.05 * lambda"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Wire Radius",
+        "description": "Select wire radius for practical construction and impedance control",
+        "formula": "a = lambda / (2 * pi * 100) to lambda / (2 * pi * 50)"
+      },
+      {
+        "step": 5,
+        "title": "Compute Input Impedance",
+        "description": "Calculate theoretical input impedance using transmission line theory",
+        "formula": "Z_in = 4 * Z_dipole * (1 + (d/(2*a))^2)^0.5"
+      },
+      {
+        "step": 6,
+        "title": "Adjust for End Effects",
+        "description": "Apply length correction for finite wire radius and end effects",
+        "formula": "L_corrected = L - 2 * a * (ln(L/a) - 2.25)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_r = c / (2 * L_eff * sqrt(epsilon_eff))",
+    "inputImpedance": "Z_in = 4 * Z_0 * sqrt(1 + (d/(2*a))^2) where Z_0 = 73 ohms",
+    "gain": "G = 1.64 (same as simple dipole)",
+    "radiationPattern": "E(theta) = cos((pi/2)*cos(theta)) / sin(theta)",
+    "bandwidth": "BW = 2 * (f_2 - f_1) / f_0 where VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "transmission_line_equivalent_circuit",
+    "radiationModel": "method_of_moments_wire_segments",
+    "keyAssumptions": [
+      "thin_wire_approximation",
+      "uniform_current_distribution",
+      "far_field_radiation_pattern",
+      "lossless_conductors",
+      "free_space_environment"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Wiley, 2016",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Wiley, 2012",
+    "Kraus, J.D. and Marhefka, R.J., 'Antennas for All Applications', 3rd Edition, McGraw-Hill, 2002",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, McGraw-Hill, 2007"
+  ]
+}
