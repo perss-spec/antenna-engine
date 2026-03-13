@@ -1,0 +1,169 @@
+{
+  "id": "inverted_f",
+  "name": "Inverted-F Antenna (microstrip)",
+  "category": "microstrip",
+  "description": "A compact planar antenna consisting of a horizontal radiating element connected to a ground plane through a shorting pin, with a separate feed point. The inverted-F configuration provides good impedance matching and compact size, making it ideal for mobile communications. The antenna exhibits monopole-like radiation characteristics with linear polarization.",
+  "frequencyRange": {
+    "min": 800000000,
+    "max": 6000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 0,
+    "max": 5,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "5-15%",
+  "polarization": "linear",
+  "applications": [
+    "Mobile phones",
+    "WiFi devices",
+    "Bluetooth modules",
+    "IoT sensors",
+    "Portable radios",
+    "RFID tags"
+  ],
+  "parameters": {
+    "length": {
+      "name": "Radiating Element Length",
+      "symbol": "L",
+      "unit": "mm",
+      "description": "Length of the horizontal radiating element, typically quarter wavelength",
+      "defaultFormula": "0.25 * c / f",
+      "range": {
+        "min": 10,
+        "max": 100
+      }
+    },
+    "width": {
+      "name": "Radiating Element Width",
+      "symbol": "W",
+      "unit": "mm",
+      "description": "Width of the horizontal radiating element affecting bandwidth",
+      "defaultFormula": "0.02 * c / f",
+      "range": {
+        "min": 1,
+        "max": 20
+      }
+    },
+    "height": {
+      "name": "Antenna Height",
+      "symbol": "h",
+      "unit": "mm",
+      "description": "Height above ground plane, affects impedance and bandwidth",
+      "defaultFormula": "0.05 * c / f",
+      "range": {
+        "min": 2,
+        "max": 15
+      }
+    },
+    "shortPosition": {
+      "name": "Short Pin Position",
+      "symbol": "Ls",
+      "unit": "mm",
+      "description": "Distance from antenna end to shorting pin, affects resonant frequency",
+      "defaultFormula": "0.05 * c / f",
+      "range": {
+        "min": 1,
+        "max": 20
+      }
+    },
+    "feedPosition": {
+      "name": "Feed Point Position",
+      "symbol": "Lf",
+      "unit": "mm",
+      "description": "Distance from shorting pin to feed point, controls input impedance",
+      "defaultFormula": "0.02 * c / f",
+      "range": {
+        "min": 1,
+        "max": 15
+      }
+    },
+    "groundLength": {
+      "name": "Ground Plane Length",
+      "symbol": "Lg",
+      "unit": "mm",
+      "description": "Length of ground plane, affects radiation pattern",
+      "defaultFormula": "0.5 * c / f",
+      "range": {
+        "min": 20,
+        "max": 200
+      }
+    },
+    "groundWidth": {
+      "name": "Ground Plane Width",
+      "symbol": "Wg",
+      "unit": "mm",
+      "description": "Width of ground plane, affects radiation pattern",
+      "defaultFormula": "0.5 * c / f",
+      "range": {
+        "min": 20,
+        "max": 200
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining antenna dimensions for desired frequency, optimizing feed and short positions for impedance matching, and adjusting geometry for bandwidth requirements.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Initial Length",
+        "description": "Determine radiating element length for fundamental resonance",
+        "formula": "L = 0.25 * c / f - Ls"
+      },
+      {
+        "step": 2,
+        "title": "Set Antenna Height",
+        "description": "Choose height based on bandwidth and size constraints",
+        "formula": "h = (0.03 to 0.07) * c / f"
+      },
+      {
+        "step": 3,
+        "title": "Position Shorting Pin",
+        "description": "Place shorting pin to achieve desired resonant frequency",
+        "formula": "Ls = (0.03 to 0.08) * c / f"
+      },
+      {
+        "step": 4,
+        "title": "Optimize Feed Position",
+        "description": "Adjust feed point location for 50-ohm impedance matching",
+        "formula": "Lf = Ls * sqrt(50 / Zin_target)"
+      },
+      {
+        "step": 5,
+        "title": "Design Ground Plane",
+        "description": "Size ground plane for desired radiation characteristics",
+        "formula": "Lg = Wg >= 0.5 * c / f"
+      },
+      {
+        "step": 6,
+        "title": "Adjust Element Width",
+        "description": "Optimize width for bandwidth enhancement",
+        "formula": "W = (0.01 to 0.03) * c / f"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c / (4 * (L + Ls))",
+    "inputImpedance": "Zin = 50 * (Lf / Ls)^2",
+    "gain": "G = 1.76 + 10*log10(1 + (h/lambda)^2)",
+    "radiationPattern": "E(theta) = cos(theta) * sin(k*L*cos(theta)/2) / (1 - cos(theta))",
+    "bandwidth": "BW = (W/lambda) * (h/lambda) * 100%"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "transmission_line_with_stub_loading",
+    "radiationModel": "monopole_over_finite_ground",
+    "keyAssumptions": [
+      "Perfect conductor assumption",
+      "Thin wire approximation for radiating element",
+      "Finite ground plane effects included",
+      "Substrate losses neglected in first-order analysis"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Wiley, 2016",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Wiley, 2012",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Wiley, 2011",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, McGraw-Hill, 2007"
+  ]
+}
