@@ -1,0 +1,142 @@
+{
+  "id": "rectangular_slot",
+  "name": "Rectangular Slot Antenna",
+  "category": "aperture",
+  "description": "A rectangular aperture cut into a conducting ground plane that radiates electromagnetic energy. The slot acts as a magnetic dipole with radiation characteristics complementary to a wire dipole of similar dimensions.",
+  "frequencyRange": {
+    "min": 300000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2,
+    "max": 6,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "5-15%",
+  "polarization": "linear",
+  "applications": [
+    "Aircraft antennas",
+    "Flush-mounted systems",
+    "Waveguide slot arrays",
+    "Conformal antennas",
+    "Radar applications",
+    "Satellite communications"
+  ],
+  "parameters": {
+    "length": {
+      "name": "Slot Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Length of the rectangular slot aperture",
+      "defaultFormula": "0.5 * lambda",
+      "range": {
+        "min": 0.3,
+        "max": 1.2
+      }
+    },
+    "width": {
+      "name": "Slot Width",
+      "symbol": "W",
+      "unit": "m",
+      "description": "Width of the rectangular slot aperture",
+      "defaultFormula": "0.05 * lambda",
+      "range": {
+        "min": 0.01,
+        "max": 0.2
+      }
+    },
+    "groundPlaneSize": {
+      "name": "Ground Plane Dimension",
+      "symbol": "Lg",
+      "unit": "m",
+      "description": "Minimum dimension of the conducting ground plane",
+      "defaultFormula": "2.0 * lambda",
+      "range": {
+        "min": 1,
+        "max": 10
+      }
+    },
+    "feedOffset": {
+      "name": "Feed Offset",
+      "symbol": "d",
+      "unit": "m",
+      "description": "Distance from slot center to feed point",
+      "defaultFormula": "0.25 * L",
+      "range": {
+        "min": 0,
+        "max": 0.5
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining slot dimensions for resonance, calculating radiation resistance, and optimizing feed location for impedance matching.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency",
+        "description": "Select center frequency and calculate free-space wavelength",
+        "formula": "lambda = c / f"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Slot Length",
+        "description": "Set slot length for half-wave resonance with end effects",
+        "formula": "L = 0.48 * lambda"
+      },
+      {
+        "step": 3,
+        "title": "Determine Slot Width",
+        "description": "Choose width based on bandwidth and impedance requirements",
+        "formula": "W = 0.05 * lambda to 0.1 * lambda"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Radiation Resistance",
+        "description": "Compute radiation resistance at slot center",
+        "formula": "Rr = 73 * (W/lambda)^2 * (sin(pi*L/lambda))^2"
+      },
+      {
+        "step": 5,
+        "title": "Design Ground Plane",
+        "description": "Ensure adequate ground plane size for pattern integrity",
+        "formula": "Lg >= 2 * lambda"
+      },
+      {
+        "step": 6,
+        "title": "Optimize Feed Location",
+        "description": "Position feed for impedance matching",
+        "formula": "d = L/4 * sqrt(50/Rr)"
+      },
+      {
+        "step": 7,
+        "title": "Verify Bandwidth",
+        "description": "Check impedance bandwidth meets requirements",
+        "formula": "BW = 2 * W / (lambda * sqrt(epsilon_eff))"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "fr = c / (2 * L_eff) where L_eff = L + 2 * delta_L",
+    "inputImpedance": "Zin = Rr + j * X where Rr = 73 * (W/lambda)^2 * (sin(pi*L/lambda))^2",
+    "gain": "G = 1.64 * (L/lambda) * (W/lambda) for L/lambda <= 1",
+    "radiationPattern": "E_theta = j * k * E0 * W * L * sinc(k*W*sin(theta)*cos(phi)/2) * sinc(k*L*sin(theta)*sin(phi)/2)",
+    "bandwidth": "BW = 2 * W / (lambda * sqrt(epsilon_eff)) for VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use cavity model with magnetic current distribution and radiation resistance calculation based on aperture field",
+    "radiationModel": "Apply Huygens principle with uniform magnetic current density across aperture, include ground plane effects",
+    "keyAssumptions": [
+      "Thin ground plane",
+      "Uniform field distribution",
+      "Negligible higher-order modes",
+      "Far-field approximation"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 12",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 8",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Chapter 6",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 11"
+  ]
+}
