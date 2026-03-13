@@ -1,64 +1,91 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::collections::HashMap;
 
-/// Error types for the antenna simulation engine
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+pub struct Point3D {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, thiserror::Error)]
 pub enum AntennaError {
+    #[error("Invalid geometry: {0}")]
     InvalidGeometry(String),
+    #[error("Simulation failed: {0}")]
     SimulationFailed(String),
+    #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
+    #[error("Numerical error: {0}")]
     NumericalError(String),
 }
 
-impl fmt::Display for AntennaError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AntennaError::InvalidGeometry(msg) => write!(f, "Invalid geometry: {}", msg),
-            AntennaError::SimulationFailed(msg) => write!(f, "Simulation failed: {}", msg),
-            AntennaError::InvalidParameter(msg) => write!(f, "Invalid parameter: {}", msg),
-            AntennaError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Material {
+    pub name: String,
+    pub epsilon_r: f64,
+    pub mu_r: f64,
+    pub sigma: f64,
+    pub tan_delta: f64,
 }
 
-impl std::error::Error for AntennaError {}
-
-impl From<&str> for AntennaError {
-    fn from(msg: &str) -> Self {
-        AntennaError::InvalidParameter(msg.to_string())
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum UnitSystem {
+    Metric,
+    Imperial,
 }
 
-impl From<String> for AntennaError {
-    fn from(msg: String) -> Self {
-        AntennaError::InvalidParameter(msg)
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LengthUnit {
+    Meters,
+    Centimeters,
+    Millimeters,
+    Inches,
 }
 
-pub type Result<T> = std::result::Result<T, AntennaError>;
-
-/// Basis function type for MoM solver
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
-pub enum BasisType {
-    #[default]
-    Pulse,
-    PiecewiseSinusoidal,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FrequencyUnit {
+    Hz,
+    KHz,
+    MHz,
+    GHz,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FieldResult {
+    pub points: Vec<Point3D>,
+    pub e_field: Vec<Point3D>,
+    pub h_field: Vec<Point3D>,
+    pub power_density: Vec<f64>,
+}
 
-    #[test]
-    fn test_error_display() {
-        let err = AntennaError::InvalidGeometry("bad mesh".into());
-        assert!(err.to_string().contains("bad mesh"));
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AntennaTemplate {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub antenna_type: String,
+    pub default_params: serde_json::Value,
+    pub frequency_range: (f64, f64),
+    pub typical_applications: Vec<String>,
+}
 
-    #[test]
-    fn test_error_from_str() {
-        let err: AntennaError = "oops".into();
-        matches!(err, AntennaError::InvalidParameter(_));
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectMetadata {
+    pub name: String,
+    pub version: String,
+    pub created_at: String,
+    pub modified_at: String,
+    pub author: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectFile {
+    pub metadata: ProjectMetadata,
+    pub antenna_config: serde_json::Value,
+    pub simulation_params: serde_json::Value,
+    pub results: Option<serde_json::Value>,
+    pub materials: Vec<Material>,
+    pub unit_system: UnitSystem,
 }
