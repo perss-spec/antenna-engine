@@ -213,7 +213,12 @@ mod tests {
     
     #[test]
     fn test_array_config_creation() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let config = ArrayConfig::new(4, 0.5, 0.0, element);
         assert!(config.is_ok());
         
@@ -225,7 +230,12 @@ mod tests {
     
     #[test]
     fn test_invalid_array_config() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         
         // Zero elements should fail
         let config = ArrayConfig::new(0, 0.5, 0.0, element.clone());
@@ -238,7 +248,12 @@ mod tests {
     
     #[test]
     fn test_broadside_array() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let config = ArrayConfig::broadside(4, 0.5, element).unwrap();
         
         let frequency = 300e6; // 300 MHz
@@ -259,7 +274,12 @@ mod tests {
     
     #[test]
     fn test_endfire_array() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let frequency = 300e6; // 300 MHz
         let config = ArrayConfig::endfire(4, 0.5, frequency, element).unwrap();
         
@@ -280,7 +300,12 @@ mod tests {
     
     #[test]
     fn test_array_factor_computation() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let config = ArrayConfig::new(2, 0.5, 0.0, element).unwrap();
         
         let frequency = 300e6;
@@ -294,7 +319,12 @@ mod tests {
     
     #[test]
     fn test_array_pattern_computation() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let config = ArrayConfig::broadside(3, 0.5, element).unwrap();
         
         let frequency = 300e6;
@@ -311,7 +341,12 @@ mod tests {
     
     #[test]
     fn test_beam_direction_finding() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let config = ArrayConfig::broadside(4, 0.5, element).unwrap();
         
         let frequency = 300e6;
@@ -326,7 +361,12 @@ mod tests {
     
     #[test]
     fn test_zero_frequency() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
+        let element = AntennaElement::Dipole(crate::core::element::DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+            orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+        });
         let config = ArrayConfig::broadside(2, 0.5, element).unwrap();
         
         let theta_angles = vec![PI/2.0];

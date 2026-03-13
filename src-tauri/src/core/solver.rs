@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::core::types::{FieldResult, Result, AntennaError};
+use crate::core::types::{Result, AntennaError};
+use crate::core::field::FieldResult;
 use crate::core::element::AntennaElement;
 use crate::core::geometry::{Mesh, Point3D, Segment};
 
@@ -137,10 +138,15 @@ impl MomSolver {
     pub fn run_simulation(&mut self, params: &SimulationParams) -> Result<SimulationResult> {
         let n = self.mesh.segments.len();
         let field = FieldResult {
-            points: vec![],
-            e_field: vec![],
-            h_field: vec![],
-            power_density: vec![],
+            near_field: vec![],
+            far_field: vec![],
+            beamwidth_deg: 0.0,
+            directivity_dbi: 0.0,
+            efficiency: 1.0,
+            max_gain_dbi: 0.0,
+            front_to_back_ratio_db: 0.0,
+            cross_pol_discrimination_db: 0.0,
+            impedance_bandwidth_mhz: 0.0,
         };
         Ok(SimulationResult {
             s_params: vec![SParameterResult {

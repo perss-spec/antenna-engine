@@ -218,23 +218,23 @@ impl CoverageAnalyzer {
         for objective in &config.objectives {
             let value = match &objective.target {
                 ObjectiveTarget::MaximizeGain => {
-                    result.field_results.max_gain_dbi
+                    result.field.max_gain_dbi
                 }
                 ObjectiveTarget::MinimizeVSWR => {
-                    if let Some(s_param) = result.s_parameters.first() {
+                    if let Some(s_param) = result.s_params.first() {
                         -s_param.vswr // Negative because we want to minimize
                     } else {
                         0.0
                     }
                 }
                 ObjectiveTarget::MaximizeEfficiency => {
-                    result.field_results.efficiency
+                    result.field.efficiency
                 }
                 ObjectiveTarget::MinimizeCrossPol => {
-                    -result.field_results.cross_pol_discrimination_db
+                    -result.field.cross_pol_discrimination_db
                 }
                 ObjectiveTarget::TargetImpedance { real, imag } => {
-                    if let Some(s_param) = result.s_parameters.first() {
+                    if let Some(s_param) = result.s_params.first() {
                         let z_diff_re = (s_param.input_impedance_re - real).abs();
                         let z_diff_im = (s_param.input_impedance_im - imag).abs();
                         -(z_diff_re + z_diff_im) // Negative distance from target
@@ -243,7 +243,7 @@ impl CoverageAnalyzer {
                     }
                 }
                 ObjectiveTarget::TargetFrequency(target_freq) => {
-                    if let Some(s_param) = result.s_parameters.first() {
+                    if let Some(s_param) = result.s_params.first() {
                         -(s_param.frequency - target_freq).abs()
                     } else {
                         -1000.0
@@ -268,7 +268,7 @@ impl CoverageAnalyzer {
         for constraint in &config.constraints {
             let violation = match &constraint.constraint_type {
                 ConstraintType::MaxVSWR(max_vswr) => {
-                    if let Some(s_param) = result.s_parameters.first() {
+                    if let Some(s_param) = result.s_params.first() {
                         if s_param.vswr > *max_vswr {
                             Some(s_param.vswr - max_vswr)
                         } else {
@@ -279,7 +279,7 @@ impl CoverageAnalyzer {
                     }
                 }
                 ConstraintType::MinGain(min_gain) => {
-                    let gain = result.field_results.max_gain_dbi;
+                    let gain = result.field.max_gain_dbi;
                     if gain < *min_gain {
                         Some(min_gain - gain)
                     } else {
@@ -287,7 +287,7 @@ impl CoverageAnalyzer {
                     }
                 }
                 ConstraintType::MinEfficiency(min_eff) => {
-                    let eff = result.field_results.efficiency;
+                    let eff = result.field.efficiency;
                     if eff < *min_eff {
                         Some(min_eff - eff)
                     } else {
@@ -295,7 +295,7 @@ impl CoverageAnalyzer {
                     }
                 }
                 ConstraintType::MaxCrossPol(max_xpol) => {
-                    let xpol = result.field_results.cross_pol_discrimination_db;
+                    let xpol = result.field.cross_pol_discrimination_db;
                     if xpol > *max_xpol {
                         Some(xpol - max_xpol)
                     } else {

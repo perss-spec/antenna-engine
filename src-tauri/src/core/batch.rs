@@ -245,7 +245,7 @@ impl BatchSimulator {
             }
             AntennaElement::Qfh(params) => {
                 let mut new_params = params.clone();
-                
+
                 if let Some(&frequency) = parameters.get("frequency") {
                     new_params.frequency = frequency;
                 }
@@ -261,8 +261,23 @@ impl BatchSimulator {
                 if let Some(&wire_radius) = parameters.get("wire_radius") {
                     new_params.wire_radius = wire_radius;
                 }
-                
+
                 Ok(AntennaElement::Qfh(new_params))
+            }
+            AntennaElement::Monopole(params) => {
+                let mut new_params = params.clone();
+
+                if let Some(&height) = parameters.get("height") {
+                    new_params.height = height;
+                }
+                if let Some(&radius) = parameters.get("radius") {
+                    new_params.radius = radius;
+                }
+                if let Some(&ground_plane_radius) = parameters.get("ground_plane_radius") {
+                    new_params.ground_plane_radius = ground_plane_radius;
+                }
+
+                Ok(AntennaElement::Monopole(new_params))
             }
         }
     }
@@ -303,10 +318,15 @@ mod tests {
         let mut simulator = BatchSimulator::new();
         
         let config = BatchConfig {
-            base_element: AntennaElement::new_dipole(0.15, 0.001),
+            base_element: AntennaElement::Dipole(crate::core::element::DipoleParams {
+                length: 0.15,
+                radius: 0.001,
+                center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+                orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+            }),
             base_params: SimulationParams {
                 frequency: 1e9,
-                resolution: 0.1,
+                resolution: 10,
                 reference_impedance: 50.0,
             },
             sweeps: vec![],

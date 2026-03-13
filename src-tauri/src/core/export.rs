@@ -72,10 +72,15 @@ impl DatasetExporter {
         };
         
         let batch_config = crate::core::batch::BatchConfig {
-            base_element: crate::core::element::AntennaElement::new_dipole(0.15, 0.001),
+            base_element: crate::core::element::AntennaElement::Dipole(crate::core::element::DipoleParams {
+                length: 0.15,
+                radius: 0.001,
+                center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+                orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+            }),
             base_params: crate::core::solver::SimulationParams {
                 frequency: 1e9,
-                resolution: 0.01,
+                resolution: 10,
                 reference_impedance: 50.0,
             },
             sweeps: vec![],
@@ -110,7 +115,7 @@ impl DatasetExporter {
         // Write data for each successful simulation point
         for point in &results.points {
             if let Some(ref sim_result) = point.result {
-                for s_param in &sim_result.s_parameters {
+                for s_param in &sim_result.s_params {
                     let freq_mhz = s_param.frequency / 1e6;
                     let s11_db = 20.0 * (s_param.s11_re * s_param.s11_re + s_param.s11_im * s_param.s11_im).sqrt().log10();
                     writeln!(file, "{:.6},{:.8},{:.8},{:.8}", 
@@ -156,7 +161,7 @@ impl DatasetExporter {
         // Write S-parameter data
         for point in &results.points {
             if let Some(ref sim_result) = point.result {
-                for s_param in &sim_result.s_parameters {
+                for s_param in &sim_result.s_params {
                     let freq_mhz = s_param.frequency / 1e6;
                     writeln!(file, "{:.6} {:.8} {:.8}", 
                             freq_mhz, s_param.s11_re, s_param.s11_im)
@@ -190,7 +195,7 @@ impl DatasetExporter {
         
         for point in &results.points {
             if let Some(ref sim_result) = point.result {
-                for s_param in &sim_result.s_parameters {
+                for s_param in &sim_result.s_params {
                     frequencies.push(s_param.frequency / 1e6); // Convert to MHz
                     s11_real.push(s_param.s11_re);
                     s11_imag.push(s_param.s11_im);

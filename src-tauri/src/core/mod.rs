@@ -63,11 +63,21 @@ mod tests {
     fn test_module_imports() {
         // Test that all modules can be imported without errors
         let _point = Point3D::origin();
-        let _element = AntennaElement::new_dipole(0.15, 0.001);
+        let _element = AntennaElement::Dipole(DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: Point3D::new(0.0, 0.0, 0.0),
+            orientation: Point3D::new(0.0, 0.0, 1.0),
+        });
         let _simulator = BatchSimulator::new();
         let _config = ExportConfig::default();
         let _predictor = SurrogatePredictor::new();
-        let _array_config = ArrayConfig::broadside(4, 0.5, AntennaElement::new_dipole(0.15, 0.001));
+        let _array_config = ArrayConfig::broadside(4, 0.5, AntennaElement::Dipole(DipoleParams {
+            length: 0.15,
+            radius: 0.001,
+            center: Point3D::new(0.0, 0.0, 0.0),
+            orientation: Point3D::new(0.0, 0.0, 1.0),
+        }));
         
         // Test passes if no panics occur
         assert!(true);
