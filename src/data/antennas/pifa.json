@@ -1,0 +1,158 @@
+{
+  "id": "pifa",
+  "name": "Planar Inverted-F Antenna (microstrip)",
+  "category": "microstrip",
+  "description": "A compact microstrip antenna consisting of a rectangular patch with a shorting pin and feed point, creating an inverted-F configuration. The shorting pin reduces the resonant length and provides impedance matching flexibility. Widely used in mobile communications due to its low profile and good impedance characteristics.",
+  "frequencyRange": {
+    "min": 800000000,
+    "max": 6000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 2,
+    "max": 6,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "5-15%",
+  "polarization": "linear",
+  "applications": [
+    "Mobile phones",
+    "WiFi devices",
+    "Bluetooth modules",
+    "IoT sensors",
+    "Laptop computers",
+    "Tablet computers"
+  ],
+  "parameters": {
+    "length": {
+      "name": "Patch Length",
+      "symbol": "L",
+      "unit": "mm",
+      "description": "Length of the rectangular patch element",
+      "defaultFormula": "0.25 * lambda_eff",
+      "range": {
+        "min": 10,
+        "max": 50
+      }
+    },
+    "width": {
+      "name": "Patch Width",
+      "symbol": "W",
+      "unit": "mm",
+      "description": "Width of the rectangular patch element",
+      "defaultFormula": "0.3 * lambda_eff",
+      "range": {
+        "min": 8,
+        "max": 40
+      }
+    },
+    "height": {
+      "name": "Substrate Height",
+      "symbol": "h",
+      "unit": "mm",
+      "description": "Thickness of the dielectric substrate",
+      "defaultFormula": "0.01 * lambda_0",
+      "range": {
+        "min": 0.8,
+        "max": 6.4
+      }
+    },
+    "shortPosition": {
+      "name": "Short Pin Position",
+      "symbol": "Ls",
+      "unit": "mm",
+      "description": "Distance from patch edge to shorting pin",
+      "defaultFormula": "0.05 * L",
+      "range": {
+        "min": 1,
+        "max": 8
+      }
+    },
+    "feedPosition": {
+      "name": "Feed Position",
+      "symbol": "Lf",
+      "unit": "mm",
+      "description": "Distance from shorting pin to feed point",
+      "defaultFormula": "0.15 * L",
+      "range": {
+        "min": 2,
+        "max": 15
+      }
+    },
+    "dielectricConstant": {
+      "name": "Relative Permittivity",
+      "symbol": "εr",
+      "unit": "dimensionless",
+      "description": "Relative dielectric constant of substrate material",
+      "defaultFormula": "4.4",
+      "range": {
+        "min": 2.2,
+        "max": 10.2
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "PIFA design involves determining patch dimensions for resonance, positioning the shorting pin and feed point for impedance matching, and optimizing for desired bandwidth and radiation characteristics.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Effective Dielectric Constant",
+        "description": "Determine the effective permittivity accounting for fringing fields",
+        "formula": "εeff = (εr + 1)/2 + (εr - 1)/2 * (1 + 12*h/W)^(-0.5)"
+      },
+      {
+        "step": 2,
+        "title": "Estimate Initial Patch Length",
+        "description": "Calculate quarter-wavelength resonant length with end effect correction",
+        "formula": "L = c/(4*f*sqrt(εeff)) - ΔL, where ΔL = 0.412*h*(εeff+0.3)*(W/h+0.264)/((εeff-0.258)*(W/h+0.8))"
+      },
+      {
+        "step": 3,
+        "title": "Determine Patch Width",
+        "description": "Set width for desired radiation resistance and bandwidth",
+        "formula": "W = c/(2*f*sqrt((εr+1)/2))"
+      },
+      {
+        "step": 4,
+        "title": "Position Shorting Pin",
+        "description": "Place shorting pin close to patch edge to minimize resonant length",
+        "formula": "Ls = 0.05*L to 0.1*L"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Feed Position",
+        "description": "Position feed point for 50-ohm impedance matching",
+        "formula": "Lf = L*sqrt(Rin/120), where Rin is desired input resistance"
+      },
+      {
+        "step": 6,
+        "title": "Optimize Dimensions",
+        "description": "Fine-tune all parameters using electromagnetic simulation",
+        "formula": "Adjust L, W, Ls, Lf iteratively for S11 < -10 dB"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "fr = c/(4*L*sqrt(εeff))",
+    "inputImpedance": "Zin = Rin + j*Xin, where Rin ≈ 120*(Lf/L)^2",
+    "gain": "G = η*D ≈ 1.76 + 10*log10(εeff*W*L/λ0^2)",
+    "radiationPattern": "E(θ,φ) = cos(θ)*sinc(k*W*sin(θ)*cos(φ)/2)*sinc(k*L*sin(θ)*sin(φ)/2)",
+    "bandwidth": "BW ≈ 3.77*(εr-1)*h*W/(εr^2*λ0*L)"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "transmission_line_with_short_circuit",
+    "radiationModel": "rectangular_aperture_with_ground_plane",
+    "keyAssumptions": [
+      "Thin substrate approximation",
+      "Perfect electric conductor",
+      "Negligible surface waves",
+      "Far-field radiation pattern"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Wiley, 2016",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Wiley, 2011",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, McGraw-Hill, 2007",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Wiley, 2012"
+  ]
+}
