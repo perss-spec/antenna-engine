@@ -1,0 +1,172 @@
+{
+  "id": "rectangular_patch",
+  "name": "Rectangular Microstrip Patch",
+  "category": "microstrip",
+  "description": "A rectangular conducting patch printed on a grounded dielectric substrate, operating as a resonant cavity antenna. The patch radiates primarily from the fringing fields at the edges perpendicular to the current flow. It is one of the most widely used microstrip antenna configurations due to its simple geometry and predictable performance.",
+  "frequencyRange": {
+    "min": 100000000,
+    "max": 100000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 3,
+    "max": 9,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": "1-5%",
+  "polarization": "linear",
+  "applications": [
+    "Mobile communications",
+    "GPS systems",
+    "WLAN devices",
+    "Satellite communications",
+    "Radar systems",
+    "IoT sensors",
+    "Automotive radar"
+  ],
+  "parameters": {
+    "patch_length": {
+      "name": "Patch Length",
+      "symbol": "L",
+      "unit": "m",
+      "description": "Length of the rectangular patch in the direction of current flow",
+      "defaultFormula": "c/(2*f*sqrt(εr_eff)) - 2*ΔL",
+      "range": {
+        "min": 0.001,
+        "max": 0.5
+      }
+    },
+    "patch_width": {
+      "name": "Patch Width",
+      "symbol": "W",
+      "unit": "m",
+      "description": "Width of the rectangular patch perpendicular to current flow",
+      "defaultFormula": "c/(2*f)*sqrt(2/(εr+1))",
+      "range": {
+        "min": 0.001,
+        "max": 0.5
+      }
+    },
+    "substrate_thickness": {
+      "name": "Substrate Thickness",
+      "symbol": "h",
+      "unit": "m",
+      "description": "Thickness of the dielectric substrate",
+      "defaultFormula": "0.003*c/f",
+      "range": {
+        "min": 0.0001,
+        "max": 0.01
+      }
+    },
+    "dielectric_constant": {
+      "name": "Relative Permittivity",
+      "symbol": "εr",
+      "unit": "dimensionless",
+      "description": "Relative dielectric constant of the substrate material",
+      "defaultFormula": "4.4",
+      "range": {
+        "min": 1,
+        "max": 15
+      }
+    },
+    "loss_tangent": {
+      "name": "Loss Tangent",
+      "symbol": "tan(δ)",
+      "unit": "dimensionless",
+      "description": "Dielectric loss tangent of the substrate material",
+      "defaultFormula": "0.02",
+      "range": {
+        "min": 0.0001,
+        "max": 0.1
+      }
+    },
+    "feed_position_x": {
+      "name": "Feed Position X",
+      "symbol": "xf",
+      "unit": "m",
+      "description": "X-coordinate of feed point from patch center",
+      "defaultFormula": "0",
+      "range": {
+        "min": -0.25,
+        "max": 0.25
+      }
+    },
+    "feed_position_y": {
+      "name": "Feed Position Y",
+      "symbol": "yf",
+      "unit": "m",
+      "description": "Y-coordinate of feed point from patch center",
+      "defaultFormula": "-L/4",
+      "range": {
+        "min": -0.25,
+        "max": 0.25
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "The design process involves calculating the patch dimensions for resonance at the desired frequency, accounting for fringing field effects and substrate properties.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Calculate Patch Width",
+        "description": "Determine the optimal width for maximum radiation efficiency",
+        "formula": "W = c/(2*f0) * sqrt(2/(εr + 1))"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Effective Dielectric Constant",
+        "description": "Account for fringing fields in the effective permittivity",
+        "formula": "εr_eff = (εr + 1)/2 + (εr - 1)/2 * (1 + 12*h/W)^(-1/2)"
+      },
+      {
+        "step": 3,
+        "title": "Calculate Extension Length",
+        "description": "Determine the equivalent extension due to fringing fields",
+        "formula": "ΔL = 0.412*h * (εr_eff + 0.3)*(W/h + 0.264)/((εr_eff - 0.258)*(W/h + 0.8))"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Patch Length",
+        "description": "Determine the resonant length accounting for extensions",
+        "formula": "L = c/(2*f0*sqrt(εr_eff)) - 2*ΔL"
+      },
+      {
+        "step": 5,
+        "title": "Calculate Input Resistance",
+        "description": "Determine the input resistance at the edge feed",
+        "formula": "Rin = 1/(2*G1) where G1 = I1/(120*π^2) * integral of radiation conductance"
+      },
+      {
+        "step": 6,
+        "title": "Optimize Feed Position",
+        "description": "Adjust feed location for desired input impedance",
+        "formula": "Rin(y) = Rin(0) * cos^2(π*y/L)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f0 = c/(2*L_eff*sqrt(εr_eff)) where L_eff = L + 2*ΔL",
+    "inputImpedance": "Zin = Rin + j*Xin where Rin = cos^2(π*yf/L)/(2*G1)",
+    "gain": "G = 4*π*U_max/P_rad ≈ 2*π*W*L*εr_eff/(λ0^2)",
+    "radiationPattern": "E(θ,φ) = j*k0*h*J*sinc(k0*W*sin(θ)*cos(φ)/2)*sinc(k0*L*sin(θ)*sin(φ)/2)",
+    "bandwidth": "BW ≈ 3.77*(εr - 1)*h*εr^2/(εr_eff*λ0) for VSWR < 2"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "transmission_line_model",
+    "radiationModel": "cavity_model_with_magnetic_walls",
+    "keyAssumptions": [
+      "Perfect electric conductor patch",
+      "Perfect magnetic conductor side walls",
+      "Thin substrate approximation h << λ0",
+      "Dominant TM10 mode excitation",
+      "Uniform current distribution approximation"
+    ]
+  },
+  "references": [
+    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Wiley, 2016",
+    "Pozar, D.M., 'Microwave Engineering', 4th Edition, Wiley, 2011",
+    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Wiley, 2012",
+    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, McGraw-Hill, 2007",
+    "Garg, R., 'Microstrip Antenna Design Handbook', Artech House, 2001"
+  ]
+}
