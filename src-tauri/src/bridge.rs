@@ -107,6 +107,78 @@ pub fn simulate_antenna(
 }
 
 #[tauri::command]
+pub fn simulate_sweep(
+    antenna_type: String,
+    freq_start: f64,
+    freq_stop: f64,
+    freq_points: usize,
+) -> Result<serde_json::Value, String> {
+    if freq_start <= 0.0 || freq_stop <= freq_start {
+        return Err("Invalid frequency range".into());
+    }
+    let n = if freq_points < 2 { 101 } else { freq_points };
+
+    let mut frequencies = Vec::with_capacity(n);
+    let mut s11_db = Vec::with_capacity(n);
+    let mut s11_real = Vec::with_capacity(n);
+    let mut s11_imag = Vec::with_capacity(n);
+    let mut impedance_real = Vec::with_capacity(n);
+    let mut impedance_imag = Vec::with_capacity(n);
+
+    let mut min_s11 = f64::INFINITY;
+    let mut resonant_freq = freq_start;
+    let mut bw_start: Option<f64> = None;
+    let mut bw_stop: Option<f64> = None;
+
+    for i in 0..n {
+        let f = freq_start + (freq_stop - freq_start) * i as f64 / (n - 1) as f64;
+        frequencies.push(f);
+
+        let result = simulate_antenna(antenna_type.clone(), f, 21)?;
+        let res = result["results"].clone();
+
+        let s11_re_val = res["s11"]["re"].as_f64().unwrap_or(0.0);
+        let s11_im_val = res["s11"]["im"].as_f64().unwrap_or(0.0);
+        let s11_db_val = res["s11"]["db"].as_f64().unwrap_or(0.0);
+        let z_re = res["input_impedance"]["re"].as_f64().unwrap_or(50.0);
+        let z_im = res["input_impedance"]["im"].as_f64().unwrap_or(0.0);
+
+        s11_db.push(s11_db_val);
+        s11_real.push(s11_re_val);
+        s11_imag.push(s11_im_val);
+        impedance_real.push(z_re);
+        impedance_imag.push(z_im);
+
+        if s11_db_val < min_s11 {
+            min_s11 = s11_db_val;
+            resonant_freq = f;
+        }
+
+        if s11_db_val <= -10.0 {
+            if bw_start.is_none() { bw_start = Some(f); }
+            bw_stop = Some(f);
+        }
+    }
+
+    let bandwidth = match (bw_start, bw_stop) {
+        (Some(start), Some(stop)) => stop - start,
+        _ => 0.0,
+    };
+
+    Ok(json!({
+        "frequencies": frequencies,
+        "s11Db": s11_db,
+        "s11Real": s11_real,
+        "s11Imag": s11_imag,
+        "impedanceReal": impedance_real,
+        "impedanceImag": impedance_imag,
+        "resonantFreq": resonant_freq,
+        "minS11": min_s11,
+        "bandwidth": bandwidth,
+    }))
+}
+
+#[tauri::command]
 pub fn get_simulation_status() -> serde_json::Value {
     json!({
         "stage": "idle",

@@ -6,14 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, History, RotateCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// These types would likely be defined in a shared types file
-interface AntennaParameters {
-  frequency: number;
-  length: number;
-  radius: number;
-  height: number;
-  material: string;
-}
+import type { AntennaParameters } from '@/components/AntennaForm/AntennaForm';
 
 interface SimulationResultSummary {
   minS11: number;

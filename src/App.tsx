@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Activity, Radio, Zap, Signal } from 'lucide-react';
 import AntennaForm from './components/AntennaForm/AntennaForm';
+import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
 import OptimizationPanel from './components/OptimizationPanel/OptimizationPanel';
@@ -18,35 +19,77 @@ const isTauri = '__TAURI_INTERNALS__' in window;
 const invoke = isTauri
   ? (await import('@tauri-apps/api/core')).invoke
   : async (_cmd: string, args: any): Promise<any> => {
-      await new Promise(r => setTimeout(r, 800));
-      const req = (args as any).request;
-      const n = req.freqPoints || 101;
-      const fStart = req.freqStart;
-      const fStop = req.freqStop;
+      await new Promise(r => setTimeout(r, 400));
+      const a = args as any;
+
+      if (_cmd === 'get_antenna_templates') {
+        return [
+          { id: 'dipole', name: 'Half-Wave Dipole', type: 'Dipole', default_frequency: 145e6 },
+          { id: 'monopole', name: 'Quarter-Wave Monopole', type: 'Monopole', default_frequency: 433e6 },
+          { id: 'patch', name: 'Rectangular Patch', type: 'Patch', default_frequency: 2.4e9 },
+          { id: 'qfh', name: 'QFH', type: 'Qfh', default_frequency: 137.5e6 },
+          { id: 'yagi', name: '3-Element Yagi', type: 'Yagi', default_frequency: 145e6 },
+        ];
+      }
+
+      // simulate_sweep mock
+      const antennaType = a.antenna_type || a.antennaType || 'dipole';
+      const fStart = a.freq_start || a.freqStart;
+      const fStop = a.freq_stop || a.freqStop;
+      const n = a.freq_points || a.freqPoints || 101;
       const fCenter = (fStart + fStop) / 2;
+
+      // Impedance models per antenna type
+      const models: Record<string, { zr: number; zi_scale: number; gain: number }> = {
+        dipole:   { zr: 73,    zi_scale: 42.5,  gain: 2.15 },
+        monopole: { zr: 36.5,  zi_scale: 21.25, gain: 5.15 },
+        patch:    { zr: 200,   zi_scale: 0,     gain: 6.0 },
+        qfh:     { zr: 50,    zi_scale: 5.0,   gain: 3.0 },
+        yagi:     { zr: 25,    zi_scale: 10.0,  gain: 7.1 },
+      };
+      const m = models[antennaType] || models.dipole;
+
       const frequencies: number[] = [];
       const s11Db: number[] = [];
       const s11Real: number[] = [];
       const s11Imag: number[] = [];
       const impedanceReal: number[] = [];
       const impedanceImag: number[] = [];
+
       for (let i = 0; i < n; i++) {
         const f = fStart + (fStop - fStart) * i / (n - 1);
-        frequencies.push(f);
         const delta = (f - fCenter) / fCenter;
-        const s11 = -25 * Math.exp(-200 * delta * delta) - 2;
-        s11Db.push(s11);
-        s11Real.push(Math.pow(10, s11 / 20) * Math.cos(delta * 10));
-        s11Imag.push(Math.pow(10, s11 / 20) * Math.sin(delta * 10));
-        impedanceReal.push(73 + 100 * delta);
-        impedanceImag.push(42.5 * delta * 10);
+        frequencies.push(f);
+
+        const zr = m.zr;
+        const zi = m.zi_scale * delta * 10;
+        impedanceReal.push(zr);
+        impedanceImag.push(zi);
+
+        // Gamma = (Z - 50) / (Z + 50)
+        const dr = zr + 50, di = zi;
+        const dMag2 = dr * dr + di * di;
+        const gr = ((zr - 50) * dr + zi * di) / dMag2;
+        const gi = (zi * dr - (zr - 50) * di) / dMag2;
+        const gMag2 = gr * gr + gi * gi;
+        const s11db = 10 * Math.log10(gMag2 || 1e-20);
+
+        s11Db.push(s11db);
+        s11Real.push(gr);
+        s11Imag.push(gi);
       }
+
       const minIdx = s11Db.indexOf(Math.min(...s11Db));
+      const bwIndices = s11Db.map((v, i) => v <= -10 ? i : -1).filter(i => i >= 0);
+      const bandwidth = bwIndices.length >= 2
+        ? frequencies[bwIndices[bwIndices.length - 1]] - frequencies[bwIndices[0]]
+        : 0;
+
       return {
         frequencies, s11Db, s11Real, s11Imag, impedanceReal, impedanceImag,
         resonantFreq: frequencies[minIdx],
         minS11: s11Db[minIdx],
-        bandwidth: (fStop - fStart) * 0.15,
+        bandwidth,
       };
     };
 
@@ -97,9 +140,10 @@ function App() {
   const [optimizationResults, setOptimizationResults] = useState<OptimizationResult[]>([]);
   const optimizationAbortRef = useRef(false);
 
-  const defaultParams = {
-    frequency: 1000,
-    length: 150,
+  const defaultParams: AntennaParameters = {
+    antennaType: 'dipole',
+    frequency: 145,
+    length: 1034,
     radius: 1,
     height: 0,
     material: 'copper',
@@ -107,33 +151,27 @@ function App() {
 
   const [params, setParams] = useState(defaultParams);
 
-  const runSimulation = useCallback(async (formParams: typeof defaultParams): Promise<SimulateResponse> => {
+  const runSweep = useCallback(async (formParams: AntennaParameters): Promise<SimulateResponse> => {
     const centerFreqHz = formParams.frequency * 1e6;
     const freqStart = centerFreqHz * 0.5;
     const freqStop = centerFreqHz * 1.5;
 
-    return invoke<SimulateResponse>('simulate_antenna', {
-      request: {
-        elementType: 'dipole',
-        params: {
-          length: formParams.length / 1000,
-          radius: formParams.radius / 1000,
-        },
-        freqStart,
-        freqStop,
-        freqPoints: 101,
-      },
+    return invoke<SimulateResponse>('simulate_sweep', {
+      antenna_type: formParams.antennaType,
+      freq_start: freqStart,
+      freq_stop: freqStop,
+      freq_points: 101,
     });
   }, []);
 
-  const handleSubmit = useCallback(async (formParams: typeof defaultParams) => {
+  const handleSubmit = useCallback(async (formParams: AntennaParameters) => {
     setIsSimulating(true);
     setError(null);
     setSummary(null);
     const t0 = performance.now();
 
     try {
-      const result = await runSimulation(formParams);
+      const result = await runSweep(formParams);
 
       setSimTime(Math.round(performance.now() - t0));
 
@@ -158,7 +196,7 @@ function App() {
     } finally {
       setIsSimulating(false);
     }
-  }, [runSimulation]);
+  }, [runSweep]);
 
   const handleStartOptimization = useCallback(async (optParams: OptimizationParams) => {
     setIsOptimizing(true);
@@ -186,7 +224,7 @@ function App() {
       const trialRadius = refRadius * (1 + (Math.random() - 0.5) * perturbScale);
 
       try {
-        const result = await runSimulation({
+        const result = await runSweep({
           ...params,
           frequency: optParams.targetFrequency,
           length: trialLength,
@@ -230,7 +268,7 @@ function App() {
     }
 
     setIsOptimizing(false);
-  }, [params, runSimulation]);
+  }, [params, runSweep]);
 
   const handleStopOptimization = useCallback(() => {
     optimizationAbortRef.current = true;
@@ -263,7 +301,7 @@ function App() {
           </div>
           <div>
             <div className="text-base font-bold text-white tracking-tight">PROMIN</div>
-            <div className="text-[11px] text-text-dim mt-0.5">Antenna Studio v0.1</div>
+            <div className="text-[11px] text-text-dim mt-0.5">Antenna Studio v0.2</div>
           </div>
         </div>
 
@@ -298,7 +336,7 @@ function App() {
         <div className="px-6 py-4 border-t border-border mt-auto">
           <div className="text-[11px] text-text-dim leading-relaxed">
             Solver: Method of Moments (MoM)
-            <br />Engine: Rust + WebGPU
+            <br />Engine: Rust + rayon parallel
             <br />{isTauri ? 'Mode: Native (Tauri)' : 'Mode: Browser Preview'}
           </div>
         </div>
@@ -489,7 +527,7 @@ function App() {
               </svg>
               <div className="text-base font-semibold text-text-dim">No Simulation Data</div>
               <div className="text-[13px] max-w-[300px] text-center leading-relaxed">
-                Configure antenna parameters and click "Run Simulation" to see S11 return loss results.
+                Select an antenna type, configure parameters, and click "Run Simulation" to analyze S-parameters.
               </div>
             </div>
           )}
