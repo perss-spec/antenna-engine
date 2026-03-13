@@ -1,0 +1,69 @@
+{
+  "layout_strategy": {
+    "type": "3-column CSS Grid",
+    "template": "280px 4px 1fr 4px 320px",
+    "sidebar": { "minWidth": 200, "defaultWidth": 280, "maxWidth": 480, "collapseWidth": 48 },
+    "main": { "minWidth": 400 },
+    "divider": { "width": 4, "style": "bg-zinc-800 hover:bg-blue-500/60 cursor-col-resize transition-colors active:bg-blue-500" }
+  },
+  "spacing_system": {
+    "base": 4,
+    "scale": { "0.5": "2px", "1": "4px", "1.5": "6px", "2": "8px", "3": "12px", "4": "16px", "5": "20px", "6": "24px", "8": "32px", "10": "40px", "12": "48px" },
+    "field_gap": "8px",
+    "section_gap": "24px",
+    "label_gap": "6px"
+  },
+  "typography": {
+    "sizes": { "xs": "11px", "sm": "12px", "base": "13px", "md": "14px", "lg": "16px", "xl": "18px", "2xl": "22px" },
+    "weights": { "normal": 400, "medium": 500, "semibold": 600, "bold": 700 },
+    "rules": "base(13px/medium) for labels. sm(12px) for metadata. xs(11px) only for chart ticks. lg(16px/semibold) for panel titles."
+  },
+  "color_tokens": {
+    "backgrounds": { "base": "#09090b", "surface": "#18181b", "surface-hover": "#27272a99", "elevated": "#27272a" },
+    "borders": { "default": "#3f3f4680", "hover": "#52525b", "strong": "#52525b" },
+    "text": { "primary": "#fafafa", "secondary": "#d4d4d8", "muted": "#a1a1aa", "dim": "#71717a" },
+    "accent": { "default": "#3b82f6", "hover": "#60a5fa", "muted": "#3b82f633" },
+    "status": { "success": "#10b981", "warning": "#fbbf24", "error": "#ef4444", "info": "#38bdf8" },
+    "chart_palette": ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#a78bfa", "#fb923c"]
+  },
+  "component_sizes": {
+    "input": { "sm": "28px", "md": "32px", "lg": "36px" },
+    "button": { "sm": "28px", "md": "32px", "lg": "36px" },
+    "icon": { "sm": "14px", "md": "16px", "lg": "20px" },
+    "radius": { "sm": "4px", "md": "6px", "lg": "8px", "xl": "12px" }
+  },
+  "interactive_states": {
+    "focus_ring": "outline-2 outline-offset-2 outline-blue-500 focus-visible only",
+    "hover": "bg-zinc-800/60 transition-colors duration-100",
+    "active": "bg-zinc-700/80 scale-[0.98]",
+    "disabled": "opacity-40 cursor-not-allowed pointer-events-none"
+  },
+  "shadows": {
+    "xs": "0 1px 2px rgba(0,0,0,0.4)",
+    "sm": "0 2px 4px rgba(0,0,0,0.5)",
+    "md": "0 4px 12px rgba(0,0,0,0.6)",
+    "lg": "0 8px 24px rgba(0,0,0,0.7)"
+  },
+  "panel_system": {
+    "header_height": 48,
+    "section_header_height": 36,
+    "content_padding": 16
+  },
+  "responsive_rules": {
+    "min_app_width": 1024,
+    "collapse_right_at": 1280,
+    "breakpoints": { "md": 1024, "lg": 1280, "xl": 1536 }
+  },
+  "priority_changes": [
+    { "change": "Add focus-visible rings to all interactive elements", "impact": "high", "effort": "small" },
+    { "change": "Replace hardcoded colors with token system", "impact": "high", "effort": "medium" },
+    { "change": "CSS Grid 3-column layout + resize dividers", "impact": "high", "effort": "large" },
+    { "change": "Add aria-expanded/controls to CollapsibleSections", "impact": "high", "effort": "small" },
+    { "change": "Normalize input heights to md(32px)", "impact": "high", "effort": "small" },
+    { "change": "Fix CardTitle min size", "impact": "high", "effort": "small" },
+    { "change": "Fix scrollbar visibility", "impact": "medium", "effort": "small" },
+    { "change": "Consolidate typography scale", "impact": "medium", "effort": "medium" },
+    { "change": "Standardize border-radius tokens", "impact": "medium", "effort": "small" },
+    { "change": "Add viewport toolbar overlay", "impact": "medium", "effort": "medium" }
+  ]
+}

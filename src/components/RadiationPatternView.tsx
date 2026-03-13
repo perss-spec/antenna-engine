@@ -199,7 +199,7 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
         {pattern ? (
           <Canvas
             camera={{ position: [2, 1.5, 2], fov: 50 }}
-            style={{ background: '#1a1a1a', width: '100%', height: '100%', minHeight: 400 }}
+            style={{ background: 'var(--color-surface, #1a1a1a)', width: '100%', height: '100%', minHeight: 400 }}
           >
             <ambientLight intensity={0.4} />
             <directionalLight position={[10, 10, 5]} intensity={0.8} />
@@ -214,8 +214,16 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
             <OrbitControls enableDamping dampingFactor={0.05} />
           </Canvas>
         ) : (
-          <div className="flex items-center justify-center h-full text-text-dim">
-            {loading ? 'Computing radiation pattern...' : 'No pattern data'}
+          <div className="flex items-center justify-center h-full text-text-dim gap-2">
+            {loading ? (
+              <>
+                <svg className="animate-spin w-4 h-4 text-accent" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <span>Computing radiation pattern...</span>
+              </>
+            ) : 'No pattern data'}
           </div>
         )}
       </div>
@@ -223,15 +231,15 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-text-dim">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: '#ff0000' }} />
+          <div className="w-3 h-3 rounded" style={{ background: 'var(--chart-1, #3b82f6)' }} />
           <span>High Gain</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: '#00ff00' }} />
+          <div className="w-3 h-3 rounded" style={{ background: 'var(--chart-2, #10b981)' }} />
           <span>Mid</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: '#0000ff' }} />
+          <div className="w-3 h-3 rounded" style={{ background: 'var(--chart-3, #f59e0b)' }} />
           <span>Low Gain</span>
         </div>
         <span className="ml-auto">Theta: 0-180, Phi: 0-360</span>

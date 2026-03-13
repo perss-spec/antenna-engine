@@ -173,7 +173,7 @@ function clipCircleToUnitCircle(cx: number, cy: number, r: number): string | nul
 }
 
 const VSWRCircles: FC = () => (
-  <g className="stroke-gray-400 dark:stroke-gray-500" strokeWidth={0.5} fill="none" strokeDasharray="3 2">
+  <g className="stroke-border" strokeWidth={0.5} fill="none" strokeDasharray="3 2">
     {VSWR_VALUES.map((vswr) => {
       const r = (vswr - 1) / (vswr + 1);
       const svgR = r * RADIUS;
@@ -190,7 +190,7 @@ const VSWRCircles: FC = () => (
 );
 
 const ConstantResistanceCircles: FC = () => (
-  <g className="stroke-zinc-600 dark:stroke-zinc-500" strokeWidth={0.5} fill="none">
+  <g className="stroke-border" strokeWidth={0.5} fill="none">
     {RESISTANCE_VALUES.map((r) => {
       const cx = r / (r + 1);
       const cy = 0;
@@ -202,7 +202,7 @@ const ConstantResistanceCircles: FC = () => (
 );
 
 const ConstantReactanceArcs: FC = () => (
-  <g className="stroke-zinc-600 dark:stroke-zinc-500" strokeWidth={0.5} fill="none" strokeDasharray="4 3">
+  <g className="stroke-border" strokeWidth={0.5} fill="none" strokeDasharray="4 3">
     {REACTANCE_VALUES.flatMap((x) => {
       const arcs: JSX.Element[] = [];
       const pathPos = clipCircleToUnitCircle(1, 1 / x, 1 / x);
@@ -222,7 +222,7 @@ const GridLabels: FC = () => {
         key={`rl-${r}`}
         x={svgX}
         y={CENTER + 12}
-        className="fill-zinc-500 text-[9px]"
+        className="fill-text-dim text-[9px]"
         textAnchor="middle"
       >
         {r}
@@ -236,10 +236,10 @@ const GridLabels: FC = () => {
     const lyPos = CENTER - Math.sin(angle) * RADIUS;
     const lyNeg = CENTER + Math.sin(angle) * RADIUS;
     return [
-      <text key={`xl+${x}`} x={lx + 4} y={lyPos - 2} className="fill-zinc-500 text-[9px]">
+      <text key={`xl+${x}`} x={lx + 4} y={lyPos - 2} className="fill-text-dim text-[9px]">
         +j{x}
       </text>,
-      <text key={`xl-${x}`} x={lx + 4} y={lyNeg + 10} className="fill-zinc-500 text-[9px]">
+      <text key={`xl-${x}`} x={lx + 4} y={lyNeg + 10} className="fill-text-dim text-[9px]">
         -j{x}
       </text>,
     ];
@@ -253,7 +253,7 @@ const GridLabels: FC = () => {
         key={`vswr-${vswr}`}
         x={svgX}
         y={CENTER - 8}
-        className="fill-gray-500 text-[8px]"
+        className="fill-text-dim text-[8px]"
         textAnchor="middle"
       >
         {vswr}:1
@@ -366,7 +366,7 @@ const SmithChart: FC<SmithChartProps> = ({
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>Smith Chart</CardTitle>
+        <CardTitle className="text-sm font-semibold">Smith Chart</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative flex justify-center">
@@ -381,7 +381,7 @@ const SmithChart: FC<SmithChartProps> = ({
               cx={CENTER}
               cy={CENTER}
               r={RADIUS}
-              className="fill-zinc-950/30 stroke-zinc-400 dark:stroke-zinc-500"
+              className="fill-surface/30 stroke-border"
               strokeWidth={1.5}
             />
 
@@ -391,7 +391,7 @@ const SmithChart: FC<SmithChartProps> = ({
               y1={CENTER}
               x2={CENTER + RADIUS}
               y2={CENTER}
-              className="stroke-zinc-500"
+              className="stroke-border"
               strokeWidth={0.8}
             />
 
@@ -408,7 +408,8 @@ const SmithChart: FC<SmithChartProps> = ({
               <polyline
                 points={plotData.map((p) => `${p.svg.x},${p.svg.y}`).join(' ')}
                 fill="none"
-                className="stroke-indigo-400/60"
+                stroke="var(--chart-1, #3b82f6)"
+                strokeOpacity={0.6}
                 strokeWidth={1.5}
                 strokeLinejoin="round"
               />
@@ -420,7 +421,7 @@ const SmithChart: FC<SmithChartProps> = ({
                 key={`freq-${idx}`}
                 x={label.x + 8}
                 y={label.y - 8}
-                className="fill-blue-500 text-[8px] font-mono"
+                className="fill-text-muted text-[8px] font-mono"
                 textAnchor="start"
               >
                 {formatFreq(label.freq)}
@@ -444,10 +445,10 @@ const SmithChart: FC<SmithChartProps> = ({
             ))}
 
             {/* Unit circle labels */}
-            <text x={CENTER - RADIUS - 14} y={CENTER + 4} className="fill-zinc-400 text-[11px]" textAnchor="end">
+            <text x={CENTER - RADIUS - 14} y={CENTER + 4} className="fill-text-dim text-[11px]" textAnchor="end">
               0
             </text>
-            <text x={CENTER + RADIUS + 8} y={CENTER + 4} className="fill-zinc-400 text-[11px]">
+            <text x={CENTER + RADIUS + 8} y={CENTER + 4} className="fill-text-dim text-[11px]">
               ∞
             </text>
           </svg>
@@ -455,21 +456,21 @@ const SmithChart: FC<SmithChartProps> = ({
           {/* Hover tooltip */}
           {hovered && (
             <div
-              className="absolute pointer-events-none z-50 rounded-md border border-zinc-700 bg-zinc-900/95 px-3 py-2 text-xs font-mono text-zinc-200 shadow-lg whitespace-nowrap"
+              className="absolute pointer-events-none z-50 rounded-md border border-border bg-elevated px-3 py-2 text-xs font-mono text-text shadow-lg whitespace-nowrap"
               style={{
                 left: `${(hovered.svg.x / SVG_SIZE) * 100}%`,
                 top: `${(hovered.svg.y / SVG_SIZE) * 100}%`,
                 transform: 'translate(12px, -50%)',
               }}
             >
-              <div className="font-semibold text-zinc-100">
+              <div className="font-semibold text-text">
                 Z = {hovered.re.toFixed(2)} {hovered.im >= 0 ? '+' : '-'} j{Math.abs(hovered.im).toFixed(2)} Ω
               </div>
-              <div className="text-zinc-400">f = {formatFreq(hovered.freq)}</div>
-              <div className="text-zinc-400">
+              <div className="text-text-dim">f = {formatFreq(hovered.freq)}</div>
+              <div className="text-text-dim">
                 VSWR = {hovered.vswr === Infinity ? '∞' : hovered.vswr.toFixed(2)}:1
               </div>
-              <div className="text-zinc-400">
+              <div className="text-text-dim">
                 |Γ| = {gammaMagnitude(hovered.gamma).toFixed(4)}
               </div>
             </div>
@@ -478,7 +479,7 @@ const SmithChart: FC<SmithChartProps> = ({
           {/* Mouse tooltip */}
           {tooltip && (
             <div
-              className="absolute pointer-events-none z-40 rounded-md border border-zinc-600 bg-zinc-800/90 px-2 py-1 text-xs font-mono text-zinc-300 shadow-md whitespace-nowrap"
+              className="absolute pointer-events-none z-40 rounded-md border border-border bg-elevated px-2 py-1 text-xs font-mono text-text shadow-md whitespace-nowrap"
               style={{
                 left: `${(tooltip.x / SVG_SIZE) * 100}%`,
                 top: `${(tooltip.y / SVG_SIZE) * 100}%`,
@@ -502,10 +503,10 @@ const SmithChart: FC<SmithChartProps> = ({
         </div>
 
         {/* Legend */}
-        <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
+        <div className="mt-3 flex items-center justify-between text-xs text-text-dim">
           <div className="flex items-center gap-2">
             <span>Z₀ = {referenceImpedance} Ω</span>
-            <span className="text-zinc-600">·</span>
+            <span className="text-border">·</span>
             <span>{impedancePoints.length} points</span>
           </div>
           {impedancePoints.length > 0 && (
@@ -516,7 +517,7 @@ const SmithChart: FC<SmithChartProps> = ({
                   background: `linear-gradient(to right, ${freqToColor(minFreq, minFreq, maxFreq)}, ${freqToColor(maxFreq, minFreq, maxFreq)})`,
                 }}
               />
-              <span className="text-[10px]">freq</span>
+              <span className="text-xs text-text-dim">freq</span>
             </div>
           )}
         </div>

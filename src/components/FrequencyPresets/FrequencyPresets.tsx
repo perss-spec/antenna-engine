@@ -57,20 +57,23 @@ const FrequencyPresets: FC<FrequencyPresetsProps> = ({ onSelect, className, disa
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {presetCategories.map((category) => (
-        <div key={category.name} className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium text-text-dim/60 w-8 shrink-0">{category.name}</span>
+        <div key={category.name} className="flex items-center gap-2">
+          <span className="text-[10px] font-medium text-text-dim/60 w-7 shrink-0">{category.name}</span>
           <div className="flex flex-wrap gap-1">
             {category.presets.map((preset) => (
               <button
                 key={preset.name}
+                type="button"
                 onClick={() => onSelect(preset.frequency)}
                 disabled={disabled}
+                title={`${preset.frequency} MHz`}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all duration-200',
-                  'border border-border/40 bg-surface-hover/50 hover:border-accent/40 hover:bg-accent/10 hover:text-accent hover:shadow-sm hover:shadow-accent/10',
+                  'h-7 px-2 text-xs rounded-full transition-all duration-150',
+                  'border border-border/40 bg-surface-hover/50',
+                  'hover:border-accent/40 hover:bg-accent/10 hover:text-accent hover:shadow-sm hover:shadow-accent/10',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
                   'disabled:pointer-events-none disabled:opacity-40',
                 )}
-                title={`${preset.frequency} MHz`}
               >
                 {preset.name}
               </button>

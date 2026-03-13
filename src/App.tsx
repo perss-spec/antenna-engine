@@ -537,9 +537,15 @@ function App() {
   }
 
   return (
-    <div className="noise flex h-screen bg-background text-text overflow-hidden">
+    <div
+      className="noise h-screen bg-background text-text overflow-hidden"
+      style={{ display: 'grid', gridTemplateColumns: 'var(--sidebar-w, 280px) 1fr', minWidth: 0 }}
+    >
       {/* Sidebar */}
-      <div className="w-[360px] bg-surface/80 border-r border-border/60 flex flex-col overflow-hidden relative">
+      <div
+        className="bg-surface/80 border-r border-border/60 flex flex-col overflow-hidden relative"
+        style={{ minWidth: 200, maxWidth: 480 }}
+      >
         {/* Subtle sidebar glow */}
         <div className="absolute top-0 right-0 w-px h-full bg-gradient-to-b from-accent/10 via-transparent to-accent/5 pointer-events-none" />
 
@@ -601,7 +607,7 @@ function App() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-auto">
+      <div className="flex flex-col overflow-auto min-w-0">
         {/* Top Bar */}
         <div className="px-6 py-3.5 border-b border-border/40 flex items-center justify-between bg-background/80 shrink-0">
           <div className="flex gap-3 items-center">
@@ -662,17 +668,17 @@ function App() {
                 {/* Stats — glass cards */}
                 <div className="grid grid-cols-4 gap-3">
                   {[
-                    { icon: Radio, label: 'Resonant', value: formatFreq(summary.resonantFreq), color: 'accent', glow: 'rgba(99,102,241,0.08)' },
-                    { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, color: 'success', glow: 'rgba(16,185,129,0.08)' },
-                    { icon: Zap, label: 'VSWR', value: `${vswr}:1`, color: 'warning', glow: 'rgba(245,158,11,0.08)' },
-                    { icon: Signal, label: 'BW -10dB', value: formatFreq(summary.bandwidth), color: 'info', glow: 'rgba(6,182,212,0.08)' },
+                    { icon: Radio, label: 'Resonant', value: formatFreq(summary.resonantFreq), color: 'accent', glow: 'var(--color-accent, #6366f1)' },
+                    { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, color: 'success', glow: 'var(--color-success, #10b981)' },
+                    { icon: Zap, label: 'VSWR', value: `${vswr}:1`, color: 'warning', glow: 'var(--color-warning, #f59e0b)' },
+                    { icon: Signal, label: 'BW -10dB', value: formatFreq(summary.bandwidth), color: 'info', glow: 'var(--color-info, #06b6d4)' },
                   ].map(({ icon: Icon, label, value, color, glow }) => (
                     <div
                       key={label}
                       className="relative flex items-center gap-3 rounded-xl border border-border/50 bg-surface/80 px-4 py-3.5 overflow-hidden"
                       style={{ animation: 'fadeInScale 0.3s ease-out' }}
                     >
-                      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 20% 50%, ${glow}, transparent 70%)` }} />
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 20% 50%, color-mix(in srgb, ${glow} 8%, transparent), transparent 70%)` }} />
                       <div className={`w-9 h-9 rounded-lg bg-${color}/10 flex items-center justify-center shrink-0`}>
                         <Icon className={`w-4 h-4 text-${color}`} />
                       </div>
@@ -753,7 +759,7 @@ function App() {
                 <div className="absolute inset-0 bg-accent/8 blur-3xl rounded-full scale-150" />
               </div>
               <div className="text-center">
-                <div className="text-sm font-semibold text-text/50 mb-2">No Simulation Data</div>
+                <div className="text-sm font-semibold text-text-muted mb-2">No Simulation Data</div>
                 <div className="text-xs text-text-dim/70 max-w-[280px] leading-relaxed">
                   Configure antenna parameters and hit Run
                 </div>
