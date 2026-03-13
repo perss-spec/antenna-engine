@@ -4,7 +4,7 @@
 
 ## Overview
 
-A directional antenna array consisting of a driven element (typically a dipole) and multiple parasitic elements including reflectors and directors. The parasitic elements are not directly connected to the transmission line but are electromagnetically coupled to the driven element, creating a highly directional radiation pattern with significant forward gain.
+A directional antenna array consisting of a driven element (typically a dipole) with one or more parasitic elements including reflectors and directors. The parasitic elements are not directly connected to the transmission line but are electromagnetically coupled to the driven element, creating a highly directional radiation pattern with significant forward gain.
 
 - **Frequency Range:** 30000000 - 3000000000 Hz
 - **Typical Gain:** 6 to 20 dBi
@@ -16,17 +16,17 @@ A directional antenna array consisting of a driven element (typically a dipole) 
 
 | Parameter | Symbol | Unit | Default Formula | Range |
 |-----------|--------|------|----------------|-------|
-| Driven Element Length | L_d | m | 0.47 * lambda | 0.4 - 0.5 |
-| Reflector Length | L_r | m | 0.49 * lambda | 0.48 - 0.52 |
-| Director Length | L_dir | m | 0.43 * lambda | 0.35 - 0.45 |
-| Reflector Spacing | S_r | m | 0.25 * lambda | 0.15 - 0.35 |
-| Director Spacing | S_d | m | 0.2 * lambda | 0.1 - 0.35 |
-| Wire Radius | a | m | 0.001 * lambda | 0.0001 - 0.01 |
-| Number of Directors | N_d | dimensionless | 3 | 1 - 20 |
+| Driven Element Length | Ld | m | 0.47 * lambda | 0.4 - 0.5 |
+| Reflector Length | Lr | m | 0.49 * lambda | 0.48 - 0.52 |
+| Director Length | Ldir | m | 0.45 * lambda | 0.4 - 0.47 |
+| Reflector Spacing | Sr | m | 0.25 * lambda | 0.15 - 0.35 |
+| Director Spacing | Sd | m | 0.2 * lambda | 0.1 - 0.35 |
+| Wire Radius | a | m | 0.001 * lambda | 0.0005 - 0.01 |
+| Number of Directors | N | dimensionless | 3 | 1 - 20 |
 
 ## Design Methodology
 
-Design process involves optimizing element lengths and spacings to achieve desired gain and impedance matching through electromagnetic coupling between parasitic elements.
+Design process involves determining element lengths and spacings to achieve desired gain and impedance matching through electromagnetic coupling optimization.
 
 ### Step 1: Determine Operating Frequency
 
@@ -38,61 +38,61 @@ Calculate free-space wavelength and establish design frequency
 
 Set driven element length for resonance, accounting for mutual coupling effects
 
-**Formula:** `L_d = 0.47 * lambda`
+**Formula:** `Ld = 0.47 * lambda`
 
 ### Step 3: Position and Size Reflector
 
 Place reflector behind driven element with appropriate length for maximum reflection
 
-**Formula:** `L_r = 0.49 * lambda, S_r = 0.25 * lambda`
+**Formula:** `Lr = 1.05 * Ld, Sr = 0.25 * lambda`
 
 ### Step 4: Design Director Elements
 
-Size and position directors for progressive phase shift and beam focusing
+Size directors shorter than driven element for forward wave enhancement
 
-**Formula:** `L_dir = 0.43 * lambda, S_d = 0.2 * lambda`
+**Formula:** `Ldir = 0.95 * Ld`
 
-### Step 5: Optimize Element Spacing
+### Step 5: Optimize Director Spacing
 
-Adjust spacings to maximize forward gain while maintaining impedance match
+Space directors for constructive interference in forward direction
 
-**Formula:** `S_opt = 0.15 * lambda + 0.1 * lambda * n`
+**Formula:** `Sd = 0.2 * lambda to 0.35 * lambda`
 
 ### Step 6: Calculate Input Impedance
 
-Determine driving point impedance considering mutual coupling between all elements
+Determine impedance including mutual coupling effects between elements
 
-**Formula:** `Z_in = R_in + j*X_in`
+**Formula:** `Zin = Zself + sum(Zmutual)`
 
-### Step 7: Verify Radiation Pattern
+### Step 7: Optimize for Gain and SWR
 
-Calculate directivity and front-to-back ratio to confirm performance
+Fine-tune element lengths and spacings for maximum gain and acceptable SWR
 
-**Formula:** `D = 4*pi*U_max / P_rad`
+**Formula:** `Gain = 10*log10(4*pi*U_max/P_rad)`
 
 ## Equations
 
-- **resonantFrequency:** `f_r = c / (2 * L_eff) where L_eff accounts for end effects and coupling`
-- **inputImpedance:** `Z_in = V_1 / I_1 = Z_11 + sum(Z_1n * I_n / I_1) for n = 2 to N`
-- **gain:** `G = D * eta where D = 4*pi / (integral of |F(theta,phi)|^2 over 4*pi)`
-- **radiationPattern:** `E(theta,phi) = sum(I_n * exp(-j*k*r_n*cos(theta)) * f_n(theta,phi)) for all elements n`
-- **bandwidth:** `BW = 2 * (f_2 - f_1) / f_0 where VSWR < 2`
+- **resonantFrequency:** `f0 = c / (2 * Ld_eff) where Ld_eff accounts for end effects and coupling`
+- **inputImpedance:** `Zin = R11 + j*X11 + sum(Z1n * In/I1) for n parasitic elements`
+- **gain:** `G = 4*pi*U_max/P_total where U_max is maximum radiation intensity`
+- **radiationPattern:** `E(theta,phi) = j*k*I*exp(-j*k*r)/(4*pi*r) * [cos(k*L*cos(theta)/2) - cos(k*L/2)]/sin(theta)`
+- **bandwidth:** `BW = 2*(f2-f1)/f0 where SWR < 2:1`
 
 ## Mock Solver Hints
 
-- **Impedance Model:** Method of moments with mutual impedance matrix Z_mn between elements m and n
-- **Radiation Model:** Superposition of individual element patterns with appropriate phase relationships
+- **Impedance Model:** Method of moments with mutual impedance matrix Z_mn = R_mn + j*X_mn between elements
+- **Radiation Model:** Superposition of individual element patterns with proper phase relationships from mutual coupling
 - **Key Assumptions:**
-  - Thin wire approximation valid for wire radius << wavelength
-  - Ground plane effects negligible for elevated arrays
-  - Linear current distribution approximation on each element
+  - Thin wire approximation valid for length/diameter > 100
+  - Elements parallel and in same plane
+  - Sinusoidal current distribution on each element
   - Far-field radiation pattern calculation
-  - Lossless conductors assumed for gain calculations
+  - Linear polarization maintained
 
 ## References
 
 - Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 10
 - Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 7
-- Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 11
+- Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 10
 - Pozar, D.M., 'Microwave Engineering', 4th Edition, Chapter 14
 
