@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
 import { Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import {
+  ANTENNA_PRESETS,
+  CATEGORY_LABELS,
+  getAntennasByCategory,
+  getAntennaData,
+  getCategoryForId,
+} from '@/lib/antennaKB';
+import type { AntennaCategory, KBParameter } from '@/lib/antennaKB';
 
-export type AntennaType = 'dipole' | 'monopole' | 'patch' | 'qfh' | 'yagi';
+export type AntennaType = string;
 
 export interface AntennaParameters {
   antennaType: AntennaType;
@@ -19,6 +27,7 @@ export interface AntennaParameters {
   substrateEr?: number;
   substrateHeight?: number;
   patchWidth?: number;
+  extraParams: Record<string, number>;
 }
 
 interface AntennaFormProps {
@@ -29,13 +38,7 @@ interface AntennaFormProps {
   className?: string;
 }
 
-const ANTENNA_PRESETS: Record<AntennaType, { name: string; frequency: number; length: number; radius: number; height: number; description: string; substrateEr?: number; substrateHeight?: number; patchWidth?: number }> = {
-  dipole: { name: 'Half-Wave Dipole', frequency: 145, length: 1034, radius: 1, height: 0, description: 'Classic half-wave dipole' },
-  monopole: { name: 'Quarter-Wave Monopole', frequency: 433, length: 173, radius: 1, height: 0, description: 'Monopole over ground plane' },
-  patch: { name: 'Rectangular Patch', frequency: 2400, length: 29, radius: 0, height: 0, description: 'Microstrip patch on FR-4', substrateEr: 4.4, substrateHeight: 1.6, patchWidth: 38 },
-  qfh: { name: 'QFH (Quadrifilar Helix)', frequency: 137.5, length: 350, radius: 1, height: 550, description: 'Circular polarization helix' },
-  yagi: { name: '3-Element Yagi-Uda', frequency: 145, length: 1034, radius: 3, height: 0, description: 'Directional beam antenna' },
-};
+const CATEGORY_ORDER: AntennaCategory[] = ['wire', 'microstrip', 'broadband', 'aperture', 'array', 'special'];
 
 const AntennaForm: FC<AntennaFormProps> = ({
   parameters,
@@ -50,6 +53,19 @@ const AntennaForm: FC<AntennaFormProps> = ({
     setLocalParams(parameters);
   }, [parameters]);
 
+  const grouped = useMemo(() => getAntennasByCategory(), []);
+  const category = getCategoryForId(localParams.antennaType);
+  const kbEntry = useMemo(() => getAntennaData(localParams.antennaType), [localParams.antennaType]);
+  const preset = ANTENNA_PRESETS.find(p => p.id === localParams.antennaType);
+
+  // KB-defined extra parameters (exclude frequency/length/radius which are standard)
+  const extraKBParams = useMemo(() => {
+    if (!kbEntry) return [] as [string, KBParameter][];
+    return Object.entries(kbEntry.parameters).filter(
+      ([key]) => !['frequency', 'length', 'radius'].includes(key)
+    );
+  }, [kbEntry]);
+
   const handleInputChange = useCallback((field: keyof AntennaParameters) => (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -62,19 +78,34 @@ const AntennaForm: FC<AntennaFormProps> = ({
     onParametersChange(updatedParams);
   }, [localParams, onParametersChange]);
 
+  const handleExtraParamChange = useCallback((key: string) => (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = parseFloat(event.target.value) || 0;
+    const updatedParams = {
+      ...localParams,
+      extraParams: { ...localParams.extraParams, [key]: value },
+    };
+    setLocalParams(updatedParams);
+    onParametersChange(updatedParams);
+  }, [localParams, onParametersChange]);
+
   const handleTypeChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
-    const type = event.target.value as AntennaType;
-    const preset = ANTENNA_PRESETS[type];
+    const id = event.target.value;
+    const p = ANTENNA_PRESETS.find(a => a.id === id);
+    const cat = getCategoryForId(id);
+
     const updatedParams: AntennaParameters = {
       ...localParams,
-      antennaType: type,
-      frequency: preset.frequency,
-      length: preset.length,
-      radius: preset.radius,
-      height: preset.height,
-      substrateEr: preset.substrateEr,
-      substrateHeight: preset.substrateHeight,
-      patchWidth: preset.patchWidth,
+      antennaType: id,
+      frequency: p?.frequency ?? localParams.frequency,
+      length: 0,
+      radius: 1,
+      height: 0,
+      substrateEr: cat === 'microstrip' ? 4.4 : undefined,
+      substrateHeight: cat === 'microstrip' ? 1.6 : undefined,
+      patchWidth: cat === 'microstrip' ? 38 : undefined,
+      extraParams: {},
     };
     setLocalParams(updatedParams);
     onParametersChange(updatedParams);
@@ -85,10 +116,8 @@ const AntennaForm: FC<AntennaFormProps> = ({
     onSubmit(localParams);
   }, [localParams, onSubmit]);
 
-  const preset = ANTENNA_PRESETS[localParams.antennaType];
-  const showWireParams = ['dipole', 'monopole', 'yagi', 'qfh'].includes(localParams.antennaType);
-  const showPatchParams = localParams.antennaType === 'patch';
-  const showHeightParam = localParams.antennaType === 'qfh';
+  const showWireParams = category === 'wire';
+  const showPatchParams = category === 'microstrip';
 
   return (
     <div className={cn('flex flex-col gap-3 px-6 py-4', className)}>
@@ -101,11 +130,23 @@ const AntennaForm: FC<AntennaFormProps> = ({
             onChange={handleTypeChange}
             disabled={isSimulating}
           >
-            {Object.entries(ANTENNA_PRESETS).map(([key, val]) => (
-              <option key={key} value={key}>{val.name}</option>
-            ))}
+            {CATEGORY_ORDER.map(cat => {
+              const items = grouped[cat];
+              if (!items?.length) return null;
+              return (
+                <optgroup key={cat} label={CATEGORY_LABELS[cat]}>
+                  {items.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </Select>
-          <span className="text-[11px] text-accent/70 bg-accent/5 px-2 py-0.5 rounded">{preset.description}</span>
+          {preset && (
+            <span className="text-[11px] text-accent/70 bg-accent/5 px-2 py-0.5 rounded line-clamp-2">
+              {preset.description.slice(0, 120)}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -116,7 +157,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
             value={localParams.frequency}
             onChange={handleInputChange('frequency')}
             min={1}
-            max={30000}
+            max={300000}
             step={0.1}
             disabled={isSimulating}
             required
@@ -126,19 +167,16 @@ const AntennaForm: FC<AntennaFormProps> = ({
         {showWireParams && (
           <>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="length">
-                {localParams.antennaType === 'monopole' ? 'Height (mm)' : 'Element Length (mm)'}
-              </Label>
+              <Label htmlFor="length">Element Length (mm)</Label>
               <Input
                 id="length"
                 type="number"
                 value={localParams.length}
                 onChange={handleInputChange('length')}
                 min={0.1}
-                max={10000}
+                max={100000}
                 step={0.1}
                 disabled={isSimulating}
-                required
               />
             </div>
 
@@ -154,27 +192,9 @@ const AntennaForm: FC<AntennaFormProps> = ({
                 max={10}
                 step={0.01}
                 disabled={isSimulating}
-                required
               />
             </div>
           </>
-        )}
-
-        {showHeightParam && (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="height">Height (mm)</Label>
-            <Input
-              id="height"
-              type="number"
-              value={localParams.height}
-              onChange={handleInputChange('height')}
-              min={1}
-              max={10000}
-              step={1}
-              disabled={isSimulating}
-              required
-            />
-          </div>
         )}
 
         {showPatchParams && (
@@ -220,6 +240,31 @@ const AntennaForm: FC<AntennaFormProps> = ({
               />
             </div>
           </>
+        )}
+
+        {/* Dynamic KB extra parameters */}
+        {extraKBParams.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-border pt-2">
+            <span className="text-[10px] text-text-dim font-semibold uppercase tracking-wide">KB Parameters</span>
+            {extraKBParams.slice(0, 6).map(([key, param]) => (
+              <div key={key} className="flex flex-col gap-1">
+                <Label htmlFor={`extra-${key}`} className="text-xs">
+                  {param.name} ({param.symbol}, {param.unit})
+                </Label>
+                <Input
+                  id={`extra-${key}`}
+                  type="number"
+                  value={localParams.extraParams[key] ?? ''}
+                  onChange={handleExtraParamChange(key)}
+                  placeholder={param.defaultFormula}
+                  min={param.range.min}
+                  max={param.range.max}
+                  step="any"
+                  disabled={isSimulating}
+                />
+              </div>
+            ))}
+          </div>
         )}
 
         <div className="flex flex-col gap-1.5">

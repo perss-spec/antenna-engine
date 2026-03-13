@@ -6,6 +6,8 @@ import { PatchModel } from './PatchModel'
 import { QfhModel } from './QfhModel'
 import { YagiModel } from './models/YagiModel'
 import type { AntennaType } from '@/components/AntennaForm/AntennaForm'
+import { getCategoryForId } from '@/lib/antennaKB'
+import type { AntennaCategory } from '@/lib/antennaKB'
 import { cn } from '@/lib/utils'
 
 const C0 = 299792458
@@ -24,12 +26,13 @@ function AntennaScene({
   frequency,
   radius,
 }: {
-  antennaType: AntennaType
+  antennaType: string
   length: number
   frequency: number
   radius: number
 }) {
   const wavelength = C0 / frequency
+  const category: AntennaCategory = getCategoryForId(antennaType)
 
   return (
     <>
@@ -47,19 +50,9 @@ function AntennaScene({
       />
       <axesHelper args={[1]} />
 
-      {antennaType === 'dipole' && (
-        <DipoleModel
-          length={length}
-          frequency={frequency}
-          radius={radius}
-          segments={20}
-          showFeedPoint
-        />
-      )}
-
-      {antennaType === 'monopole' && (
+      {category === 'wire' && antennaType.includes('monopole') && (
         <MonopoleModel
-          length={length}
+          length={length || wavelength / 4}
           frequency={frequency}
           radius={radius}
           segments={20}
@@ -68,26 +61,7 @@ function AntennaScene({
         />
       )}
 
-      {antennaType === 'patch' && (
-        <PatchModel
-          length={length}
-          width={length * 1.3}
-          height={0.0016}
-          showSubstrate
-        />
-      )}
-
-      {antennaType === 'qfh' && (
-        <QfhModel
-          frequency={frequency}
-          turns={0.5}
-          diameter={wavelength * 0.16}
-          height={wavelength * 0.26}
-          wireRadius={radius}
-        />
-      )}
-
-      {antennaType === 'yagi' && (
+      {category === 'wire' && (antennaType.includes('yagi') || antennaType === 'log_periodic') && (
         <YagiModel
           driven_length={wavelength / 2}
           reflector_length={wavelength / 2 * 1.05}
@@ -97,13 +71,81 @@ function AntennaScene({
         />
       )}
 
+      {category === 'wire' && antennaType.includes('helix') && (
+        <QfhModel
+          frequency={frequency}
+          turns={antennaType === 'axial_helix' ? 5 : 0.5}
+          diameter={wavelength * 0.16}
+          height={wavelength * 0.26}
+          wireRadius={radius}
+        />
+      )}
+
+      {category === 'wire' && !antennaType.includes('monopole') && !antennaType.includes('yagi') && antennaType !== 'log_periodic' && !antennaType.includes('helix') && (
+        <DipoleModel
+          length={length || wavelength / 2}
+          frequency={frequency}
+          radius={radius}
+          segments={20}
+          showFeedPoint
+        />
+      )}
+
+      {category === 'microstrip' && (
+        <PatchModel
+          length={length || wavelength / 4}
+          width={(length || wavelength / 4) * 1.3}
+          height={0.0016}
+          showSubstrate
+        />
+      )}
+
+      {category === 'broadband' && (
+        <DipoleModel
+          length={length || wavelength / 2}
+          frequency={frequency}
+          radius={radius * 3}
+          segments={20}
+          showFeedPoint
+        />
+      )}
+
+      {category === 'aperture' && (
+        <PatchModel
+          length={wavelength}
+          width={wavelength * 0.7}
+          height={wavelength * 0.5}
+          showSubstrate={false}
+        />
+      )}
+
+      {category === 'array' && (
+        <YagiModel
+          driven_length={wavelength / 2}
+          reflector_length={wavelength / 2}
+          director_length={wavelength / 2}
+          spacing={wavelength * 0.5}
+          radius={radius}
+        />
+      )}
+
+      {category === 'special' && (
+        <DipoleModel
+          length={length || wavelength / 2}
+          frequency={frequency}
+          radius={radius}
+          segments={20}
+          showFeedPoint
+        />
+      )}
+
       <OrbitControls enableDamping dampingFactor={0.05} />
     </>
   )
 }
 
 export default function AntennaViewport({
-  antennaType = 'dipole',
+  antennaType = 'half_wave_dipole',
   length = 0.15,
   frequency = 1e9,
   radius = 0.001,

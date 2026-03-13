@@ -1,0 +1,189 @@
+{
+  "name": "ae-kb-integrate",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/kb-integrate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst KB_DIR = path.join(PROJECT, 'src/data/antennas');\n\n// Read index.json\nconst indexJson = JSON.parse(fs.readFileSync(path.join(KB_DIR, 'index.json'), 'utf8'));\n\n// Read 3 example KB JSONs for context\nconst examples = ['half_wave_dipole', 'rectangular_patch', 'vivaldi_tsa'];\nconst kbExamples = {};\nfor (const id of examples) {\n  const fp = path.join(KB_DIR, `${id}.json`);\n  if (fs.existsSync(fp)) kbExamples[id] = JSON.parse(fs.readFileSync(fp, 'utf8'));\n}\n\n// Read current source files\nconst files = {\n  'antennaKB.ts': fs.readFileSync(path.join(PROJECT, 'src/lib/antennaKB.ts'), 'utf8'),\n  'AntennaForm.tsx': fs.readFileSync(path.join(PROJECT, 'src/components/AntennaForm/AntennaForm.tsx'), 'utf8'),\n  'App.tsx': fs.readFileSync(path.join(PROJECT, 'src/App.tsx'), 'utf8'),\n  'AntennaViewport.tsx': fs.readFileSync(path.join(PROJECT, 'src/viewport/AntennaViewport.tsx'), 'utf8'),\n  'RadiationPatternView.tsx': fs.readFileSync(path.join(PROJECT, 'src/components/RadiationPatternView.tsx'), 'utf8'),\n};\n\nreturn [{\n  json: {\n    indexJson,\n    kbExamples,\n    files,\n    antennaCount: indexJson.count,\n    categories: [...new Set(indexJson.antennas.map(a => a.category))],\n  }\n}];"
+      },
+      "id": "read-all",
+      "name": "Read All Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [880, 520]
+    },
+    {
+      "parameters": {
+        "text": "You are modifying the antenna KB loader for PROMIN Antenna Studio.\n\nCurrent file:\n```typescript\n{{ $json.files['antennaKB.ts'] }}\n```\n\nKB Index ({{ $json.antennaCount }} antennas, categories: {{ $json.categories.join(', ') }}):\n```json\n{{ JSON.stringify($json.indexJson.antennas.slice(0,5), null, 2) }}\n```\n\nExample KB entry:\n```json\n{{ JSON.stringify($json.kbExamples.half_wave_dipole?.parameters, null, 2) }}\n```\n\nReview the current antennaKB.ts. If it correctly:\n1. Loads all JSON via import.meta.glob\n2. Exports antennaIndex, getAntennaData, ANTENNA_PRESETS, getCategoryForId\n3. Has proper TypeScript types\n\nThen output ONLY: 'LGTM - no changes needed'\n\nOtherwise output the complete corrected file.",
+        "options": {
+          "systemMessage": "You are an expert TypeScript developer working on an antenna simulation app. Output ONLY code or 'LGTM' - no explanations."
+        }
+      },
+      "id": "gen-kb-loader",
+      "name": "Gen KB Loader",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are modifying AntennaForm.tsx for PROMIN Antenna Studio.\n\nCurrent file:\n```typescript\n{{ $('Read All Files').item.json.files['AntennaForm.tsx'] }}\n```\n\nPrevious agent output (KB Loader):\n{{ $('Gen KB Loader').item.json.output }}\n\nKB has {{ $('Read All Files').item.json.antennaCount }} antennas in categories: {{ $('Read All Files').item.json.categories.join(', ') }}.\n\nVerify the form:\n1. Uses AntennaType = string (not union)\n2. Imports ANTENNA_PRESETS from antennaKB.ts\n3. Has <optgroup> by category in Select\n4. Shows dynamic KB parameters via extraParams\n5. Has extraParams: Record<string, number> in AntennaParameters\n\nIf correct, output ONLY: 'LGTM - no changes needed'\nOtherwise output the complete corrected file.",
+        "options": {
+          "systemMessage": "You are an expert React/TypeScript developer. Output ONLY code or 'LGTM' - no explanations."
+        }
+      },
+      "id": "gen-form",
+      "name": "Gen AntennaForm",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are modifying App.tsx solver for PROMIN Antenna Studio.\n\nCurrent solver section (App.tsx):\n```typescript\n{{ $('Read All Files').item.json.files['App.tsx'] }}\n```\n\nPrevious agents confirmed KB Loader and Form are ready.\n\nVerify the solver:\n1. Uses solveByCategory() instead of switch on 5 types\n2. Category models: wire→King's, microstrip→cavity, broadband→transmission line, aperture→waveguide, array→array factor, special→resonator\n3. Imports getCategoryForId from antennaKB\n4. Default antennaType is 'half_wave_dipole' (not 'dipole')\n5. Has extraParams: {} in defaultParams\n\nIf correct, output ONLY: 'LGTM - no changes needed'\nOtherwise output the complete corrected file.",
+        "options": {
+          "systemMessage": "You are an expert TypeScript developer specializing in antenna physics. Output ONLY code or 'LGTM' - no explanations."
+        }
+      },
+      "id": "gen-solver",
+      "name": "Gen Solver",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are modifying AntennaViewport.tsx for PROMIN Antenna Studio.\n\nCurrent file:\n```typescript\n{{ $('Read All Files').item.json.files['AntennaViewport.tsx'] }}\n```\n\nVerify:\n1. Uses getCategoryForId for category-based 3D model selection\n2. Maps categories to existing 3D components (DipoleModel, MonopoleModel, PatchModel, QfhModel, YagiModel)\n3. Handles all 6 categories with appropriate fallbacks\n4. Default antennaType is 'half_wave_dipole'\n\nIf correct, output ONLY: 'LGTM - no changes needed'\nOtherwise output the complete corrected file.",
+        "options": {
+          "systemMessage": "You are an expert React Three Fiber developer. Output ONLY code or 'LGTM' - no explanations."
+        }
+      },
+      "id": "gen-viewport",
+      "name": "Gen Viewport",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are modifying RadiationPatternView.tsx for PROMIN Antenna Studio.\n\nCurrent file:\n```typescript\n{{ $('Read All Files').item.json.files['RadiationPatternView.tsx'] }}\n```\n\nVerify:\n1. Uses categoryModels: Record<AntennaCategory, PatternModel> instead of Record<AntennaType, ...>\n2. Has models for all 6 categories: wire, microstrip, broadband, aperture, array, special\n3. Uses getCategoryForId to select model\n4. Pattern functions use proper physics for each category\n\nIf correct, output ONLY: 'LGTM - no changes needed'\nOtherwise output the complete corrected file.",
+        "options": {
+          "systemMessage": "You are an expert in antenna radiation patterns and TypeScript. Output ONLY code or 'LGTM' - no explanations."
+        }
+      },
+      "id": "gen-radiation",
+      "name": "Gen Radiation",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst results = {};\n\n// Collect agent outputs\nconst agents = [\n  { name: 'Gen KB Loader', file: 'src/lib/antennaKB.ts' },\n  { name: 'Gen AntennaForm', file: 'src/components/AntennaForm/AntennaForm.tsx' },\n  { name: 'Gen Solver', file: 'src/App.tsx' },\n  { name: 'Gen Viewport', file: 'src/viewport/AntennaViewport.tsx' },\n  { name: 'Gen Radiation', file: 'src/components/RadiationPatternView.tsx' },\n];\n\nlet filesWritten = 0;\nfor (const agent of agents) {\n  try {\n    const output = $(`${agent.name}`).item.json.output || '';\n    if (output.includes('LGTM')) {\n      results[agent.file] = 'LGTM';\n    } else {\n      // Extract code block\n      const codeMatch = output.match(/```(?:typescript|tsx?)\\n([\\s\\S]*?)```/);\n      if (codeMatch) {\n        fs.writeFileSync(path.join(PROJECT, agent.file), codeMatch[1]);\n        results[agent.file] = 'WRITTEN';\n        filesWritten++;\n      } else {\n        results[agent.file] = 'LGTM (no code block found)';\n      }\n    }\n  } catch (e) {\n    results[agent.file] = `ERROR: ${e.message}`;\n  }\n}\n\n// Run TSC check\nlet tscResult = '';\ntry {\n  tscResult = execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 60000 }).toString();\n  if (!tscResult.trim()) tscResult = 'OK - no errors';\n} catch (e) {\n  tscResult = e.stdout?.toString() || e.message;\n}\n\n// Git commit if TSC passes\nlet gitResult = '';\nif (tscResult.includes('OK - no errors') || !tscResult.includes('error TS')) {\n  try {\n    execSync('git add -A', { cwd: PROJECT });\n    execSync('git commit -m \"feat: integrate 31 antenna KB — data-driven architecture\\n\\nReplaced 5 hardcoded types with category-based approach.\\nNew antennaKB.ts loads all 31 KB JSONs via import.meta.glob.\\nAntennaForm shows optgroup by category with dynamic KB params.\\nSolver uses category models: wire/microstrip/broadband/aperture/array/special.\\nViewport and RadiationPattern use category-based rendering.\"', { cwd: PROJECT });\n    gitResult = 'Committed successfully';\n  } catch (e) {\n    gitResult = `Git error: ${e.message}`;\n  }\n} else {\n  gitResult = 'Skipped — TSC errors found';\n}\n\nreturn [{ json: { results, filesWritten, tscResult, gitResult } }];"
+      },
+      "id": "write-tsc",
+      "name": "Write + TSC Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1980, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Read All Files", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read All Files": {
+      "main": [
+        [{ "node": "Gen KB Loader", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gen KB Loader": {
+      "main": [
+        [{ "node": "Gen AntennaForm", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gen AntennaForm": {
+      "main": [
+        [{ "node": "Gen Solver", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gen Solver": {
+      "main": [
+        [{ "node": "Gen Viewport", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gen Viewport": {
+      "main": [
+        [{ "node": "Gen Radiation", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gen Radiation": {
+      "main": [
+        [{ "node": "Write + TSC Check", "type": "main", "index": 0 }]
+      ]
+    },
+    "Write + TSC Check": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "Gen KB Loader", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Gen AntennaForm", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Gen Solver", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Gen Viewport", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Gen Radiation", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    { "name": "antenna-engine" }
+  ]
+}

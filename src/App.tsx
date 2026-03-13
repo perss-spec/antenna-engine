@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { Activity, Radio, Zap, Signal } from 'lucide-react';
 import AntennaForm from './components/AntennaForm/AntennaForm';
 import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
+import { getCategoryForId } from '@/lib/antennaKB';
+import type { AntennaCategory } from '@/lib/antennaKB';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
 import OptimizationPanel from './components/OptimizationPanel/OptimizationPanel';
@@ -16,6 +18,114 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LandingPage } from '@/components/landing/LandingPage';
 
+// Category-based impedance solver
+function solveByCategory(
+  category: AntennaCategory,
+  _antennaType: string,
+  ap: Record<string, number>,
+  f: number,
+  lambda: number,
+  k: number,
+  conductorLoss: (length: number, radius: number, freq: number) => number,
+  clampTan: (x: number) => number,
+  C0: number,
+): [number, number] {
+  switch (category) {
+    case 'wire': {
+      // King's approximation — works for dipoles, monopoles, helical, loops, yagi, LPDA
+      const L = ap.length_m || lambda / 2;
+      const a = ap.radius_m || 0.001;
+      const x = k * L - Math.PI;
+      const zr = 73.13 * (1 + 0.014 * x * x) + conductorLoss(L, a, f);
+      const zi = 42.5 * clampTan(x);
+      return [zr, zi];
+    }
+    case 'microstrip': {
+      // Cavity model (Hammerstad & Jensen) — patches, PIFAs, IFAs
+      const er = ap.substrate_er || 4.4;
+      const h = ap.substrate_height_m || 0.0016;
+      const W = ap.width_m || C0 / (2 * f) * Math.sqrt(2 / (er + 1));
+      const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / W, -0.5);
+      const deltaL = 0.412 * h * (erEff + 0.3) * (W / h + 0.264)
+        / ((erEff - 0.258) * (W / h + 0.8));
+      const pLen = ap.length_m || C0 / (2 * f * Math.sqrt(erEff));
+      const Le = pLen + 2 * deltaL;
+      const fRes = C0 / (2 * Le * Math.sqrt(erEff));
+      const Zedge = Math.min(90 * er * er / (er - 1) * Math.pow(pLen / W, 2), 400);
+      const Q = C0 / (4 * fRes * h * Math.sqrt(erEff));
+      const detuning = f / fRes - fRes / f;
+      const zr = Zedge / (1 + Q * Q * detuning * detuning);
+      const zi = -zr * Q * detuning;
+      return [zr, zi];
+    }
+    case 'broadband': {
+      // Transmission line model — Vivaldi, bow-tie, spiral, discone, biconical
+      const L = ap.length_m || lambda / 2;
+      const a = ap.radius_m || 0.001;
+      const Zchar = 120 * Math.log(L / Math.max(a, 1e-6));
+      const fCenter = C0 / (2 * L);
+      const ratio = f / fCenter;
+      const bl = (Math.PI / 2) * ratio;
+      const tanBl = Math.tan(Math.min(Math.max(bl, -1.5), 1.5));
+      const ZL = 377; // free space impedance as load
+      const denR = Zchar;
+      const denI = ZL * tanBl;
+      const denMag2 = denR * denR + denI * denI;
+      let zr = Zchar * (ZL * denR + Zchar * tanBl * denI) / denMag2;
+      const zi = Zchar * (Zchar * tanBl * denR - ZL * denI) / denMag2;
+      // Broadband antennas have more stable impedance
+      zr = zr * 0.7 + 50 * 0.3; // tendency toward 50 ohm
+      return [Math.max(zr, 5) + conductorLoss(L, a, f), zi * 0.6];
+    }
+    case 'aperture': {
+      // Waveguide model — horns, slots, open waveguide, reflector
+      const aW = ap.aperture_width || lambda;
+      const bW = ap.aperture_height || lambda * 0.7;
+      const fCutoff = C0 / (2 * Math.max(aW, lambda * 0.5));
+      const ratio = f / fCutoff;
+      if (ratio < 1) {
+        return [5, -500]; // below cutoff
+      }
+      const Zw = 377 / Math.sqrt(1 - Math.pow(fCutoff / f, 2));
+      // Aperture impedance ≈ Zw modified by flare
+      const flare = Math.sqrt(aW * bW) / lambda;
+      const zr = Zw * (1 - 0.3 / (flare + 1));
+      const zi = Zw * 0.1 * (1 - ratio) / ratio;
+      return [Math.max(zr, 10), zi];
+    }
+    case 'array': {
+      // Array factor model — ULA, planar, phased, Butler matrix
+      const N = ap.num_elements || 4;
+      const d = ap.element_spacing || lambda / 2;
+      // Element impedance (dipole-like)
+      const L = ap.length_m || lambda / 2;
+      const x = k * L - Math.PI;
+      const ze_r = 73.13 * (1 + 0.014 * x * x);
+      const ze_i = 42.5 * clampTan(x);
+      // Mutual coupling reduces input impedance
+      const kd = k * d;
+      const Z12 = 73 * (kd > 0.01 ? Math.sin(kd) / kd : 1);
+      // Active element impedance
+      const zr = ze_r - (N - 1) * Z12 * 0.15;
+      const zi = ze_i + (N - 1) * Z12 * 0.05;
+      return [Math.max(zr, 5), zi];
+    }
+    case 'special':
+    default: {
+      // Generic resonator model for fractal, DRA, metamaterial, reconfigurable
+      const L = ap.length_m || lambda / 2;
+      const a = ap.radius_m || 0.001;
+      const fRes = C0 / (2 * L);
+      const Q = 20; // moderate Q for special antennas
+      const detuning = f / fRes - fRes / f;
+      const Rrad = 73.13;
+      const zr = Rrad / (1 + Q * Q * detuning * detuning) + conductorLoss(L, a, f);
+      const zi = -Rrad * Q * detuning / (1 + Q * Q * detuning * detuning);
+      return [Math.max(zr, 5), zi];
+    }
+  }
+}
+
 const isTauri = '__TAURI_INTERNALS__' in window;
 const invoke = isTauri
   ? (await import('@tauri-apps/api/core')).invoke
@@ -24,13 +134,10 @@ const invoke = isTauri
       const a = args as any;
 
       if (_cmd === 'get_antenna_templates') {
-        return [
-          { id: 'dipole', name: 'Half-Wave Dipole', type: 'Dipole', default_frequency: 145e6 },
-          { id: 'monopole', name: 'Quarter-Wave Monopole', type: 'Monopole', default_frequency: 433e6 },
-          { id: 'patch', name: 'Rectangular Patch', type: 'Patch', default_frequency: 2.4e9 },
-          { id: 'qfh', name: 'QFH', type: 'Qfh', default_frequency: 137.5e6 },
-          { id: 'yagi', name: '3-Element Yagi', type: 'Yagi', default_frequency: 145e6 },
-        ];
+        const { ANTENNA_PRESETS: presets } = await import('@/lib/antennaKB');
+        return presets.map(p => ({
+          id: p.id, name: p.name, type: p.category, default_frequency: p.frequency * 1e6,
+        }));
       }
 
       // simulate_sweep mock — parametrized by antenna dimensions
@@ -69,96 +176,8 @@ const invoke = isTauri
 
         let zr: number, zi: number;
 
-        switch (antennaType) {
-          case 'dipole': {
-            const L = ap.length_m || lambda / 2;
-            const a = ap.radius_m || 0.001;
-            const x = k * L - Math.PI; // detuning from half-wave
-            // Induced EMF method (King's approximation)
-            zr = 73.13 * (1 + 0.014 * x * x) + conductorLoss(L, a, f);
-            zi = 42.5 * clampTan(x);
-            break;
-          }
-          case 'monopole': {
-            const h = ap.height_m || lambda / 4;
-            const a = ap.radius_m || 0.001;
-            const x = k * 2 * h - Math.PI; // equivalent dipole detuning
-            // Image theory: monopole = dipole/2
-            zr = 36.56 * (1 + 0.014 * x * x) + conductorLoss(h, a, f);
-            zi = 21.25 * clampTan(x);
-            break;
-          }
-          case 'patch': {
-            const er = ap.substrate_er || 4.4;
-            const h = ap.substrate_height_m || 0.0016;
-            const W = ap.width_m || C0 / (2 * f) * Math.sqrt(2 / (er + 1));
-            const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / W, -0.5);
-            // Hammerstad & Jensen fringe extension
-            const deltaL = 0.412 * h * (erEff + 0.3) * (W / h + 0.264)
-              / ((erEff - 0.258) * (W / h + 0.8));
-            const pLen = ap.length_m || C0 / (2 * f * Math.sqrt(erEff));
-            const Le = pLen + 2 * deltaL;
-            const fRes = C0 / (2 * Le * Math.sqrt(erEff));
-            // Derneryd edge impedance model
-            const Zedge = Math.min(90 * er * er / (er - 1) * Math.pow(pLen / W, 2), 400);
-            const Q = C0 / (4 * fRes * h * Math.sqrt(erEff));
-            const detuning = f / fRes - fRes / f;
-            zr = Zedge / (1 + Q * Q * detuning * detuning);
-            zi = -zr * Q * detuning;
-            break;
-          }
-          case 'yagi': {
-            const Ld = ap.length_m || lambda / 2;
-            const a = ap.radius_m || 0.003;
-            const d = 0.25 * lambda;
-            // Self impedances (King's approximation)
-            const xR = k * (Ld * 1.05) - Math.PI; // reflector 5% longer
-            const xD = k * Ld - Math.PI;
-            const xDir = k * (Ld * 0.95) - Math.PI; // director 5% shorter
-            const Z11r = 73.13 * (1 + 0.014 * xR * xR);
-            const Z11i = 42.5 * clampTan(xR);
-            const Z22r = 73.13 * (1 + 0.014 * xD * xD);
-            const Z22i = 42.5 * clampTan(xD);
-            const Z33r = 73.13 * (1 + 0.014 * xDir * xDir);
-            const Z33i = 42.5 * clampTan(xDir);
-            // Mutual impedance (sinc model)
-            const kd = k * d;
-            const Z12 = 73 * (kd > 0.01 ? Math.sin(kd) / kd : 1);
-            const Z23 = Z12;
-            // Driven element input: Zin ≈ Z22 - Z12²/Z11 - Z23²/Z33
-            const m1 = Z11r * Z11r + Z11i * Z11i;
-            const m3 = Z33r * Z33r + Z33i * Z33i;
-            zr = Z22r - Z12 * Z12 * Z11r / m1 - Z23 * Z23 * Z33r / m3;
-            zi = Z22i + Z12 * Z12 * Z11i / m1 + Z23 * Z23 * Z33i / m3;
-            if (zr < 5) zr = 5;
-            zr += conductorLoss(Ld, a, f);
-            break;
-          }
-          case 'qfh': {
-            const h = ap.height_m || C0 / f * 0.26;
-            const a = ap.radius_m || 0.001;
-            const fRes = C0 / (4 * h);
-            const Zhelix = 150; // helix characteristic impedance
-            const bl = (Math.PI / 2) * (f / fRes); // electrical length
-            const tanBl = Math.tan(Math.min(Math.max(bl, -1.5), 1.5));
-            // Quarter-wave transformer: Zin = Z0(ZL + jZ0·tan(βl))/(Z0 + jZL·tan(βl))
-            const ZL = 50;
-            const denR = Zhelix;
-            const denI = ZL * tanBl;
-            const denMag2 = denR * denR + denI * denI;
-            zr = Zhelix * (ZL * denR + Zhelix * tanBl * denI) / denMag2;
-            zi = Zhelix * (Zhelix * tanBl * denR - ZL * denI) / denMag2;
-            zr += conductorLoss(h, a, f);
-            break;
-          }
-          default: {
-            const L = ap.length_m || lambda / 2;
-            const x = k * L - Math.PI;
-            zr = 73.13 * (1 + 0.014 * x * x);
-            zi = 42.5 * clampTan(x);
-            break;
-          }
-        }
+        const category: AntennaCategory = getCategoryForId(antennaType);
+        [zr, zi] = solveByCategory(category, antennaType, ap, f, lambda, k, conductorLoss, clampTan, C0);
 
         impedanceReal.push(zr);
         impedanceImag.push(zi);
@@ -238,12 +257,13 @@ function App() {
   const optimizationAbortRef = useRef(false);
 
   const defaultParams: AntennaParameters = {
-    antennaType: 'dipole',
+    antennaType: 'half_wave_dipole',
     frequency: 145,
     length: 1034,
     radius: 1,
     height: 0,
     material: 'copper',
+    extraParams: {},
   };
 
   const [params, setParams] = useState(defaultParams);
@@ -258,17 +278,25 @@ function App() {
     const radiusM = formParams.radius / 1000;
     const heightM = formParams.height > 0 ? formParams.height / 1000 : lengthM;
 
+    const cat = getCategoryForId(formParams.antennaType);
     const antennaParams: Record<string, number> = {
       length_m: lengthM,
       radius_m: radiusM,
-      height_m: formParams.antennaType === 'monopole' ? lengthM : heightM,
+      height_m: cat === 'wire' && formParams.antennaType.includes('monopole') ? lengthM : heightM,
     };
 
-    // Patch-specific params from form
-    if (formParams.antennaType === 'patch') {
+    // Microstrip params
+    if (cat === 'microstrip') {
       antennaParams.substrate_er = formParams.substrateEr || 4.4;
       antennaParams.substrate_height_m = (formParams.substrateHeight || 1.6) / 1000;
       if (formParams.patchWidth) antennaParams.width_m = formParams.patchWidth / 1000;
+    }
+
+    // Extra KB params
+    if (formParams.extraParams) {
+      for (const [key, val] of Object.entries(formParams.extraParams)) {
+        if (val !== 0) antennaParams[key] = val;
+      }
     }
 
     return invoke<SimulateResponse>('simulate_sweep', {
