@@ -27,7 +27,7 @@ interface OptimizationPanelProps {
 interface OptimizationParams {
   targetFrequency: number;
   targetS11: number;
-  method: 'gradient' | 'random' | 'bayesian';
+  method: 'gradient' | 'random' | 'nelder_mead';
 }
 
 const OptimizationPanel: FC<OptimizationPanelProps> = ({
@@ -40,7 +40,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
 }) => {
   const [targetFrequency, setTargetFrequency] = useState<number>(2400);
   const [targetS11, setTargetS11] = useState<number>(-20);
-  const [method, setMethod] = useState<'gradient' | 'random' | 'bayesian'>('gradient');
+  const [method, setMethod] = useState<'gradient' | 'random' | 'nelder_mead'>('gradient');
 
   const handleStartOptimization = useCallback((e: FormEvent) => {
     e.preventDefault();
@@ -64,7 +64,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   }, []);
 
   const handleMethodChange = useCallback((e: ChangeEvent<HTMLSelectElement>) => {
-    setMethod(e.target.value as 'gradient' | 'random' | 'bayesian');
+    setMethod(e.target.value as 'gradient' | 'random' | 'nelder_mead');
   }, []);
 
   const formatFrequency = (freq: number): string => {
@@ -128,7 +128,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               >
                 <option value="gradient">Gradient Descent</option>
                 <option value="random">Random Search</option>
-                <option value="bayesian">Bayesian Optimization</option>
+                <option value="nelder_mead">Nelder-Mead Simplex</option>
               </Select>
             </div>
           </div>

@@ -41,39 +41,18 @@ const invoke = isTauri
       const n = a.freq_points || a.freqPoints || 101;
       const ap = a.antenna_params || {};
 
-      // Compute resonant frequency from physical dimensions
-      const getResonance = (): { fRes: number; zrBase: number; ziScale: number; zrScale: number } => {
-        switch (antennaType) {
-          case 'monopole': {
-            const h = ap.height_m || C0 / ((fStart + fStop) / 2) / 4;
-            return { fRes: C0 / (4 * h), zrBase: 36.5, ziScale: 21.25, zrScale: 20.0 };
-          }
-          case 'patch': {
-            const er = ap.substrate_er || 4.4;
-            const h = ap.substrate_height_m || 0.0016;
-            const w = ap.width_m || C0 / (2 * ((fStart + fStop) / 2)) * Math.sqrt(2 / (er + 1));
-            const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / w, -0.5);
-            const pLen = ap.length_m || C0 / (2 * ((fStart + fStop) / 2) * Math.sqrt(erEff));
-            const fRes = C0 / (2 * pLen * Math.sqrt(erEff));
-            return { fRes, zrBase: 200, ziScale: 0, zrScale: 0 }; // patch uses Q model below
-          }
-          case 'qfh': {
-            const h = ap.height_m || C0 / ((fStart + fStop) / 2) * 0.26;
-            return { fRes: C0 / (4 * h), zrBase: 50.0, ziScale: 25.0, zrScale: 15.0 };
-          }
-          case 'yagi': {
-            const dl = ap.length_m || C0 / ((fStart + fStop) / 2) / 2;
-            return { fRes: C0 / (2 * dl), zrBase: 25.0, ziScale: 10.0, zrScale: 15.0 };
-          }
-          default: { // dipole
-            const l = ap.length_m || C0 / ((fStart + fStop) / 2) / 2;
-            return { fRes: C0 / (2 * l), zrBase: 73.0, ziScale: 42.5, zrScale: 40.0 };
-          }
-        }
+      // Physics constants
+      const MU0 = 4 * Math.PI * 1e-7;
+      const SIGMA_CU = 5.8e7; // copper conductivity S/m
+
+      const clampTan = (x: number) => {
+        if (Math.abs(x) < 0.01) return x; // small angle: tan(x) ≈ x
+        const t = Math.tan(Math.min(Math.max(x, -1.5), 1.5));
+        return Math.abs(t) > 500 ? 500 * Math.sign(t) : t;
       };
 
-      const { fRes, zrBase, ziScale, zrScale } = getResonance();
-      const isPatch = antennaType === 'patch';
+      const conductorLoss = (length: number, radius: number, freq: number) =>
+        (length / (2 * Math.PI * Math.max(radius, 1e-6))) * Math.sqrt(Math.PI * freq * MU0 / SIGMA_CU);
 
       const frequencies: number[] = [];
       const s11Db: number[] = [];
@@ -84,22 +63,101 @@ const invoke = isTauri
 
       for (let i = 0; i < n; i++) {
         const f = fStart + (fStop - fStart) * i / (n - 1);
-        const ratio = f / fRes;
+        const lambda = C0 / f;
+        const k = 2 * Math.PI / lambda;
         frequencies.push(f);
 
         let zr: number, zi: number;
-        if (isPatch) {
-          const er = ap.substrate_er || 4.4;
-          const h = ap.substrate_height_m || 0.0016;
-          const w = ap.width_m || C0 / (2 * f) * Math.sqrt(2 / (er + 1));
-          const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / w, -0.5);
-          const Q = C0 / (4 * f * h * Math.sqrt(erEff));
-          const detuning = ratio - 1 / ratio;
-          zr = 200 / (1 + Q * Q * detuning * detuning);
-          zi = zr * Q * detuning;
-        } else {
-          zr = zrBase + zrScale * Math.pow(ratio - 1, 2);
-          zi = ziScale * (ratio - 1) * ratio;
+
+        switch (antennaType) {
+          case 'dipole': {
+            const L = ap.length_m || lambda / 2;
+            const a = ap.radius_m || 0.001;
+            const x = k * L - Math.PI; // detuning from half-wave
+            // Induced EMF method (King's approximation)
+            zr = 73.13 * (1 + 0.014 * x * x) + conductorLoss(L, a, f);
+            zi = 42.5 * clampTan(x);
+            break;
+          }
+          case 'monopole': {
+            const h = ap.height_m || lambda / 4;
+            const a = ap.radius_m || 0.001;
+            const x = k * 2 * h - Math.PI; // equivalent dipole detuning
+            // Image theory: monopole = dipole/2
+            zr = 36.56 * (1 + 0.014 * x * x) + conductorLoss(h, a, f);
+            zi = 21.25 * clampTan(x);
+            break;
+          }
+          case 'patch': {
+            const er = ap.substrate_er || 4.4;
+            const h = ap.substrate_height_m || 0.0016;
+            const W = ap.width_m || C0 / (2 * f) * Math.sqrt(2 / (er + 1));
+            const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / W, -0.5);
+            // Hammerstad & Jensen fringe extension
+            const deltaL = 0.412 * h * (erEff + 0.3) * (W / h + 0.264)
+              / ((erEff - 0.258) * (W / h + 0.8));
+            const pLen = ap.length_m || C0 / (2 * f * Math.sqrt(erEff));
+            const Le = pLen + 2 * deltaL;
+            const fRes = C0 / (2 * Le * Math.sqrt(erEff));
+            // Derneryd edge impedance model
+            const Zedge = Math.min(90 * er * er / (er - 1) * Math.pow(pLen / W, 2), 400);
+            const Q = C0 / (4 * fRes * h * Math.sqrt(erEff));
+            const detuning = f / fRes - fRes / f;
+            zr = Zedge / (1 + Q * Q * detuning * detuning);
+            zi = -zr * Q * detuning;
+            break;
+          }
+          case 'yagi': {
+            const Ld = ap.length_m || lambda / 2;
+            const a = ap.radius_m || 0.003;
+            const d = 0.25 * lambda;
+            // Self impedances (King's approximation)
+            const xR = k * (Ld * 1.05) - Math.PI; // reflector 5% longer
+            const xD = k * Ld - Math.PI;
+            const xDir = k * (Ld * 0.95) - Math.PI; // director 5% shorter
+            const Z11r = 73.13 * (1 + 0.014 * xR * xR);
+            const Z11i = 42.5 * clampTan(xR);
+            const Z22r = 73.13 * (1 + 0.014 * xD * xD);
+            const Z22i = 42.5 * clampTan(xD);
+            const Z33r = 73.13 * (1 + 0.014 * xDir * xDir);
+            const Z33i = 42.5 * clampTan(xDir);
+            // Mutual impedance (sinc model)
+            const kd = k * d;
+            const Z12 = 73 * (kd > 0.01 ? Math.sin(kd) / kd : 1);
+            const Z23 = Z12;
+            // Driven element input: Zin ≈ Z22 - Z12²/Z11 - Z23²/Z33
+            const m1 = Z11r * Z11r + Z11i * Z11i;
+            const m3 = Z33r * Z33r + Z33i * Z33i;
+            zr = Z22r - Z12 * Z12 * Z11r / m1 - Z23 * Z23 * Z33r / m3;
+            zi = Z22i + Z12 * Z12 * Z11i / m1 + Z23 * Z23 * Z33i / m3;
+            if (zr < 5) zr = 5;
+            zr += conductorLoss(Ld, a, f);
+            break;
+          }
+          case 'qfh': {
+            const h = ap.height_m || C0 / f * 0.26;
+            const a = ap.radius_m || 0.001;
+            const fRes = C0 / (4 * h);
+            const Zhelix = 150; // helix characteristic impedance
+            const bl = (Math.PI / 2) * (f / fRes); // electrical length
+            const tanBl = Math.tan(Math.min(Math.max(bl, -1.5), 1.5));
+            // Quarter-wave transformer: Zin = Z0(ZL + jZ0·tan(βl))/(Z0 + jZL·tan(βl))
+            const ZL = 50;
+            const denR = Zhelix;
+            const denI = ZL * tanBl;
+            const denMag2 = denR * denR + denI * denI;
+            zr = Zhelix * (ZL * denR + Zhelix * tanBl * denI) / denMag2;
+            zi = Zhelix * (Zhelix * tanBl * denR - ZL * denI) / denMag2;
+            zr += conductorLoss(h, a, f);
+            break;
+          }
+          default: {
+            const L = ap.length_m || lambda / 2;
+            const x = k * L - Math.PI;
+            zr = 73.13 * (1 + 0.014 * x * x);
+            zi = 42.5 * clampTan(x);
+            break;
+          }
         }
 
         impedanceReal.push(zr);
@@ -160,7 +218,7 @@ interface OptimizationResult {
 interface OptimizationParams {
   targetFrequency: number;
   targetS11: number;
-  method: 'gradient' | 'random' | 'bayesian';
+  method: 'gradient' | 'random' | 'nelder_mead';
 }
 
 function App() {
@@ -276,14 +334,27 @@ function App() {
     setOptimizationResults([]);
     optimizationAbortRef.current = false;
 
-    const totalSteps = 15;
+    const totalSteps = 25;
     let curLength = params.length;
     let curRadius = params.radius;
     let curS11 = 0;
     const results: OptimizationResult[] = [];
+    let convergedCount = 0;
 
     const evaluate = async (len: number, rad: number) => {
       return runSweep({ ...params, frequency: optParams.targetFrequency, length: len, radius: rad });
+    };
+
+    const updateBest = (result: SimulateResponse, len: number, rad: number) => {
+      curS11 = result.minS11;
+      curLength = len;
+      curRadius = rad;
+      setChartData(result.frequencies.map((f: number, i: number) => ({
+        frequency: f / 1e6, s11_db: result.s11Db[i],
+      })));
+      setS11Data({ real: result.s11Real, imag: result.s11Imag });
+      setImpedanceData({ real: result.impedanceReal, imag: result.impedanceImag, freq: result.frequencies });
+      setSummary({ resonantFreq: result.resonantFreq, minS11: result.minS11, bandwidth: result.bandwidth });
     };
 
     // Initial evaluation
@@ -298,29 +369,65 @@ function App() {
       let trialLength: number, trialRadius: number;
 
       if (optParams.method === 'gradient') {
-        // Finite-difference gradient descent
-        const eps = curLength * 0.005; // 0.5% perturbation for gradient
-        const stepSize = curLength * 0.02; // 2% step
+        // 2D gradient with backtracking line search
+        const eps = curLength * 0.005;
         try {
-          const rPlus = await evaluate(curLength + eps, curRadius);
-          const rMinus = await evaluate(curLength - eps, curRadius);
-          const grad = (rPlus.minS11 - rMinus.minS11) / (2 * eps); // want to minimize S11
-          trialLength = curLength - stepSize * Math.sign(grad);
-          trialRadius = curRadius;
+          const rPlusL = await evaluate(curLength + eps, curRadius);
+          const rMinusL = await evaluate(curLength - eps, curRadius);
+          const gradL = (rPlusL.minS11 - rMinusL.minS11) / (2 * eps);
+          const epsR = curRadius * 0.01;
+          const rPlusR = await evaluate(curLength, curRadius + epsR);
+          const rMinusR = await evaluate(curLength, curRadius - epsR);
+          const gradR = (rPlusR.minS11 - rMinusR.minS11) / (2 * epsR);
+          // Backtracking line search (Armijo)
+          let alpha = 0.05 * curLength;
+          const gradNorm = Math.sqrt(gradL * gradL + gradR * gradR) || 1e-10;
+          for (let ls = 0; ls < 8; ls++) {
+            const tL = curLength - alpha * gradL / gradNorm * curLength * 0.02;
+            const tR = curRadius - alpha * gradR / gradNorm * curRadius * 0.02;
+            const trial = await evaluate(Math.max(tL, 1), Math.max(tR, 0.01));
+            if (trial.minS11 < curS11 - 1e-4 * alpha * gradNorm) {
+              trialLength = tL;
+              trialRadius = tR;
+              break;
+            }
+            alpha *= 0.5;
+          }
+          trialLength = trialLength! ?? curLength * (1 + (Math.random() - 0.5) * 0.03);
+          trialRadius = trialRadius! ?? curRadius;
         } catch {
           trialLength = curLength * (1 + (Math.random() - 0.5) * 0.05);
           trialRadius = curRadius;
         }
-      } else if (optParams.method === 'bayesian') {
-        // Narrowing search: start wide, converge
-        const scale = 0.15 * Math.pow(0.7, step); // shrink each iteration
-        const bestResult = results.length > 0
-          ? results.reduce((a, b) => a.s11 < b.s11 ? a : b)
-          : null;
-        const refLen = bestResult ? bestResult.length * 1000 : curLength;
-        const refRad = bestResult ? bestResult.radius * 1000 : curRadius;
-        trialLength = refLen * (1 + (Math.random() - 0.5) * scale);
-        trialRadius = refRad * (1 + (Math.random() - 0.5) * scale);
+      } else if (optParams.method === 'nelder_mead') {
+        // Nelder-Mead simplex for 2D (length, radius)
+        if (step === 0) {
+          // Initialize simplex: 3 vertices
+          const p0 = [curLength, curRadius];
+          const p1 = [curLength * 1.05, curRadius];
+          const p2 = [curLength, curRadius * 1.05];
+          const vertices = [p0, p1, p2];
+          const values = await Promise.all(vertices.map(v => evaluate(v[0], v[1]).then(r => r.minS11).catch(() => 0)));
+
+          // Sort by objective value
+          const indexed = vertices.map((v, idx) => ({ v, val: values[idx] })).sort((a, b) => a.val - b.val);
+          // Centroid of best 2
+          const cx = (indexed[0].v[0] + indexed[1].v[0]) / 2;
+          const cr = (indexed[0].v[1] + indexed[1].v[1]) / 2;
+          // Reflection
+          trialLength = 2 * cx - indexed[2].v[0];
+          trialRadius = 2 * cr - indexed[2].v[1];
+          if (trialLength < 1) trialLength = 1;
+          if (trialRadius < 0.01) trialRadius = 0.01;
+        } else {
+          // Subsequent steps: perturbation with shrinking scale
+          const scale = 0.12 * Math.pow(0.75, step);
+          const bestResult = results.length > 0 ? results.reduce((a, b) => a.s11 < b.s11 ? a : b) : null;
+          const refLen = bestResult ? bestResult.length * 1000 : curLength;
+          const refRad = bestResult ? bestResult.radius * 1000 : curRadius;
+          trialLength = refLen * (1 + (Math.random() - 0.5) * scale);
+          trialRadius = refRad * (1 + (Math.random() - 0.5) * scale);
+        }
       } else {
         // Random search
         trialLength = curLength * (1 + (Math.random() - 0.5) * 0.15);
@@ -329,6 +436,7 @@ function App() {
 
       try {
         const result = await evaluate(trialLength, trialRadius);
+        const prevS11 = curS11;
 
         const optResult: OptimizationResult = {
           iteration: step + 1,
@@ -343,28 +451,16 @@ function App() {
         setOptimizationResults([...results]);
         setOptimizationProgress(((step + 1) / totalSteps) * 100);
 
-        // Update current best for gradient descent
         if (result.minS11 < curS11) {
-          curS11 = result.minS11;
-          curLength = trialLength;
-          curRadius = trialRadius;
+          updateBest(result, trialLength, trialRadius);
+        }
 
-          const data: S11DataPoint[] = result.frequencies.map((f: number, i: number) => ({
-            frequency: f / 1e6,
-            s11_db: result.s11Db[i],
-          }));
-          setChartData(data);
-          setS11Data({ real: result.s11Real, imag: result.s11Imag });
-          setImpedanceData({
-            real: result.impedanceReal,
-            imag: result.impedanceImag,
-            freq: result.frequencies,
-          });
-          setSummary({
-            resonantFreq: result.resonantFreq,
-            minS11: result.minS11,
-            bandwidth: result.bandwidth,
-          });
+        // Convergence check: |ΔS11| < 0.01 dB for 3 consecutive steps
+        if (Math.abs(result.minS11 - prevS11) < 0.01) {
+          convergedCount++;
+          if (convergedCount >= 3) break;
+        } else {
+          convergedCount = 0;
         }
       } catch {
         // skip failed iteration
