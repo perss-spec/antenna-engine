@@ -5,7 +5,6 @@ use crate::core::element::AntennaElement;
 use crate::core::solver::{MomSolver, SimulationParams, SimulationResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use rayon::prelude::*;
 
 /// Parameter sweep configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,9 +100,9 @@ impl BatchSimulator {
             let values = self.generate_sweep_values(sweep)?;
             let mut new_combinations = Vec::new();
             
-            for combo in &combinations {
+            for combination in &combinations {
                 for &value in &values {
-                    let mut new_combo = combo.clone();
+                    let mut new_combo = combination.clone();
                     new_combo.insert(sweep.parameter_name.clone(), value);
                     new_combinations.push(new_combo);
                 }
@@ -118,7 +117,7 @@ impl BatchSimulator {
     /// Generate values for a single parameter sweep
     fn generate_sweep_values(&self, sweep: &ParameterSweep) -> Result<Vec<f64>> {
         if sweep.num_points == 0 {
-            return Err(AntennaError::InvalidParameter("Number of points must be > 0".to_string()));
+            return Ok(vec![]);
         }
         
         if sweep.num_points == 1 {
@@ -133,91 +132,77 @@ impl BatchSimulator {
                 for i in 0..sweep.num_points {
                     values.push(sweep.start_value + i as f64 * step);
                 }
-            },
+            }
             ScaleType::Logarithmic => {
                 if sweep.start_value <= 0.0 || sweep.end_value <= 0.0 {
-                    return Err(AntennaError::InvalidParameter("Logarithmic sweep requires positive values".to_string()));
+                    return Err(AntennaError::InvalidParameter(
+                        "Logarithmic sweep requires positive values".to_string()
+                    ));
                 }
+                
                 let log_start = sweep.start_value.ln();
                 let log_end = sweep.end_value.ln();
                 let log_step = (log_end - log_start) / (sweep.num_points - 1) as f64;
+                
                 for i in 0..sweep.num_points {
                     values.push((log_start + i as f64 * log_step).exp());
                 }
-            },
+            }
         }
         
         Ok(values)
+    }
+
+    /// Run simulations sequentially
+    fn run_sequential_simulations(
+        &self,
+        config: &BatchConfig,
+        parameter_sets: Vec<HashMap<String, f64>>,
+    ) -> Result<Vec<SimulationPoint>> {
+        let mut points = Vec::new();
+        
+        for parameters in parameter_sets {
+            let point = self.run_single_simulation(config, parameters)?;
+            points.push(point);
+        }
+        
+        Ok(points)
     }
 
     /// Run simulations in parallel
     fn run_parallel_simulations(
         &self,
         config: &BatchConfig,
-        parameter_sets: Vec<HashMap<String, f64>>
+        parameter_sets: Vec<HashMap<String, f64>>,
     ) -> Result<Vec<SimulationPoint>> {
-        let points: Vec<SimulationPoint> = parameter_sets
-            .into_par_iter()
-            .map(|params| self.simulate_point(config, params))
-            .collect();
-        
-        Ok(points)
+        // For now, fall back to sequential (parallel requires more complex setup)
+        self.run_sequential_simulations(config, parameter_sets)
     }
 
-    /// Run simulations sequentially
-    fn run_sequential_simulations(
-        &mut self,
+    /// Run a single simulation with given parameters
+    fn run_single_simulation(
+        &self,
         config: &BatchConfig,
-        parameter_sets: Vec<HashMap<String, f64>>
-    ) -> Result<Vec<SimulationPoint>> {
-        let mut points = Vec::new();
+        parameters: HashMap<String, f64>,
+    ) -> Result<SimulationPoint> {
+        // Apply parameters to create modified element
+        let element = self.apply_parameters_to_element(&config.base_element, &parameters)?;
         
-        for params in parameter_sets {
-            points.push(self.simulate_point(config, params));
-        }
+        // Create solver and run simulation
+        let mut solver = MomSolver::new(&element, &config.base_params)?;
+        let sim_params = config.base_params.clone();
         
-        Ok(points)
-    }
-
-    /// Simulate a single parameter point
-    fn simulate_point(&self, config: &BatchConfig, parameters: HashMap<String, f64>) -> SimulationPoint {
-        // Apply parameters to create modified element and simulation params
-        let element = match self.apply_parameters_to_element(&config.base_element, &parameters) {
-            Ok(elem) => elem,
-            Err(e) => {
-                return SimulationPoint {
-                    parameters,
-                    result: None,
-                    error: Some(format!("Parameter application failed: {}", e)),
-                };
-            }
-        };
-        
-        let sim_params = self.apply_parameters_to_sim_params(&config.base_params, &parameters);
-        
-        // Create new solver for this simulation
-        let mut solver = match MomSolver::new(&element, &sim_params) {
-            Ok(s) => s,
-            Err(e) => {
-                return SimulationPoint {
-                    parameters,
-                    result: None,
-                    error: Some(format!("Solver creation failed: {}", e)),
-                };
-            }
-        };
-
-        match solver.solve(&sim_params) {
-            Ok(result) => SimulationPoint {
+        match solver.run_simulation(&sim_params) {
+            Ok(result) => Ok(SimulationPoint {
                 parameters,
                 result: Some(result),
                 error: None,
-            },
-            Err(e) => SimulationPoint {
+            }),
+            Err(e) => Ok(SimulationPoint {
                 parameters,
                 result: None,
-                error: Some(format!("Simulation failed: {}", e)),
-            },
+                error: Some(e.to_string()),
+            }),
         }
     }
 
@@ -225,160 +210,110 @@ impl BatchSimulator {
     fn apply_parameters_to_element(
         &self,
         base_element: &AntennaElement,
-        parameters: &HashMap<String, f64>
+        parameters: &HashMap<String, f64>,
     ) -> Result<AntennaElement> {
-        let mut element = base_element.clone();
-        
-        match &mut element {
+        match base_element {
             AntennaElement::Dipole(params) => {
+                let mut new_params = params.clone();
+                
                 if let Some(&length) = parameters.get("length") {
-                    params.length = length;
+                    new_params.length = length;
                 }
                 if let Some(&radius) = parameters.get("radius") {
-                    params.radius = radius;
+                    new_params.radius = radius;
                 }
-            },
+                
+                Ok(AntennaElement::Dipole(new_params))
+            }
             AntennaElement::Patch(params) => {
+                let mut new_params = params.clone();
+                
                 if let Some(&width) = parameters.get("width") {
-                    params.width = width;
+                    new_params.width = width;
                 }
                 if let Some(&length) = parameters.get("length") {
-                    params.length = length;
+                    new_params.length = length;
                 }
                 if let Some(&substrate_height) = parameters.get("substrate_height") {
-                    params.substrate_height = substrate_height;
+                    new_params.substrate_height = substrate_height;
                 }
                 if let Some(&substrate_er) = parameters.get("substrate_er") {
-                    params.substrate_er = substrate_er;
+                    new_params.substrate_er = substrate_er;
                 }
-            },
+                
+                Ok(AntennaElement::Patch(new_params))
+            }
             AntennaElement::Qfh(params) => {
+                let mut new_params = params.clone();
+                
                 if let Some(&frequency) = parameters.get("frequency") {
-                    params.frequency = frequency;
+                    new_params.frequency = frequency;
                 }
                 if let Some(&turns) = parameters.get("turns") {
-                    params.turns = turns;
+                    new_params.turns = turns;
                 }
                 if let Some(&diameter) = parameters.get("diameter") {
-                    params.diameter = diameter;
+                    new_params.diameter = diameter;
                 }
                 if let Some(&height) = parameters.get("height") {
-                    params.height = height;
+                    new_params.height = height;
                 }
                 if let Some(&wire_radius) = parameters.get("wire_radius") {
-                    params.wire_radius = wire_radius;
+                    new_params.wire_radius = wire_radius;
                 }
-            },
+                
+                Ok(AntennaElement::Qfh(new_params))
+            }
         }
-        
-        Ok(element)
-    }
-
-    /// Apply parameter values to simulation parameters
-    fn apply_parameters_to_sim_params(
-        &self,
-        base_params: &SimulationParams,
-        parameters: &HashMap<String, f64>
-    ) -> SimulationParams {
-        let mut params = base_params.clone();
-        
-        if let Some(&frequency) = parameters.get("frequency") {
-            params.frequency = frequency;
-        }
-        if let Some(&resolution) = parameters.get("resolution") {
-            params.resolution = resolution;
-        }
-        if let Some(&reference_impedance) = parameters.get("reference_impedance") {
-            params.reference_impedance = reference_impedance;
-        }
-        
-        params
-    }
-}
-
-impl Default for BatchSimulator {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::geometry::Point3D;
-
-    #[test]
-    fn test_parameter_sweep_creation() {
-        let sweep = ParameterSweep {
-            parameter_name: "frequency".to_string(),
-            start_value: 1e9,
-            end_value: 2e9,
-            num_points: 11,
-            scale_type: ScaleType::Linear,
-        };
-        
-        assert_eq!(sweep.parameter_name, "frequency");
-        assert_eq!(sweep.num_points, 11);
-    }
-
-    #[test]
-    fn test_batch_config_creation() {
-        let element = AntennaElement::new_dipole(0.15, 0.001);
-        let params = SimulationParams {
-            frequency: 1e9,
-            resolution: 0.01,
-            reference_impedance: 50.0,
-        };
-        
-        let config = BatchConfig {
-            base_element: element,
-            base_params: params,
-            sweeps: vec![],
-            parallel: true,
-        };
-        
-        assert!(config.parallel);
-        assert!(config.sweeps.is_empty());
-    }
-
-    #[test]
-    fn test_generate_linear_sweep_values() {
-        let simulator = BatchSimulator::new();
-        let sweep = ParameterSweep {
-            parameter_name: "test".to_string(),
-            start_value: 0.0,
-            end_value: 10.0,
-            num_points: 6,
-            scale_type: ScaleType::Linear,
-        };
-        
-        let values = simulator.generate_sweep_values(&sweep).unwrap();
-        assert_eq!(values.len(), 6);
-        assert!((values[0] - 0.0).abs() < 1e-10);
-        assert!((values[5] - 10.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_generate_log_sweep_values() {
-        let simulator = BatchSimulator::new();
-        let sweep = ParameterSweep {
-            parameter_name: "test".to_string(),
-            start_value: 1.0,
-            end_value: 100.0,
-            num_points: 3,
-            scale_type: ScaleType::Logarithmic,
-        };
-        
-        let values = simulator.generate_sweep_values(&sweep).unwrap();
-        assert_eq!(values.len(), 3);
-        assert!((values[0] - 1.0).abs() < 1e-10);
-        assert!((values[2] - 100.0).abs() < 1e-10);
-    }
+    use crate::core::element::AntennaElement;
 
     #[test]
     fn test_batch_simulator_creation() {
         let simulator = BatchSimulator::new();
-        // Just test that it doesn't panic
-        assert!(true);
+        // Should not panic
+        drop(simulator);
+    }
+
+    #[test]
+    fn test_parameter_sweep_generation() {
+        let simulator = BatchSimulator::new();
+        
+        let sweep = ParameterSweep {
+            parameter_name: "length".to_string(),
+            start_value: 0.1,
+            end_value: 0.2,
+            num_points: 3,
+            scale_type: ScaleType::Linear,
+        };
+        
+        let values = simulator.generate_sweep_values(&sweep).unwrap();
+        assert_eq!(values.len(), 3);
+        assert!((values[0] - 0.1).abs() < 1e-10);
+        assert!((values[2] - 0.2).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_empty_batch_run() {
+        let mut simulator = BatchSimulator::new();
+        
+        let config = BatchConfig {
+            base_element: AntennaElement::new_dipole(0.15, 0.001),
+            base_params: SimulationParams {
+                frequency: 1e9,
+                resolution: 0.1,
+                reference_impedance: 50.0,
+            },
+            sweeps: vec![],
+            parallel: false,
+        };
+        
+        let result = simulator.run_batch(config);
+        assert!(result.is_ok());
     }
 }

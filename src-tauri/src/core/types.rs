@@ -38,6 +38,14 @@ impl From<String> for AntennaError {
 
 pub type Result<T> = std::result::Result<T, AntennaError>;
 
+/// Basis function type for MoM solver
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub enum BasisType {
+    #[default]
+    Pulse,
+    PiecewiseSinusoidal,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROMIN Antenna Studio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+    cursor: none;
+  }
+  canvas { display: block; }
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 24px;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #1e1e2e;
+    z-index: 100;
+    pointer-events: auto;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    pointer-events: auto;
+  }
+  .nav-brand-icon {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .nav-brand-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .nav-links a {
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #888;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+    pointer-events: auto;
+  }
+  .nav-links a:hover { color: #e0e0e0; background: #1a1a28; }
+  .nav-links a.active { color: #6366f1; background: rgba(99, 102, 241, 0.1); }
+  .overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .logo {
+    font-size: 72px;
+    font-weight: 900;
+    letter-spacing: -3px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeUp 1.2s ease-out 0.5s forwards;
+  }
+  .subtitle {
+    font-size: 16px;
+    color: #555;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeUp 1.2s ease-out 0.8s forwards;
+  }
+  .tagline {
+    font-size: 13px;
+    color: #333;
+    margin-top: 24px;
+    letter-spacing: 2px;
+    opacity: 0;
+    animation: fadeUp 1.2s ease-out 1.1s forwards;
+  }
+  .freq-display {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #6366f1;
+    opacity: 0.6;
+    z-index: 10;
+    pointer-events: none;
+    letter-spacing: 2px;
+  }
+  .cursor-info {
+    position: fixed;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #6366f180;
+    z-index: 10;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-brand-icon">P</div>
+    <div class="nav-brand-text">PROMIN</div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="active">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="map.html">Pipeline Map</a>
+  </div>
+</nav>
+<canvas id="c"></canvas>
+
+<div class="overlay">
+  <div class="logo">PROMIN</div>
+  <div class="subtitle">Antenna Studio</div>
+  <div class="tagline">GPU-Accelerated Antenna Design</div>
+</div>
+
+<div class="freq-display" id="freq"></div>
+<div class="cursor-info" id="cursor-info"></div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const freqEl = document.getElementById('freq');
+const cursorInfo = document.getElementById('cursor-info');
+
+let W, H;
+let mx = 0, my = 0, pmx = 0, pmy = 0;
+let mouseSpeed = 0;
+let time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+document.addEventListener('mousemove', e => {
+  pmx = mx; pmy = my;
+  mx = e.clientX; my = e.clientY;
+  mouseSpeed = Math.sqrt((mx - pmx) ** 2 + (my - pmy) ** 2);
+});
+
+// Radio wave rings emanating from cursor
+class Wave {
+  constructor(x, y, speed) {
+    this.x = x;
+    this.y = y;
+    this.radius = 0;
+    this.maxRadius = 300 + speed * 5;
+    this.speed = 2 + speed * 0.1;
+    this.opacity = 0.4 + Math.min(speed * 0.01, 0.3);
+    this.hue = 240 + Math.random() * 40; // indigo-cyan range
+    this.width = 1 + speed * 0.02;
+  }
+  update() {
+    this.radius += this.speed;
+    this.opacity *= 0.985;
+    return this.opacity > 0.01 && this.radius < this.maxRadius;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${this.hue}, 70%, 65%, ${this.opacity})`;
+    ctx.lineWidth = this.width;
+    ctx.stroke();
+  }
+}
+
+// Electromagnetic field particles
+class FieldParticle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.vx = 0;
+    this.vy = 0;
+    this.size = 1 + Math.random() * 2;
+    this.life = 0.5 + Math.random() * 0.5;
+    this.maxLife = this.life;
+    this.hue = 230 + Math.random() * 50;
+  }
+  update() {
+    // Attract/repel from cursor like electromagnetic field
+    const dx = mx - this.x;
+    const dy = my - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+    const force = Math.min(50 / dist, 2);
+
+    // Create circular field pattern (like magnetic field lines)
+    const angle = Math.atan2(dy, dx);
+    const fieldAngle = angle + Math.PI / 2; // perpendicular = circular field
+
+    this.vx += Math.cos(fieldAngle) * force * 0.3 + dx / dist * 0.1;
+    this.vy += Math.sin(fieldAngle) * force * 0.3 + dy / dist * 0.1;
+
+    // Damping
+    this.vx *= 0.96;
+    this.vy *= 0.96;
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    this.life -= 0.003;
+
+    if (this.life <= 0 || this.x < -50 || this.x > W + 50 || this.y < -50 || this.y > H + 50) {
+      this.reset();
+    }
+  }
+  draw() {
+    const alpha = (this.life / this.maxLife) * 0.6;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, 60%, 60%, ${alpha})`;
+    ctx.fill();
+  }
+}
+
+// Standing wave on screen edges (like transmission line)
+class StandingWave {
+  constructor(axis) {
+    this.axis = axis; // 'x' or 'y'
+  }
+  draw() {
+    const freq = 0.01 + mouseSpeed * 0.001;
+    const amp = 20 + mouseSpeed * 0.5;
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.08)';
+    ctx.lineWidth = 1;
+
+    if (this.axis === 'bottom') {
+      for (let x = 0; x <= W; x += 2) {
+        const wave = Math.sin(x * freq + time * 0.03) * Math.cos(x * freq * 0.5 - time * 0.02);
+        const y = H - 60 + wave * amp * 0.3;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+    } else if (this.axis === 'top') {
+      for (let x = 0; x <= W; x += 2) {
+        const wave = Math.sin(x * freq - time * 0.025) * Math.cos(x * freq * 0.7 + time * 0.015);
+        const y = 60 + wave * amp * 0.3;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+  }
+}
+
+// Dipole antenna cursor
+function drawAntennaCursor(x, y) {
+  const len = 20;
+  const glow = 5 + mouseSpeed * 0.3;
+
+  // Glow
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, glow + 15);
+  grad.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+  grad.addColorStop(1, 'rgba(99, 102, 241, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x - 30, y - 30, 60, 60);
+
+  // Dipole arms
+  ctx.strokeStyle = '#8b5cf6';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+
+  // Vertical dipole
+  ctx.beginPath();
+  ctx.moveTo(x, y - len);
+  ctx.lineTo(x, y - 3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x, y + 3);
+  ctx.lineTo(x, y + len);
+  ctx.stroke();
+
+  // Feed point (center)
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#6366f1';
+  ctx.fill();
+
+  // Tiny signal indicator dots
+  const signalPhase = time * 0.1;
+  for (let i = 0; i < 3; i++) {
+    const r = 8 + i * 7 + (signalPhase % 7);
+    const alpha = 0.5 - i * 0.15;
+    ctx.beginPath();
+    ctx.arc(x + r, y - r * 0.5, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x - r, y - r * 0.5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Grid overlay (like Smith chart grid, subtle)
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(30, 30, 46, 0.5)';
+  ctx.lineWidth = 0.5;
+  const spacing = 80;
+
+  for (let x = spacing; x < W; x += spacing) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = spacing; y < H; y += spacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+}
+
+// Frequency display based on mouse position
+function updateFreqDisplay() {
+  const freqMHz = (mx / W * 5900 + 100).toFixed(1);
+  const s11 = (-25 * Math.exp(-200 * ((mx / W - 0.5) ** 2)) - 2).toFixed(1);
+  freqEl.textContent = `${freqMHz} MHz  |  S11: ${s11} dB  |  λ = ${(299792458 / (freqMHz * 1e6) * 1000).toFixed(1)} mm`;
+
+  cursorInfo.style.left = (mx + 25) + 'px';
+  cursorInfo.style.top = (my - 10) + 'px';
+  const zReal = (50 + (mx / W - 0.5) * 100).toFixed(1);
+  const zImag = ((my / H - 0.5) * 80).toFixed(1);
+  cursorInfo.textContent = `Z = ${zReal} ${parseFloat(zImag) >= 0 ? '+' : ''}j${zImag} Ω`;
+}
+
+// Initialize
+const waves = [];
+const particles = [];
+const standingWaves = [new StandingWave('bottom'), new StandingWave('top')];
+let waveTimer = 0;
+
+for (let i = 0; i < 150; i++) {
+  particles.push(new FieldParticle());
+}
+
+function animate() {
+  time++;
+  ctx.fillStyle = 'rgba(10, 10, 15, 0.15)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  if (time % 3 === 0) drawGrid();
+
+  // Standing waves
+  standingWaves.forEach(sw => sw.draw());
+
+  // Emit waves
+  waveTimer++;
+  if (waveTimer > Math.max(5, 20 - mouseSpeed * 0.3)) {
+    waves.push(new Wave(mx, my, mouseSpeed));
+    waveTimer = 0;
+  }
+
+  // Update & draw waves
+  for (let i = waves.length - 1; i >= 0; i--) {
+    if (!waves[i].update()) {
+      waves.splice(i, 1);
+    } else {
+      waves[i].draw();
+    }
+  }
+
+  // Particles
+  particles.forEach(p => { p.update(); p.draw(); });
+
+  // Connect nearby particles
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = dx * dx + dy * dy;
+      if (dist < 6000) {
+        const alpha = (1 - dist / 6000) * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Antenna cursor
+  drawAntennaCursor(mx, my);
+
+  // Frequency HUD
+  updateFreqDisplay();
+
+  // Decay speed
+  mouseSpeed *= 0.9;
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>
