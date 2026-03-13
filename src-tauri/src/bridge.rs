@@ -78,3 +78,29 @@ pub async fn generate_report(project_data: Value, path: String) -> Result<String
     // Implementation will generate PDF report from ProjectData
     Ok("report_generated".to_string())
 }
+
+#[command]
+pub fn export_touchstone_s1p(
+    frequencies: Vec<f64>,
+    s11_re: Vec<f64>,
+    s11_im: Vec<f64>,
+    reference_impedance: f64,
+) -> Result<String, String> {
+    if frequencies.len() != s11_re.len() || frequencies.len() != s11_im.len() {
+        return Err("Frequency, S11 real and imaginary vectors must have the same length".to_string());
+    }
+
+    let mut output = String::new();
+    output.push_str("! PROMIN Antenna Studio Export\n");
+    output.push_str("! Touchstone S1P Format\n");
+    output.push_str(&format!("# HZ S RI R {:.1}\n", reference_impedance));
+
+    for i in 0..frequencies.len() {
+        output.push_str(&format!(
+            "{:.6e} {:.8e} {:.8e}\n",
+            frequencies[i], s11_re[i], s11_im[i]
+        ));
+    }
+
+    Ok(output)
+}

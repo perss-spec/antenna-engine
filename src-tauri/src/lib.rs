@@ -24,7 +24,8 @@ pub fn run() {
             bridge::predict_with_ai,
             bridge::optimize_antenna,
             bridge::export_touchstone,
-            bridge::generate_report
+            bridge::generate_report,
+            bridge::export_touchstone_s1p
         ])
         .setup(|app| {
             // Initialize material database
