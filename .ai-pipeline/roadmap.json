@@ -2,340 +2,182 @@
   "project": "PROMIN Antenna Studio",
   "sprints": [
     {
-      "id": "sprint-1",
-      "name": "MVP: Dipole + MoM + S11",
-      "description": "Implement basic MoM solver for dipole antenna, display S11 results, and import Touchstone files for comparison",
+      "id": "sprint-11",
+      "name": "Yagi-Uda Foundation + Core Infrastructure",
+      "description": "Implement Yagi-Uda antenna geometry, improve near-field transforms, and establish core infrastructure for advanced features",
       "tasks": [
         {
-          "id": "S1-T1",
+          "id": "S11-T1",
           "team": "core",
-          "title": "Implement MoM impedance matrix builder",
-          "description": "Complete impedance matrix construction using Green's function integration for wire segments",
+          "title": "Implement Yagi-Uda Array Antenna Geometry",
+          "description": "Create YagiUdaAntenna struct with driven element, directors array, and reflector. Include element spacing, lengths, and wire radius parameters. Generate mesh segments for each element.",
           "acceptance_criteria": [
-            "build_impedance_matrix() returns NxN complex matrix for N segments",
-            "Green's function evaluation matches analytical formula within 1% error",
-            "Matrix is symmetric (Z_mn = Z_nm) for reciprocal structures"
+            "YagiUdaAntenna generates 3-element array (reflector + driven + director) with configurable spacing",
+            "Element lengths follow standard Yagi design ratios (reflector 5% longer, director 5% shorter than driven)",
+            "Mesh generation produces correct wire segments for MoM solver input",
+            "Antenna impedance at driven element matches theoretical ~50Ω for optimized design"
           ],
           "dependencies": [],
           "priority": "high",
           "estimated_complexity": "high"
         },
         {
-          "id": "S1-T2",
+          "id": "S11-T2",
           "team": "core",
-          "title": "Implement MoM linear solver",
-          "description": "Solve Ax=b using LU decomposition to find current distribution",
+          "title": "Near-Field to Far-Field Transform Improvements",
+          "description": "Enhance NF2FF calculations with better numerical integration, phase center correction, and coordinate system handling for array antennas",
           "acceptance_criteria": [
-            "solve_mom() returns current distribution vector",
-            "Dipole impedance: 73±5 + j42.5±5 Ω at resonance",
-            "Solver handles ill-conditioned matrices with pivoting"
+            "Far-field patterns show correct Yagi directivity (>8dBi forward gain)",
+            "Front-to-back ratio >15dB for standard 3-element Yagi",
+            "Phase center calculation accurate within 0.1λ for array geometries",
+            "Coordinate transform handles arbitrary antenna orientation"
           ],
           "dependencies": [
-            "S1-T1"
+            "S11-T1"
           ],
           "priority": "high",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S1-T3",
+          "id": "S11-T3",
           "team": "core",
-          "title": "S-parameter extraction from port impedance",
-          "description": "Calculate S11 from antenna input impedance relative to 50Ω",
+          "title": "Touchstone S2P File Export",
+          "description": "Implement S2P (2-port) Touchstone export for multi-port antennas and antenna arrays with mutual coupling data",
           "acceptance_criteria": [
-            "calculate_s11() returns complex S11 value",
-            "S11 = (Z_in - Z0)/(Z_in + Z0) where Z0=50Ω",
-            "S11 magnitude in dB: 20*log10(|S11|)"
+            "S2P files export with correct frequency points and S-parameter matrix",
+            "File format complies with Touchstone v1.1 specification",
+            "Mutual coupling S21/S12 parameters accurate within 1dB vs reference",
+            "Export handles frequency sweep from 50MHz to 2GHz"
           ],
           "dependencies": [
-            "S1-T2"
-          ],
-          "priority": "high",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S1-T4",
-          "team": "core",
-          "title": "Frequency sweep functionality",
-          "description": "Run MoM solver at multiple frequencies and return S11 array",
-          "acceptance_criteria": [
-            "frequency_sweep() accepts start/stop/step parameters",
-            "Returns Vec<(f64, Complex<f64>)> for frequency vs S11",
-            "Sweep 50-500 MHz in ≤10 seconds for 100-segment dipole"
-          ],
-          "dependencies": [
-            "S1-T3"
-          ],
-          "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S1-T5",
-          "team": "core",
-          "title": "Tauri command: simulate_antenna",
-          "description": "Expose MoM solver to frontend via Tauri command",
-          "acceptance_criteria": [
-            "invoke('simulate_antenna', config) returns SimulationResult",
-            "SimulationResult contains s11_data: Vec<{freq: f64, s11_db: f64}>",
-            "Error handling returns descriptive messages"
-          ],
-          "dependencies": [
-            "S1-T4"
-          ],
-          "priority": "high",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S1-T6",
-          "team": "ui",
-          "title": "Complete AntennaForm for dipole parameters",
-          "description": "Input fields for dipole length, radius, and frequency range",
-          "acceptance_criteria": [
-            "Length input: 0.1-10m with 0.001m precision",
-            "Radius input: 0.1-50mm with 0.1mm precision",
-            "Frequency range: start/stop/step with MHz units",
-            "Form validation prevents invalid inputs"
-          ],
-          "dependencies": [],
-          "priority": "high",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S1-T7",
-          "team": "ui",
-          "title": "S11Chart component with Recharts",
-          "description": "Display S11 magnitude in dB vs frequency",
-          "acceptance_criteria": [
-            "Chart displays frequency (MHz) on X-axis, S11 (dB) on Y-axis",
-            "Y-axis range: 0 to -40 dB",
-            "Hover tooltip shows exact frequency and S11 value",
-            "Chart updates when new simulation data arrives"
-          ],
-          "dependencies": [
-            "S1-T5"
-          ],
-          "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S1-T8",
-          "team": "ui",
-          "title": "Touchstone file import (.s1p)",
-          "description": "Import measured S-parameter data for comparison",
-          "acceptance_criteria": [
-            "File picker accepts .s1p files",
-            "Parser handles MHz/GHz frequency units",
-            "Imported data overlays on S11Chart in different color",
-            "Support RI (real/imaginary) and MA (magnitude/angle) formats"
-          ],
-          "dependencies": [
-            "S1-T7"
+            "S11-T1"
           ],
           "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S1-T9",
-          "team": "3d",
-          "title": "Basic dipole visualization",
-          "description": "Render dipole antenna as cylindrical segments in 3D",
+          "id": "S11-T4",
+          "team": "gpu",
+          "title": "WGPU Compute Shader Infrastructure Setup",
+          "description": "Set up WGPU compute pipeline infrastructure, buffer management, and shader compilation for impedance matrix calculations",
           "acceptance_criteria": [
-            "Dipole renders as cylinder with correct length/radius",
-            "Center-fed gap visible at z=0",
-            "Axes helper shows X/Y/Z directions",
-            "Camera orbit controls work smoothly"
-          ],
-          "dependencies": [],
-          "priority": "medium",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S1-T10",
-          "team": "core",
-          "title": "Unit tests for MoM solver",
-          "description": "Validate solver accuracy against analytical solutions",
-          "acceptance_criteria": [
-            "Test half-wave dipole: Z_in within 10% of 73+j42.5Ω",
-            "Test quarter-wave monopole over ground",
-            "Test convergence with increasing segmentation",
-            "All tests pass in < 5 seconds"
+            "WGPU device initialization succeeds on target platforms",
+            "Compute shader compilation pipeline established with error handling",
+            "Buffer allocation/deallocation for matrix data working",
+            "Basic compute dispatch executes without crashes"
           ],
           "dependencies": [
-            "S1-T2"
+            "S11-T1"
+          ],
+          "priority": "high",
+          "estimated_complexity": "high"
+        },
+        {
+          "id": "S11-T5",
+          "team": "aiml",
+          "title": "Training Data Infrastructure for Yagi Arrays",
+          "description": "Extend dataset generation to include Yagi-Uda parameter sweeps and establish data versioning system",
+          "acceptance_criteria": [
+            "Dataset includes 1000+ Yagi configurations (spacing, lengths, elements)",
+            "Parameter ranges cover practical Yagi designs (0.1λ to 0.3λ spacing)",
+            "Data versioning tracks dataset schema and generation parameters",
+            "Training data validation shows <5% corrupted samples"
+          ],
+          "dependencies": [
+            "S11-T1",
+            "S11-T2"
           ],
           "priority": "medium",
-          "estimated_complexity": "low"
+          "estimated_complexity": "medium"
         }
       ]
     },
     {
-      "id": "sprint-2",
-      "name": "GPU Acceleration + Advanced Antennas",
-      "description": "Implement GPU-accelerated matrix fill, add QFH and patch antennas, enhance visualization",
+      "id": "sprint-12",
+      "name": "GPU Acceleration + 3D Visualization",
+      "description": "Implement WGPU compute shaders for impedance matrix and create advanced 3D visualization for Yagi arrays",
       "tasks": [
         {
-          "id": "S2-T1",
+          "id": "S12-T1",
           "team": "gpu",
-          "title": "wgpu compute shader for impedance matrix",
-          "description": "Parallel computation of mutual impedances on GPU",
+          "title": "WGSL Green Function Kernel Implementation",
+          "description": "Write WGPU compute shader in WGSL for impedance matrix fill using Green's function kernel calculations",
           "acceptance_criteria": [
-            "Compute shader evaluates Green's function for all segment pairs",
-            "GPU matrix fill ≥5x faster than CPU for 1000+ segments",
-            "Results match CPU implementation within 0.1% error",
-            "Graceful fallback when GPU unavailable"
+            "WGSL shader computes Z-matrix elements with <1% error vs CPU reference",
+            "Shader handles wire segment interactions for up to 1000 segments",
+            "GPU computation 5x faster than CPU rayon implementation",
+            "Memory usage stays under 2GB for typical Yagi meshes"
           ],
           "dependencies": [
-            "S1-T1"
+            "S11-T4"
           ],
           "priority": "high",
           "estimated_complexity": "high"
         },
         {
-          "id": "S2-T2",
-          "team": "core",
-          "title": "QFH antenna geometry generation",
-          "description": "Generate quadrifilar helix geometry from parameters",
-          "acceptance_criteria": [
-            "QFH::segments() returns 4 helical wire arrays",
-            "Helix pitch and diameter match specifications",
-            "Phase quadrature feeding (0°, 90°, 180°, 270°)",
-            "Minimum 20 segments per helix arm"
-          ],
-          "dependencies": [],
-          "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S2-T3",
-          "team": "core",
-          "title": "Patch antenna with substrate",
-          "description": "Implement patch antenna with dielectric substrate effects",
-          "acceptance_criteria": [
-            "Patch::triangles() returns surface mesh",
-            "Substrate permittivity affects resonant frequency",
-            "Edge feeding at correct impedance point",
-            "Resonance within 5% of f = c/(2L√εr)"
-          ],
-          "dependencies": [],
-          "priority": "high",
-          "estimated_complexity": "high"
-        },
-        {
-          "id": "S2-T4",
-          "team": "core",
-          "title": "Radiation pattern calculation",
-          "description": "Compute far-field radiation pattern from current distribution",
-          "acceptance_criteria": [
-            "calculate_radiation_pattern() returns gain at θ,φ points",
-            "Dipole pattern: figure-8 in E-plane, omnidirectional H-plane",
-            "Peak gain calculation accurate within 0.5 dB",
-            "Pattern data includes 360° azimuth × 180° elevation"
-          ],
-          "dependencies": [
-            "S1-T2"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S2-T5",
-          "team": "ui",
-          "title": "AntennaForm for QFH and Patch",
-          "description": "Parameter inputs for helix and patch antennas",
-          "acceptance_criteria": [
-            "QFH: frequency, turns, diameter, height, wire radius inputs",
-            "Patch: width, length, substrate height, permittivity inputs",
-            "Antenna type selector (Dipole/QFH/Patch)",
-            "Form dynamically shows relevant parameters"
-          ],
-          "dependencies": [
-            "S2-T2",
-            "S2-T3"
-          ],
-          "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S2-T6",
-          "team": "ui",
-          "title": "ResultsPanel with key metrics",
-          "description": "Display resonant frequency, bandwidth, VSWR",
-          "acceptance_criteria": [
-            "Auto-detect resonant frequency (min |S11|)",
-            "Calculate -10dB bandwidth in MHz and %",
-            "Show VSWR at specified frequency",
-            "Display input impedance at resonance"
-          ],
-          "dependencies": [
-            "S1-T7"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S2-T7",
-          "team": "3d",
-          "title": "QFH and patch visualization",
-          "description": "Render helix and patch geometries in 3D viewport",
-          "acceptance_criteria": [
-            "QFH renders as 4 helical curves with proper phasing",
-            "Patch renders as rectangular surface with ground plane",
-            "Substrate layer visible with transparency",
-            "Smooth transitions when switching antenna types"
-          ],
-          "dependencies": [
-            "S2-T2",
-            "S2-T3"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S2-T8",
-          "team": "3d",
-          "title": "Current distribution overlay",
-          "description": "Color-map current magnitude on antenna surface",
-          "acceptance_criteria": [
-            "Current magnitude mapped to color gradient (blue→red)",
-            "Color scale legend shows current in A/m",
-            "Toggle current overlay on/off",
-            "Updates when frequency changes"
-          ],
-          "dependencies": [
-            "S1-T2"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S2-T9",
+          "id": "S12-T2",
           "team": "gpu",
-          "title": "GPU performance benchmarking",
-          "description": "Measure and optimize GPU kernel performance",
+          "title": "CPU vs GPU Benchmark Suite",
+          "description": "Create comprehensive benchmarking system comparing WGPU compute vs CPU rayon for various antenna sizes",
           "acceptance_criteria": [
-            "Benchmark tool compares CPU vs GPU for various antenna sizes",
-            "Performance metrics logged: matrix fill time, memory usage",
-            "Optimization achieves >10x speedup for 5000+ segments",
-            "Results exported as CSV for analysis"
+            "Benchmark suite tests 100, 500, 1000, 2000 segment antennas",
+            "Performance metrics include computation time and memory usage",
+            "Results show GPU speedup scaling with problem size",
+            "Benchmark data exported to JSON for analysis"
           ],
           "dependencies": [
-            "S2-T1"
+            "S12-T1"
           ],
-          "priority": "low",
-          "estimated_complexity": "low"
+          "priority": "medium",
+          "estimated_complexity": "medium"
         },
         {
-          "id": "S2-T10",
-          "team": "ui",
-          "title": "Progress indicators for long simulations",
-          "description": "Show simulation progress for frequency sweeps",
+          "id": "S12-T3",
+          "team": "3d",
+          "title": "Yagi-Uda 3D Model with Element Labels",
+          "description": "Create detailed 3D visualization of Yagi arrays with element identification, dimensions, and interactive labels",
           "acceptance_criteria": [
-            "Progress bar shows % complete during sweep",
-            "Cancel button stops simulation cleanly",
-            "Time remaining estimate based on completed steps",
-            "UI remains responsive during simulation"
+            "3D model shows reflector, driven element, directors with distinct colors",
+            "Element labels display length and spacing measurements",
+            "Interactive hover shows element parameters (length, diameter, position)",
+            "Model scales correctly with antenna dimensions"
           ],
           "dependencies": [
-            "S1-T5"
+            "S11-T1"
+          ],
+          "priority": "high",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S12-T4",
+          "team": "3d",
+          "title": "Camera Animation System",
+          "description": "Implement smooth camera transitions when switching between antenna types with preset viewpoints",
+          "acceptance_criteria": [
+            "Camera animates smoothly between antenna views in 1-2 seconds",
+            "Preset viewpoints optimized for each antenna type",
+            "Animation can be interrupted/cancelled by user interaction",
+            "Camera maintains proper orientation and zoom levels"
+          ],
+          "dependencies": [
+            "S12-T3"
+          ],
+          "priority": "medium",
+          "estimated_complexity": "medium"
+        },
+        {
+          "id": "S12-T5",
+          "team": "3d",
+          "title": "Wireframe Toggle and Visualization Modes",
+          "description": "Add wireframe rendering mode and multiple visualization options for antenna geometry",
+          "acceptance_criteria": [
+            "Wireframe mode shows antenna structure without solid surfaces",
+            "Toggle between solid, wireframe, and hybrid rendering modes",
+            "Wireframe maintains element colors and labels",
+            "Performance impact <10% when switching modes"
+          ],
+          "dependencies": [
+            "S12-T3"
           ],
           "priority": "low",
           "estimated_complexity": "low"
@@ -343,524 +185,291 @@
       ]
     },
     {
-      "id": "sprint-3",
-      "name": "Dataset Generation + Pattern Visualization",
-      "description": "Generate training data for AI models, implement radiation pattern visualization",
+      "id": "sprint-13",
+      "name": "Interactive Smith Chart + UI Enhancements",
+      "description": "Implement interactive Smith chart with simulation data integration and responsive UI improvements",
       "tasks": [
         {
-          "id": "S3-T1",
-          "team": "core",
-          "title": "Batch simulation API",
-          "description": "Run MoM solver for parameter sweeps to generate datasets",
+          "id": "S13-T1",
+          "team": "ui",
+          "title": "Smith Chart Component Foundation",
+          "description": "Create base Smith chart component with proper impedance/admittance grid, scaling, and coordinate transforms",
           "acceptance_criteria": [
-            "batch_simulate() accepts parameter ranges and variations",
-            "Generates 1000+ simulations with varied geometry/frequency",
-            "Output format: JSON with params + S11 + radiation pattern",
-            "Parallel execution using Rayon for multi-core CPUs"
+            "Smith chart displays standard impedance grid (0.2, 0.5, 1.0, 2.0, 5.0)",
+            "Coordinate transforms between rectangular and Smith chart coordinates accurate",
+            "Chart scales properly with container size",
+            "Grid lines and labels render clearly at all zoom levels"
           ],
-          "dependencies": [
-            "S2-T1"
-          ],
+          "dependencies": [],
           "priority": "high",
-          "estimated_complexity": "medium"
+          "estimated_complexity": "high"
         },
         {
-          "id": "S3-T2",
-          "team": "core",
-          "title": "Dataset export functionality",
-          "description": "Save simulation results in ML-friendly format",
+          "id": "S13-T2",
+          "team": "ui",
+          "title": "Smith Chart Simulation Data Integration",
+          "description": "Connect Smith chart to MoM simulation results, plot impedance vs frequency, enable interactive frequency selection",
           "acceptance_criteria": [
-            "Export to HDF5 with hierarchical structure",
-            "Include: parameters, S11 curves, patterns, impedances",
-            "Compression reduces file size by >50%",
-            "Metadata includes timestamp, version, units"
+            "Impedance data from simulation plots correctly on Smith chart",
+            "Frequency sweep shows as connected curve on chart",
+            "Click on impedance point displays corresponding frequency value",
+            "Frequency markers update S11 chart cursor position"
           ],
           "dependencies": [
-            "S3-T1"
-          ],
-          "priority": "high",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S3-T3",
-          "team": "3d",
-          "title": "3D radiation pattern visualization",
-          "description": "Render radiation pattern as 3D surface",
-          "acceptance_criteria": [
-            "Spherical surface colored by gain (dBi)",
-            "Interactive rotation with gain value on hover",
-            "Toggle between E-plane and H-plane cuts",
-            "Adjustable pattern scale and transparency"
-          ],
-          "dependencies": [
-            "S2-T4"
+            "S13-T1",
+            "S11-T1"
           ],
           "priority": "high",
           "estimated_complexity": "high"
         },
         {
-          "id": "S3-T4",
+          "id": "S13-T3",
           "team": "ui",
-          "title": "2D polar pattern plots",
-          "description": "Traditional polar plots for E/H plane cuts",
+          "title": "Responsive Sidebar Collapse",
+          "description": "Implement collapsible sidebar with mobile-responsive behavior and state persistence",
           "acceptance_criteria": [
-            "Polar plot with concentric dB circles",
-            "E-plane (φ=0°) and H-plane (φ=90°) cuts",
-            "Gain scale: -30 to +20 dBi",
-            "Export as PNG/SVG for reports"
+            "Sidebar collapses automatically on screens <768px width",
+            "Manual toggle button works on all screen sizes",
+            "Collapsed state persists across page reloads",
+            "Animation smooth and doesn't affect main content layout"
           ],
-          "dependencies": [
-            "S2-T4"
-          ],
+          "dependencies": [],
           "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S3-T5",
+          "id": "S13-T4",
           "team": "ui",
-          "title": "Smith chart for impedance",
-          "description": "Display impedance on Smith chart",
+          "title": "Dark Mode Toggle Implementation",
+          "description": "Add system-wide dark mode with theme persistence and smooth transitions",
           "acceptance_criteria": [
-            "Standard Smith chart with impedance/admittance circles",
-            "Frequency sweep trace with markers",
-            "VSWR circles overlay (1.5, 2, 3)",
-            "Click to show impedance at frequency"
+            "Dark mode toggle switches all UI components consistently",
+            "Theme preference persists in localStorage",
+            "Respects system dark mode preference on first load",
+            "Color transitions smooth without jarring flashes"
           ],
-          "dependencies": [
-            "S1-T3"
-          ],
+          "dependencies": [],
           "priority": "medium",
-          "estimated_complexity": "high"
-        },
-        {
-          "id": "S3-T6",
-          "team": "aiml",
-          "title": "Dataset validation and splitting",
-          "description": "Prepare datasets for ML training",
-          "acceptance_criteria": [
-            "Load HDF5 datasets from core batch simulations",
-            "80/10/10 train/val/test split with stratification",
-            "Data normalization: parameters to [-1,1], S11 in dB",
-            "Outlier detection removes >3σ anomalies"
-          ],
-          "dependencies": [
-            "S3-T2"
-          ],
-          "priority": "high",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S3-T7",
-          "team": "core",
-          "title": "Parameter space coverage analysis",
-          "description": "Ensure dataset covers design space adequately",
-          "acceptance_criteria": [
-            "Dipole: length 0.1-2m, radius 1-20mm, freq 50-1000 MHz",
-            "QFH: diameter 0.05-0.5m, turns 0.25-2, freq 100-2000 MHz",
-            "Latin hypercube sampling for uniform coverage",
-            "Minimum 100 samples per antenna type"
-          ],
-          "dependencies": [
-            "S3-T1"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S3-T8",
-          "team": "gpu",
-          "title": "Multi-GPU support for batch runs",
-          "description": "Distribute batch simulations across multiple GPUs",
-          "acceptance_criteria": [
-            "Detect available GPUs and distribute work",
-            "Linear scaling up to 4 GPUs (>3.5x speedup)",
-            "Load balancing prevents idle GPUs",
-            "Single-GPU fallback remains functional"
-          ],
-          "dependencies": [
-            "S3-T1"
-          ],
-          "priority": "low",
-          "estimated_complexity": "high"
-        },
-        {
-          "id": "S3-T9",
-          "team": "ui",
-          "title": "Batch simulation UI",
-          "description": "Interface for configuring parameter sweeps",
-          "acceptance_criteria": [
-            "Parameter range inputs with min/max/step",
-            "Estimated simulation count and time",
-            "Start/pause/cancel batch operations",
-            "Progress shows completed/remaining simulations"
-          ],
-          "dependencies": [
-            "S3-T1"
-          ],
-          "priority": "low",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S3-T10",
-          "team": "3d",
-          "title": "Animation of frequency sweep",
-          "description": "Animate current distribution across frequencies",
+          "id": "S13-T5",
+          "team": "ui",
+          "title": "Mobile Layout Optimization",
+          "description": "Optimize layouts for mobile devices with touch-friendly controls and responsive charts",
           "acceptance_criteria": [
-            "Play button animates through frequency range",
-            "Current distribution updates smoothly",
-            "Frequency indicator shows current value",
-            "Speed control (0.5x to 5x)"
+            "All charts and controls usable on 375px width screens",
+            "Touch targets minimum 44px for mobile interaction",
+            "Charts resize and maintain readability on small screens",
+            "Navigation works with touch gestures"
           ],
           "dependencies": [
-            "S2-T8"
+            "S13-T3"
           ],
-          "priority": "low",
+          "priority": "medium",
           "estimated_complexity": "medium"
         }
       ]
     },
     {
-      "id": "sprint-4",
-      "name": "AI Surrogate Models + Optimization",
-      "description": "Train neural networks on simulation data, implement fast optimization using surrogates",
+      "id": "sprint-14",
+      "name": "ML Hyperparameter Optimization + Model Versioning",
+      "description": "Implement advanced ML training with hyperparameter tuning and robust model management",
       "tasks": [
         {
-          "id": "S4-T1",
+          "id": "S14-T1",
           "team": "aiml",
-          "title": "S11 prediction neural network",
-          "description": "Train model to predict S11 curves from antenna parameters",
+          "title": "Optuna Hyperparameter Sweep Framework",
+          "description": "Integrate Optuna for automated hyperparameter optimization of surrogate models with configurable search spaces",
           "acceptance_criteria": [
-            "Input: antenna params, Output: S11 vs frequency",
-            "Mean absolute error < 1 dB across test set",
-            "Inference time < 10ms for 100 frequency points",
-            "Model size < 10MB after quantization"
+            "Optuna optimizes learning rate (1e-5 to 1e-2), hidden dims (64-512), batch size (16-128)",
+            "Search completes 100+ trials with early stopping on validation loss",
+            "Best hyperparameters improve model accuracy by >10% vs default",
+            "Optimization results saved with trial history and metrics"
           ],
           "dependencies": [
-            "S3-T6"
+            "S11-T5"
           ],
           "priority": "high",
           "estimated_complexity": "high"
         },
         {
-          "id": "S4-T2",
+          "id": "S14-T2",
           "team": "aiml",
-          "title": "Pattern prediction network",
-          "description": "Predict radiation patterns from antenna geometry",
+          "title": "Model Versioning with Metadata",
+          "description": "Implement model versioning system with JSON metadata tracking training parameters, dataset versions, and performance metrics",
           "acceptance_criteria": [
-            "Predict gain at 360×180 angular points",
-            "Pattern correlation > 0.95 with MoM results",
-            "Capture nulls and sidelobes accurately",
-            "Separate models for each antenna type"
+            "Each model version has unique ID with timestamp and git hash",
+            "Metadata JSON includes hyperparameters, dataset version, training metrics",
+            "Model registry allows loading specific versions by ID",
+            "Version comparison shows performance differences across models"
           ],
           "dependencies": [
-            "S3-T6"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "high"
-        },
-        {
-          "id": "S4-T3",
-          "team": "aiml",
-          "title": "ONNX export and optimization",
-          "description": "Export trained models for deployment",
-          "acceptance_criteria": [
-            "Export PyTorch models to ONNX format",
-            "ONNX runtime inference matches PyTorch within 0.1%",
-            "Model optimization: pruning + quantization",
-            "Include metadata: input ranges, units, version"
-          ],
-          "dependencies": [
-            "S4-T1",
-            "S4-T2"
+            "S14-T1"
           ],
           "priority": "high",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S4-T4",
+          "id": "S14-T3",
           "team": "aiml",
-          "title": "Optimization algorithm using surrogates",
-          "description": "Fast antenna optimization via surrogate models",
+          "title": "Training Data Augmentation for Edge Cases",
+          "description": "Implement data augmentation techniques to improve model robustness on edge cases and extreme parameter values",
           "acceptance_criteria": [
-            "Minimize S11 at target frequency using gradient descent",
-            "Convergence in <100 iterations (vs 1000s for MoM)",
-            "Constraints: physical dimensions, bandwidth requirements",
-            "Return top-5 designs ranked by objective"
+            "Augmentation generates 2x training data with parameter noise injection",
+            "Edge case coverage includes extreme frequencies, geometries, materials",
+            "Augmented model shows <20% error on edge case test set",
+            "Training time increases <50% with augmentation enabled"
           ],
           "dependencies": [
-            "S4-T1"
+            "S14-T1"
           ],
-          "priority": "high",
+          "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S4-T5",
+          "id": "S14-T4",
           "team": "aiml",
-          "title": "REST API for predictions",
-          "description": "FastAPI endpoints for surrogate model inference",
+          "title": "Advanced Training Metrics and Monitoring",
+          "description": "Implement comprehensive training monitoring with loss curves, validation metrics, and early stopping",
           "acceptance_criteria": [
-            "POST /predict/s11 returns S11 curve in <50ms",
-            "POST /predict/pattern returns radiation pattern",
-            "POST /optimize returns optimized parameters",
-            "API documentation with request/response schemas"
+            "Training dashboard shows real-time loss curves and validation metrics",
+            "Early stopping prevents overfitting with patience parameter",
+            "Model checkpointing saves best weights during training",
+            "Training logs exported to TensorBoard format"
           ],
           "dependencies": [
-            "S4-T3"
+            "S14-T2"
           ],
           "priority": "medium",
-          "estimated_complexity": "low"
+          "estimated_complexity": "medium"
         },
         {
-          "id": "S4-T6",
+          "id": "S14-T5",
           "team": "core",
-          "title": "ONNX runtime integration",
-          "description": "Load and run ONNX models from Rust",
+          "title": "ML Model Integration API",
+          "description": "Create clean API for integrating trained ML models into the simulation pipeline with fallback to MoM",
           "acceptance_criteria": [
-            "Load ONNX models via ort crate",
-            "Rust inference matches Python within 0.1%",
-            "Benchmark: >1000 inferences/second",
-            "Fallback to MoM solver if model fails"
+            "API loads ONNX models and provides prediction interface",
+            "Automatic fallback to MoM solver if ML prediction fails",
+            "Model prediction time <100ms for typical antenna parameters",
+            "API handles model version switching without restart"
           ],
           "dependencies": [
-            "S4-T3"
+            "S14-T2"
           ],
           "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S4-T7",
-          "team": "ui",
-          "title": "Optimization UI panel",
-          "description": "Interface for AI-driven optimization",
-          "acceptance_criteria": [
-            "Target frequency and S11 goal inputs",
-            "Constraint inputs (size, bandwidth)",
-            "Run optimization button with progress",
-            "Results table with sortable metrics"
-          ],
-          "dependencies": [
-            "S4-T4"
-          ],
-          "priority": "medium",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S4-T8",
-          "team": "ui",
-          "title": "Model accuracy indicators",
-          "description": "Show when using AI predictions vs full simulation",
-          "acceptance_criteria": [
-            "Icon indicates AI/MoM mode for current results",
-            "Confidence intervals on AI predictions",
-            "Button to run full MoM verification",
-            "Warning if parameters outside training range"
-          ],
-          "dependencies": [
-            "S4-T6"
-          ],
-          "priority": "low",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S4-T9",
-          "team": "3d",
-          "title": "Optimization trajectory visualization",
-          "description": "Show parameter evolution during optimization",
-          "acceptance_criteria": [
-            "3D scatter plot of design iterations",
-            "Color by objective function value",
-            "Animate optimization progress",
-            "Click point to load that design"
-          ],
-          "dependencies": [
-            "S4-T4"
-          ],
-          "priority": "low",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S4-T10",
-          "team": "gpu",
-          "title": "GPU inference for ONNX models",
-          "description": "Accelerate neural network inference on GPU",
-          "acceptance_criteria": [
-            "ONNX Runtime with CUDA/DirectML provider",
-            "Batch inference for parameter sweeps",
-            "5x speedup vs CPU for batch size >100",
-            "Automatic CPU fallback"
-          ],
-          "dependencies": [
-            "S4-T6"
-          ],
-          "priority": "low",
           "estimated_complexity": "medium"
         }
       ]
     },
     {
-      "id": "sprint-5",
-      "name": "Polish + Reporting + Deployment",
-      "description": "Project save/load, report generation, performance optimization, and release preparation",
+      "id": "sprint-15",
+      "name": "Integration + Polish",
+      "description": "Integrate all Sprint 11 features, comprehensive testing, performance optimization, and user experience polish",
       "tasks": [
         {
-          "id": "S5-T1",
+          "id": "S15-T1",
           "team": "core",
-          "title": "Project file format and save/load",
-          "description": "Serialize complete project state",
+          "title": "End-to-End Yagi Simulation Pipeline",
+          "description": "Integrate Yagi-Uda geometry, GPU-accelerated MoM, and ML surrogate into complete simulation pipeline",
           "acceptance_criteria": [
-            "Save antenna configs, results, and settings to .promin file",
-            "File format: versioned JSON with embedded binary data",
-            "Load restores exact UI state including viewport camera",
-            "Backwards compatibility for format changes"
+            "Complete Yagi simulation (geometry → MoM → results) works end-to-end",
+            "GPU acceleration automatically enabled when available",
+            "ML surrogate provides results within 5% of MoM for trained parameter ranges",
+            "Pipeline handles errors gracefully with informative messages"
           ],
-          "dependencies": [],
-          "priority": "high",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S5-T2",
-          "team": "ui",
-          "title": "Report generation system",
-          "description": "Export professional PDF reports",
-          "acceptance_criteria": [
-            "Include: antenna image, S11/pattern plots, parameters table",
-            "Company logo and project metadata support",
-            "Multi-page layout with page numbers",
-            "Export via Tauri print-to-PDF API"
+          "dependencies": [
+            "S12-T1",
+            "S14-T5"
           ],
-          "dependencies": [],
           "priority": "high",
           "estimated_complexity": "high"
         },
         {
-          "id": "S5-T3",
+          "id": "S15-T2",
           "team": "ui",
-          "title": "Preferences and settings panel",
-          "description": "User preferences for units, defaults, appearance",
+          "title": "Smith Chart + S11 Chart Integration",
+          "description": "Complete integration between Smith chart and S11 chart with synchronized cursors and data display",
           "acceptance_criteria": [
-            "Unit selection: metric/imperial, MHz/GHz",
-            "Default frequency ranges per antenna type",
-            "UI theme: light/dark/system",
-            "GPU acceleration enable/disable"
+            "Clicking Smith chart updates S11 chart frequency cursor",
+            "S11 chart frequency selection updates Smith chart marker",
+            "Both charts display consistent impedance/frequency data",
+            "Chart synchronization works with imported Touchstone data"
           ],
-          "dependencies": [],
-          "priority": "medium",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S5-T4",
-          "team": "core",
-          "title": "Performance profiling and optimization",
-          "description": "Identify and fix performance bottlenecks",
-          "acceptance_criteria": [
-            "Profile MoM solver with 10k+ segments",
-            "Optimize memory allocations (reduce by >50%)",
-            "Parallel matrix fill on CPU (Rayon)",
-            "Achieve <1s simulation for 1000 segments"
+          "dependencies": [
+            "S13-T2"
           ],
-          "dependencies": [],
-          "priority": "medium",
+          "priority": "high",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S5-T5",
+          "id": "S15-T3",
           "team": "3d",
-          "title": "High-quality rendering mode",
-          "description": "Publication-ready 3D renders",
+          "title": "Yagi Visualization Polish",
+          "description": "Polish Yagi 3D visualization with improved materials, lighting, and performance optimization",
           "acceptance_criteria": [
-            "Anti-aliasing and high-res shadows",
-            "Export viewport as PNG at custom resolution",
-            "White background option for reports",
-            "Smooth edges on wireframe antennas"
+            "Yagi elements render with realistic metallic materials",
+            "Lighting enhances 3D depth perception without performance impact",
+            "Frame rate maintains >30fps with complex Yagi arrays",
+            "Visual quality scales appropriately with device capabilities"
           ],
-          "dependencies": [],
-          "priority": "low",
+          "dependencies": [
+            "S12-T3",
+            "S12-T5"
+          ],
+          "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S5-T6",
-          "team": "ui",
-          "title": "Keyboard shortcuts and productivity",
-          "description": "Power user features for efficiency",
-          "acceptance_criteria": [
-            "Ctrl+S save, Ctrl+O open, Ctrl+N new project",
-            "F5 run simulation, Esc cancel operation",
-            "Tab navigation between form fields",
-            "Tooltips show shortcuts"
-          ],
-          "dependencies": [],
-          "priority": "low",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S5-T7",
-          "team": "core",
-          "title": "Comprehensive error handling",
-          "description": "Graceful handling of edge cases",
-          "acceptance_criteria": [
-            "Validate antenna dimensions (no negative/zero values)",
-            "Handle singular matrices with informative errors",
-            "Frequency range validation (fmax > fmin)",
-            "All errors shown in UI, not console"
-          ],
-          "dependencies": [],
-          "priority": "medium",
-          "estimated_complexity": "low"
-        },
-        {
-          "id": "S5-T8",
+          "id": "S15-T4",
           "team": "gpu",
-          "title": "GPU compatibility testing",
-          "description": "Ensure broad GPU support",
+          "title": "GPU Performance Optimization",
+          "description": "Optimize WGPU compute shaders for maximum performance and memory efficiency",
           "acceptance_criteria": [
-            "Test on NVIDIA, AMD, Intel GPUs",
-            "Minimum: DirectX 12 or Vulkan 1.1",
-            "Performance scaling documentation",
-            "Disable GPU features on old hardware"
+            "GPU memory usage optimized for largest supported antenna meshes",
+            "Compute shader utilizes >80% of available GPU cores",
+            "Memory transfers minimized with efficient buffer reuse",
+            "Performance scales linearly with antenna complexity"
           ],
-          "dependencies": [],
+          "dependencies": [
+            "S12-T1",
+            "S12-T2"
+          ],
           "priority": "medium",
           "estimated_complexity": "medium"
         },
         {
-          "id": "S5-T9",
+          "id": "S15-T5",
           "team": "aiml",
-          "title": "Model versioning and updates",
-          "description": "System for updating AI models post-release",
+          "title": "Production ML Model Deployment",
+          "description": "Deploy optimized ML models with proper error handling and performance monitoring",
           "acceptance_criteria": [
-            "Models tagged with version and training date",
-            "Check for updates from model repository",
-            "Download new models in background",
-            "Rollback to previous version if needed"
+            "Production models load in <5 seconds on application startup",
+            "Model inference handles invalid inputs gracefully",
+            "Performance monitoring tracks prediction accuracy vs MoM",
+            "Model updates can be deployed without application restart"
           ],
-          "dependencies": [],
-          "priority": "low",
-          "estimated_complexity": "medium"
-        },
-        {
-          "id": "S5-T10",
-          "team": "ui",
-          "title": "Tutorial and help system",
-          "description": "In-app guidance for new users",
-          "acceptance_criteria": [
-            "Interactive tutorial for first-time users",
-            "Context-sensitive help buttons",
-            "Example projects (dipole, patch, QFH)",
-            "Link to online documentation"
+          "dependencies": [
+            "S14-T4",
+            "S15-T1"
           ],
-          "dependencies": [],
-          "priority": "low",
+          "priority": "medium",
           "estimated_complexity": "medium"
         }
       ]
     }
   ],
   "shared_interfaces_needed": [
-    "SimulationResult type shared between core and UI teams",
-    "ONNX model format specification for aiml→core handoff",
-    "GPU kernel interface between core and gpu teams",
-    "3D mesh format for antenna geometry (core→3d)",
-    "Batch simulation job format for distributed processing",
-    "Project file schema for save/load functionality"
+    "YagiUdaAntenna struct with element parameters for 3D rendering",
+    "WGPU compute buffer interface for impedance matrix data",
+    "Smith chart coordinate transform utilities",
+    "ML model prediction API with ONNX integration",
+    "Touchstone S2P export format specification",
+    "Training data schema for Yagi parameter sweeps",
+    "GPU benchmark results data structure",
+    "Theme system interface for dark mode support",
+    "Responsive layout breakpoint definitions",
+    "Model versioning metadata JSON schema"
   ]
 }
