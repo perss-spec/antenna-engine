@@ -722,6 +722,47 @@ canvas.addEventListener('mouseleave', () => {
 
 window.addEventListener('resize', resize);
 
+// ── Live Status Polling ──
+const teamIdMap = { core: 'core', ui: 'ui', '3d': '3d', gpu: 'gpu', aiml: 'aiml' };
+
+async function fetchStatus() {
+  try {
+    const n8nBase = location.hostname === 'localhost' ? 'http://localhost:5678' : 'https://girls-letting-essays-days.trycloudflare.com';
+    const resp = await fetch(n8nBase + '/webhook/ae/status');
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    const badge = document.querySelector('.status-badge');
+    if (badge) badge.textContent = data.status === 'running' ? 'Pipeline Running' : 'Pipeline ' + data.status;
+
+    if (data.teams) {
+      Object.entries(data.teams).forEach(([key, info]) => {
+        const nodeId = teamIdMap[key] || key;
+        const node = nodeMap[nodeId];
+        if (!node) return;
+        const st = info.status === 'completed' ? 'success' : info.status === 'error' ? 'error' : info.status === 'running' ? 'running' : 'idle';
+        node.status = st;
+        node.lastRun = st === 'running' ? 'now' : st === 'success' ? 'done' : st === 'error' ? 'failed' : node.lastRun;
+      });
+    }
+
+    // Mark dispatch/review/integrate based on phase
+    if (data.current_phase === 'teams') {
+      nodeMap.dispatch.status = 'running';
+      nodeMap.dispatch.lastRun = 'now';
+    } else if (data.current_phase === 'review') {
+      nodeMap.dispatch.status = 'success';
+      nodeMap.review.status = 'running';
+    } else if (data.current_phase === 'integrate') {
+      nodeMap.review.status = 'success';
+      nodeMap.integrate.status = 'running';
+    }
+  } catch (e) { /* silently ignore */ }
+}
+
+fetchStatus();
+setInterval(fetchStatus, 3000);
+
 // ── Init ──
 resize();
 render();
