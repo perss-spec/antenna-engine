@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Activity, Radio, Zap, Signal } from 'lucide-react';
+import { Activity, Radio, Zap, Signal, ChevronDown } from 'lucide-react';
 import AntennaForm from './components/AntennaForm/AntennaForm';
 import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
 import { getCategoryForId } from '@/lib/antennaKB';
@@ -238,6 +238,23 @@ interface OptimizationParams {
   targetFrequency: number;
   targetS11: number;
   method: 'gradient' | 'random' | 'nelder_mead';
+}
+
+function SidebarSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-t border-border/50">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-text-dim hover:text-text transition-colors"
+      >
+        {title}
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="pb-2">{children}</div>}
+    </div>
+  );
 }
 
 function App() {
@@ -521,51 +538,55 @@ function App() {
   return (
     <div className="flex h-screen bg-background text-text overflow-hidden">
       {/* Sidebar */}
-      <div className="w-80 bg-surface border-r border-border flex flex-col overflow-auto">
+      <div className="w-[340px] bg-surface border-r border-border flex flex-col overflow-hidden">
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-border flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-accent to-accent-hover rounded-lg flex items-center justify-center text-lg font-bold text-white">
+        <div className="px-4 py-3 border-b border-border flex items-center gap-2.5 shrink-0">
+          <div className="w-8 h-8 bg-gradient-to-br from-accent to-accent-hover rounded-lg flex items-center justify-center text-base font-bold text-white">
             P
           </div>
           <div>
-            <div className="text-base font-bold text-white tracking-tight">PROMIN</div>
-            <div className="text-[11px] text-text-dim mt-0.5">Antenna Studio v0.3</div>
+            <div className="text-sm font-bold text-white tracking-tight">PROMIN</div>
+            <div className="text-[10px] text-text-dim">Antenna Studio v0.3</div>
+          </div>
+          <div className="ml-auto text-[9px] text-text-dim/50">
+            {isTauri ? 'Native' : 'Browser'}
           </div>
         </div>
 
-        {/* Antenna Form */}
-        <AntennaForm
-          parameters={params}
-          onParametersChange={setParams}
-          onSubmit={handleSubmit}
-          isSimulating={isSimulating}
-        />
-
-        {/* Frequency Presets */}
-        <div className="px-6 py-3 border-t border-border">
-          <FrequencyPresets
-            onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
-            disabled={isSimulating || isOptimizing}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Antenna Form */}
+          <AntennaForm
+            parameters={params}
+            onParametersChange={setParams}
+            onSubmit={handleSubmit}
+            isSimulating={isSimulating}
           />
+
+          {/* Frequency Presets — collapsible */}
+          <SidebarSection title="Freq Presets" defaultOpen>
+            <FrequencyPresets
+              onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
+              disabled={isSimulating || isOptimizing}
+            />
+          </SidebarSection>
+
+          {/* Optimization — collapsible */}
+          <SidebarSection title="Optimization">
+            <OptimizationPanel
+              onStartOptimization={handleStartOptimization}
+              onStopOptimization={handleStopOptimization}
+              isOptimizing={isOptimizing}
+              progress={optimizationProgress}
+              results={optimizationResults}
+            />
+          </SidebarSection>
         </div>
 
-        {/* Optimization Panel */}
-        <div className="border-t border-border">
-          <OptimizationPanel
-            onStartOptimization={handleStartOptimization}
-            onStopOptimization={handleStopOptimization}
-            isOptimizing={isOptimizing}
-            progress={optimizationProgress}
-            results={optimizationResults}
-          />
-        </div>
-
-        {/* Solver Info */}
-        <div className="px-6 py-4 border-t border-border mt-auto">
-          <div className="text-[11px] text-text-dim leading-relaxed">
-            Solver: Method of Moments (MoM)
-            <br />Engine: Rust + rayon parallel
-            <br />{isTauri ? 'Mode: Native (Tauri)' : 'Mode: Browser Preview'}
+        {/* Solver Info — fixed at bottom */}
+        <div className="px-4 py-2 border-t border-border shrink-0">
+          <div className="text-[10px] text-text-dim/60">
+            MoM Solver {isTauri ? '| Rust+rayon' : '| Browser mock'}
           </div>
         </div>
       </div>

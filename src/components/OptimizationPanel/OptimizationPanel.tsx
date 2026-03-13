@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface OptimizationResult {
   iteration: number;
@@ -42,17 +41,15 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   const [targetS11, setTargetS11] = useState<number>(-20);
   const [method, setMethod] = useState<'gradient' | 'random' | 'nelder_mead'>('gradient');
 
-  const handleStartOptimization = useCallback((e: FormEvent) => {
+  const handleStart = useCallback((e: FormEvent) => {
     e.preventDefault();
     if (onStartOptimization && !isOptimizing) {
       onStartOptimization({ targetFrequency, targetS11, method });
     }
   }, [targetFrequency, targetS11, method, onStartOptimization, isOptimizing]);
 
-  const handleStopOptimization = useCallback(() => {
-    if (onStopOptimization && isOptimizing) {
-      onStopOptimization();
-    }
+  const handleStop = useCallback(() => {
+    if (onStopOptimization && isOptimizing) onStopOptimization();
   }, [onStopOptimization, isOptimizing]);
 
   const handleFrequencyChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -67,168 +64,115 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
     setMethod(e.target.value as 'gradient' | 'random' | 'nelder_mead');
   }, []);
 
-  const formatFrequency = (freq: number): string => {
-    if (freq >= 1000) return `${(freq / 1000).toFixed(2)} GHz`;
-    return `${freq} MHz`;
-  };
-
-  const formatS11 = (s11: number): string => `${s11.toFixed(2)} dB`;
-
-  const formatTimestamp = (timestamp: Date): string => timestamp.toLocaleTimeString();
-
-  const getBestResult = (): OptimizationResult | null => {
-    if (results.length === 0) return null;
-    return results.reduce((best, current) => current.s11 < best.s11 ? current : best);
-  };
-
-  const bestResult = getBestResult();
+  const bestResult = results.length > 0
+    ? results.reduce((b, c) => c.s11 < b.s11 ? c : b)
+    : null;
 
   return (
-    <div className={`p-5 text-text ${className}`}>
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-text mb-4">Antenna Optimization</h3>
-
-        <form onSubmit={handleStartOptimization} className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="target-frequency">Target Frequency (MHz)</Label>
-              <Input
-                id="target-frequency"
-                type="number"
-                value={targetFrequency}
-                onChange={handleFrequencyChange}
-                min={100}
-                max={10000}
-                step={1}
-                disabled={isOptimizing}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="target-s11">Target S11 (dB)</Label>
-              <Input
-                id="target-s11"
-                type="number"
-                value={targetS11}
-                onChange={handleS11Change}
-                min={-60}
-                max={0}
-                step={0.1}
-                disabled={isOptimizing}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="optimization-method">Optimization Method</Label>
-              <Select
-                id="optimization-method"
-                value={method}
-                onChange={handleMethodChange}
-                disabled={isOptimizing}
-              >
-                <option value="gradient">Gradient Descent</option>
-                <option value="random">Random Search</option>
-                <option value="nelder_mead">Nelder-Mead Simplex</option>
-              </Select>
-            </div>
+    <div className={`px-4 py-3 ${className}`}>
+      <form onSubmit={handleStart} className="flex flex-col gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="target-frequency" className="text-[10px]">Freq (MHz)</Label>
+            <Input
+              id="target-frequency"
+              type="number"
+              value={targetFrequency}
+              onChange={handleFrequencyChange}
+              min={100}
+              max={10000}
+              step={1}
+              disabled={isOptimizing}
+              className="h-7 text-[11px]"
+            />
           </div>
-
-          <div className="flex gap-3 items-center">
-            {!isOptimizing ? (
-              <Button type="submit" className="bg-accent hover:bg-accent-hover text-white">
-                Start Optimization
-              </Button>
-            ) : (
-              <Button type="button" variant="destructive" onClick={handleStopOptimization}>
-                Stop Optimization
-              </Button>
-            )}
-
-            {isOptimizing && (
-              <div className="flex-1 min-w-[120px]">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[11px] text-text-muted">Progress</span>
-                  <span className="text-[11px] text-text-muted tabular-nums">{progress.toFixed(1)}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="target-s11" className="text-[10px]">S11 (dB)</Label>
+            <Input
+              id="target-s11"
+              type="number"
+              value={targetS11}
+              onChange={handleS11Change}
+              min={-60}
+              max={0}
+              step={0.1}
+              disabled={isOptimizing}
+              className="h-7 text-[11px]"
+            />
           </div>
-        </form>
-      </div>
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="opt-method" className="text-[10px]">Method</Label>
+            <Select
+              id="opt-method"
+              value={method}
+              onChange={handleMethodChange}
+              disabled={isOptimizing}
+              className="h-7 text-[11px]"
+            >
+              <option value="gradient">Gradient</option>
+              <option value="random">Random</option>
+              <option value="nelder_mead">Nelder-Mead</option>
+            </Select>
+          </div>
+        </div>
 
-      {bestResult && (
-        <Card className="mb-5">
-          <CardHeader>
-            <CardTitle className="text-success">Best Result</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <span className="text-text-muted">Frequency: </span>
-                <span className="text-text tabular-nums">{formatFrequency(bestResult.frequency)}</span>
+        <div className="flex gap-2 items-center">
+          {!isOptimizing ? (
+            <Button type="submit" className="h-7 text-xs bg-accent hover:bg-accent-hover text-white px-3">
+              Optimize
+            </Button>
+          ) : (
+            <Button type="button" variant="destructive" onClick={handleStop} className="h-7 text-xs px-3">
+              Stop
+            </Button>
+          )}
+
+          {isOptimizing && (
+            <div className="flex-1">
+              <div className="flex justify-between text-[10px] text-text-dim mb-0.5">
+                <span>Progress</span>
+                <span className="tabular-nums">{progress.toFixed(0)}%</span>
               </div>
-              <div>
-                <span className="text-text-muted">S11: </span>
-                <span className="text-success tabular-nums font-semibold">{formatS11(bestResult.s11)}</span>
-              </div>
-              <div>
-                <span className="text-text-muted">Length: </span>
-                <span className="text-text tabular-nums">{bestResult.length.toFixed(3)}m</span>
-              </div>
-              <div>
-                <span className="text-text-muted">Radius: </span>
-                <span className="text-text tabular-nums">{(bestResult.radius * 1000).toFixed(2)}mm</span>
+              <div className="w-full h-1 bg-border rounded-full overflow-hidden">
+                <div className="h-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }} />
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {bestResult && !isOptimizing && (
+            <span className="text-[10px] text-success tabular-nums ml-auto">
+              Best: {bestResult.s11.toFixed(1)} dB
+            </span>
+          )}
+        </div>
+      </form>
 
       {results.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-text mb-3">
-            Results ({results.length} iterations)
-          </h4>
-
-          <div className="bg-surface border border-border rounded-lg overflow-hidden">
-            <div className="max-h-[200px] overflow-y-auto">
-              <table className="w-full text-[11px]">
-                <thead className="text-text-muted uppercase tracking-wider border-b border-border sticky top-0 bg-surface">
-                  <tr>
-                    <th className="py-2 px-2 text-left">#</th>
-                    <th className="py-2 px-2 text-left">Freq</th>
-                    <th className="py-2 px-2 text-left">Length</th>
-                    <th className="py-2 px-2 text-left">S11</th>
-                    <th className="py-2 px-2 text-left">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.slice().reverse().map((result) => {
-                    const isBest = result === bestResult;
-                    return (
-                      <tr
-                        key={result.iteration}
-                        className={`border-b border-border/50 ${isBest ? 'bg-success/5' : 'hover:bg-surface-hover'}`}
-                      >
-                        <td className="py-1.5 px-2 text-text-muted tabular-nums">{result.iteration}</td>
-                        <td className="py-1.5 px-2 text-text tabular-nums">{formatFrequency(result.frequency)}</td>
-                        <td className="py-1.5 px-2 text-text tabular-nums">{result.length.toFixed(4)}m</td>
-                        <td className={`py-1.5 px-2 tabular-nums ${isBest ? 'text-success font-semibold' : result.s11 < targetS11 ? 'text-success' : 'text-text'}`}>
-                          {formatS11(result.s11)}
-                        </td>
-                        <td className="py-1.5 px-2 text-text-muted tabular-nums">{formatTimestamp(result.timestamp)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        <div className="mt-2 bg-surface border border-border/50 rounded overflow-hidden">
+          <div className="max-h-[120px] overflow-y-auto">
+            <table className="w-full text-[10px]">
+              <thead className="text-text-dim uppercase tracking-wider border-b border-border/50 sticky top-0 bg-surface">
+                <tr>
+                  <th className="py-1 px-1.5 text-left">#</th>
+                  <th className="py-1 px-1.5 text-left">Freq</th>
+                  <th className="py-1 px-1.5 text-left">Len</th>
+                  <th className="py-1 px-1.5 text-left">S11</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.slice(-8).reverse().map((r) => {
+                  const isBest = r === bestResult;
+                  return (
+                    <tr key={r.iteration} className={isBest ? 'bg-success/5' : ''}>
+                      <td className="py-0.5 px-1.5 text-text-dim tabular-nums">{r.iteration}</td>
+                      <td className="py-0.5 px-1.5 tabular-nums">{r.frequency >= 1000 ? `${(r.frequency/1000).toFixed(1)}G` : `${r.frequency}M`}</td>
+                      <td className="py-0.5 px-1.5 tabular-nums">{r.length.toFixed(3)}m</td>
+                      <td className={`py-0.5 px-1.5 tabular-nums ${isBest ? 'text-success font-semibold' : ''}`}>{r.s11.toFixed(1)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
