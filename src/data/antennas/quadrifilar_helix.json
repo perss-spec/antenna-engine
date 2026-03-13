@@ -1,8 +1,8 @@
 {
   "id": "quadrifilar_helix",
-  "name": "Quadrifilar Helix Antenna",
+  "name": "Quadrifilar Helical (wire)",
   "category": "wire",
-  "description": "A four-wire helical antenna wound in a helical configuration with 90-degree phase differences between adjacent elements. Provides excellent circular polarization characteristics and hemispherical coverage patterns. Commonly used for satellite communications and GPS applications due to its compact size and broad beamwidth.",
+  "description": "A quadrifilar helical antenna consists of four helical wire elements wound around a cylindrical support structure, typically fed in quadrature phase to produce circular polarization. This antenna type provides excellent circular polarization purity and hemispherical coverage patterns. It is widely used in satellite communications, GPS applications, and mobile communications where circular polarization and broad beamwidth are required.",
   "frequencyRange": {
     "min": 100000000,
     "max": 10000000000,
@@ -19,17 +19,17 @@
     "Satellite communications",
     "GPS receivers",
     "Mobile satellite terminals",
-    "Telemetry systems",
     "RFID readers",
-    "Handheld radios"
+    "Telemetry systems",
+    "Space communications"
   ],
   "parameters": {
     "helix_diameter": {
       "name": "Helix Diameter",
       "symbol": "D",
       "unit": "m",
-      "description": "Diameter of the helical structure",
-      "defaultFormula": "lambda / (pi * sqrt(2))",
+      "description": "Diameter of the cylindrical helix structure",
+      "defaultFormula": "lambda / (2 * pi)",
       "range": {
         "min": 0.05,
         "max": 0.5
@@ -39,7 +39,7 @@
       "name": "Helix Length",
       "symbol": "L",
       "unit": "m",
-      "description": "Total axial length of the helix",
+      "description": "Axial length of each helical element",
       "defaultFormula": "lambda / 4",
       "range": {
         "min": 0.1,
@@ -50,116 +50,105 @@
       "name": "Pitch Angle",
       "symbol": "alpha",
       "unit": "degrees",
-      "description": "Angle between helix wire and ground plane",
-      "defaultFormula": "atan(pitch / (pi * D))",
+      "description": "Angle between helix axis and wire element",
+      "defaultFormula": "atan(lambda / (4 * pi * D))",
       "range": {
         "min": 5,
-        "max": 30
+        "max": 45
       }
     },
-    "wire_diameter": {
-      "name": "Wire Diameter",
+    "wire_radius": {
+      "name": "Wire Radius",
       "symbol": "a",
       "unit": "m",
-      "description": "Diameter of the conductor wire",
-      "defaultFormula": "lambda / 200",
+      "description": "Radius of the wire conductor",
+      "defaultFormula": "lambda / 1000",
       "range": {
         "min": 0.0001,
         "max": 0.01
       }
     },
-    "ground_plane_diameter": {
-      "name": "Ground Plane Diameter",
-      "symbol": "Dg",
-      "unit": "m",
-      "description": "Diameter of the ground plane reflector",
-      "defaultFormula": "lambda / 2",
-      "range": {
-        "min": 0.1,
-        "max": 1
-      }
-    },
-    "number_of_turns": {
+    "turns": {
       "name": "Number of Turns",
       "symbol": "N",
       "unit": "dimensionless",
-      "description": "Total number of helical turns per element",
-      "defaultFormula": "0.25",
+      "description": "Number of helical turns per element",
+      "defaultFormula": "L / (pi * D * tan(alpha))",
       "range": {
-        "min": 0.125,
-        "max": 2
+        "min": 0.25,
+        "max": 3
       }
     }
   },
   "designMethodology": {
-    "overview": "Design process involves determining helix geometry for desired frequency, calculating feed network for quadrature phasing, optimizing for circular polarization purity, and matching to desired impedance.",
+    "overview": "Design process involves determining helix geometry for desired frequency, calculating wire dimensions, optimizing for circular polarization, and implementing quadrature feed network.",
     "steps": [
       {
         "step": 1,
-        "title": "Determine Operating Frequency and Wavelength",
-        "description": "Calculate free-space wavelength and establish design frequency",
-        "formula": "lambda = c / f"
+        "title": "Determine Operating Frequency",
+        "description": "Establish center frequency and bandwidth requirements",
+        "formula": "f0 = c / lambda"
       },
       {
         "step": 2,
         "title": "Calculate Helix Diameter",
-        "description": "Set helix diameter for optimal radiation characteristics",
-        "formula": "D = lambda / (pi * sqrt(2))"
+        "description": "Set diameter for proper circumference relative to wavelength",
+        "formula": "D = lambda / (2 * pi)"
       },
       {
         "step": 3,
-        "title": "Determine Helix Length and Pitch",
-        "description": "Calculate axial length and pitch angle for quarter-wave resonance",
-        "formula": "L = lambda / 4, pitch = L / N"
+        "title": "Determine Helix Length",
+        "description": "Calculate axial length for quarter-wave resonance",
+        "formula": "L = lambda / 4"
       },
       {
         "step": 4,
-        "title": "Design Feed Network",
-        "description": "Create 90-degree hybrid network for quadrature feeding",
-        "formula": "Phase_n = n * 90 degrees, n = 0,1,2,3"
+        "title": "Calculate Pitch Angle",
+        "description": "Determine pitch angle for optimal radiation characteristics",
+        "formula": "alpha = atan(lambda / (4 * pi * D))"
       },
       {
         "step": 5,
-        "title": "Calculate Input Impedance",
-        "description": "Determine individual element impedance and feed network matching",
-        "formula": "Z_in = 140 * (D/lambda) * sqrt(1 + (pitch/(pi*D))^2)"
+        "title": "Size Wire Elements",
+        "description": "Select wire radius for mechanical stability and electrical performance",
+        "formula": "a = lambda / 1000"
       },
       {
         "step": 6,
-        "title": "Optimize Ground Plane Size",
-        "description": "Size ground plane for desired front-to-back ratio",
-        "formula": "Dg >= lambda / 2"
+        "title": "Design Feed Network",
+        "description": "Create 90-degree hybrid network for quadrature excitation",
+        "formula": "Z_feed = 50 / 4 = 12.5 ohms per element"
       },
       {
         "step": 7,
-        "title": "Verify Circular Polarization",
-        "description": "Check axial ratio and adjust geometry if needed",
-        "formula": "AR = 20 * log10((E_max + E_min)/(E_max - E_min))"
+        "title": "Optimize Axial Ratio",
+        "description": "Adjust element spacing and phasing for circular polarization",
+        "formula": "AR = 20 * log10((E_max + E_min) / (E_max - E_min))"
       }
     ]
   },
   "equations": {
-    "resonantFrequency": "f_r = c / (pi * sqrt(D^2 + (pitch)^2))",
-    "inputImpedance": "Z_in = 140 * (D/lambda) * sqrt(1 + (pitch/(pi*D))^2)",
-    "gain": "G = 10 * log10(4 * pi * D^2 / lambda^2) + 3",
-    "radiationPattern": "E(theta,phi) = (sin(theta) * cos(phi + n*pi/2)) * exp(-j*k*r)",
-    "bandwidth": "BW = 2 * (f_high - f_low) / f_center"
+    "resonantFrequency": "f0 = c / (pi * D * sqrt(1 + (L / (pi * D))^2))",
+    "inputImpedance": "Z_in = 140 * (D / lambda)^2 * (1 + 0.2 * (D / lambda)^2)",
+    "gain": "G = 10 * log10(15 * (D / lambda)^2 * L / lambda * sin^2(alpha))",
+    "radiationPattern": "E(theta, phi) = (sin(theta) / (1 + cos(theta))) * exp(j * n * phi)",
+    "bandwidth": "BW = 2 * (f_high - f_low) / f0 = 4 * a / D"
   },
   "mockSolverHints": {
-    "impedanceModel": "Use transmission line model with helical geometry corrections and mutual coupling between elements",
-    "radiationModel": "Apply superposition of four helical elements with 90-degree phase progression and pattern multiplication",
+    "impedanceModel": "Use method of moments with wire segments and junction analysis for four-element helical structure",
+    "radiationModel": "Apply helical antenna theory with quadrature excitation and pattern multiplication for four elements",
     "keyAssumptions": [
-      "Small pitch angle approximation",
+      "Thin wire approximation valid",
+      "Perfect ground plane if present",
+      "Quadrature phase excitation",
       "Uniform current distribution along helix",
-      "Negligible mutual coupling between non-adjacent elements",
-      "Perfect ground plane reflection",
-      "Thin wire approximation valid"
+      "Far-field radiation pattern"
     ]
   },
   "references": [
-    "Balanis, C.A., 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 9",
-    "Stutzman, W.L. and Thiele, G.A., 'Antenna Theory and Design', 3rd Edition, Chapter 8",
-    "Volakis, J.L., 'Antenna Engineering Handbook', 4th Edition, Chapter 7",
-    "Kraus, J.D. and Marhefka, R.J., 'Antennas for All Applications', 3rd Edition"
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', Chapter 9",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', Chapter 8",
+    "Volakis, J.L. 'Antenna Engineering Handbook', Chapter 7",
+    "Kraus, J.D. 'Antennas for All Applications', Chapter 7"
   ]
 }
