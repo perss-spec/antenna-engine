@@ -69,11 +69,11 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
     : null;
 
   return (
-    <div className={`px-4 py-3 ${className}`}>
-      <form onSubmit={handleStart} className="flex flex-col gap-2">
-        <div className="grid grid-cols-3 gap-2">
+    <div className={`px-6 py-4 ${className}`}>
+      <form onSubmit={handleStart} className="flex flex-col gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col gap-0.5">
-            <Label htmlFor="target-frequency" className="text-[10px]">Freq (MHz)</Label>
+            <Label htmlFor="target-frequency" className="text-xs">Freq (MHz)</Label>
             <Input
               id="target-frequency"
               type="number"
@@ -83,11 +83,11 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               max={10000}
               step={1}
               disabled={isOptimizing}
-              className="h-7 text-[11px]"
+              className="h-9 text-xs"
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <Label htmlFor="target-s11" className="text-[10px]">S11 (dB)</Label>
+            <Label htmlFor="target-s11" className="text-xs">S11 (dB)</Label>
             <Input
               id="target-s11"
               type="number"
@@ -97,17 +97,17 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               max={0}
               step={0.1}
               disabled={isOptimizing}
-              className="h-7 text-[11px]"
+              className="h-9 text-xs"
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <Label htmlFor="opt-method" className="text-[10px]">Method</Label>
+            <Label htmlFor="opt-method" className="text-xs">Method</Label>
             <Select
               id="opt-method"
               value={method}
               onChange={handleMethodChange}
               disabled={isOptimizing}
-              className="h-7 text-[11px]"
+              className="h-9 text-xs"
             >
               <option value="gradient">Gradient</option>
               <option value="random">Random</option>

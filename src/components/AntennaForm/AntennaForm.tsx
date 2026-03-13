@@ -137,14 +137,14 @@ const AntennaForm: FC<AntennaFormProps> = ({
     <div className={cn('flex flex-col', className)}>
       <form onSubmit={handleSubmit} className="flex flex-col">
         {/* Antenna Type */}
-        <div className="px-4 py-3 flex flex-col gap-1.5">
-          <Label htmlFor="antennaType" className="text-[11px]">Antenna Type</Label>
+        <div className="px-6 py-4 flex flex-col gap-2">
+          <Label htmlFor="antennaType" className="text-xs">Antenna Type</Label>
           <Select
             id="antennaType"
             value={localParams.antennaType}
             onChange={handleTypeChange}
             disabled={isSimulating}
-            className="h-8 text-xs"
+            className="h-9 text-xs"
           >
             {CATEGORY_ORDER.map(cat => {
               const items = grouped[cat];
@@ -166,9 +166,9 @@ const AntennaForm: FC<AntennaFormProps> = ({
         </div>
 
         {/* Core Parameters */}
-        <div className="px-4 pb-3 grid grid-cols-2 gap-x-3 gap-y-2">
+        <div className="px-6 pb-4 grid grid-cols-2 gap-x-4 gap-y-3">
           <div className="col-span-2 flex flex-col gap-1">
-            <Label htmlFor="frequency" className="text-[11px]">Frequency (MHz)</Label>
+            <Label htmlFor="frequency" className="text-xs">Frequency (MHz)</Label>
             <Input
               id="frequency"
               type="number"
@@ -179,14 +179,14 @@ const AntennaForm: FC<AntennaFormProps> = ({
               step={0.1}
               disabled={isSimulating}
               required
-              className="h-8 text-xs"
+              className="h-9 text-xs"
             />
           </div>
 
           {showWireParams && (
             <>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="length" className="text-[11px]">Length (mm)</Label>
+                <Label htmlFor="length" className="text-xs">Length (mm)</Label>
                 <Input
                   id="length"
                   type="number"
@@ -196,11 +196,11 @@ const AntennaForm: FC<AntennaFormProps> = ({
                   max={100000}
                   step={0.1}
                   disabled={isSimulating}
-                  className="h-8 text-xs"
+                  className="h-9 text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="radius" className="text-[11px]">Radius (mm)</Label>
+                <Label htmlFor="radius" className="text-xs">Radius (mm)</Label>
                 <Input
                   id="radius"
                   type="number"
@@ -210,7 +210,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                   max={10}
                   step={0.01}
                   disabled={isSimulating}
-                  className="h-8 text-xs"
+                  className="h-9 text-xs"
                 />
               </div>
             </>
@@ -219,7 +219,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
           {showPatchParams && (
             <>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="patchWidth" className="text-[11px]">Width (mm)</Label>
+                <Label htmlFor="patchWidth" className="text-xs">Width (mm)</Label>
                 <Input
                   id="patchWidth"
                   type="number"
@@ -229,11 +229,11 @@ const AntennaForm: FC<AntennaFormProps> = ({
                   max={500}
                   step={0.1}
                   disabled={isSimulating}
-                  className="h-8 text-xs"
+                  className="h-9 text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="substrateEr" className="text-[11px]">Er</Label>
+                <Label htmlFor="substrateEr" className="text-xs">Er</Label>
                 <Input
                   id="substrateEr"
                   type="number"
@@ -243,11 +243,11 @@ const AntennaForm: FC<AntennaFormProps> = ({
                   max={20}
                   step={0.1}
                   disabled={isSimulating}
-                  className="h-8 text-xs"
+                  className="h-9 text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="substrateHeight" className="text-[11px]">Sub. H (mm)</Label>
+                <Label htmlFor="substrateHeight" className="text-xs">Sub. H (mm)</Label>
                 <Input
                   id="substrateHeight"
                   type="number"
@@ -257,21 +257,21 @@ const AntennaForm: FC<AntennaFormProps> = ({
                   max={10}
                   step={0.1}
                   disabled={isSimulating}
-                  className="h-8 text-xs"
+                  className="h-9 text-xs"
                 />
               </div>
             </>
           )}
 
           <div className="flex flex-col gap-1">
-            <Label htmlFor="material" className="text-[11px]">Material</Label>
+            <Label htmlFor="material" className="text-xs">Material</Label>
             <Select
               id="material"
               value={localParams.material}
               onChange={handleInputChange('material')}
               disabled={isSimulating}
               required
-              className="h-8 text-xs"
+              className="h-9 text-xs"
             >
               <option value="copper">Copper</option>
               <option value="aluminum">Aluminum</option>
@@ -284,7 +284,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
         {/* KB Extra Parameters — collapsible */}
         {extraKBParams.length > 0 && (
           <CollapsibleSection title="KB Parameters">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               {extraKBParams.slice(0, 6).map(([key, param]) => (
                 <div key={key} className="flex flex-col gap-0.5">
                   <Label htmlFor={`extra-${key}`} className="text-[10px] text-text-dim truncate" title={`${param.name} (${param.symbol})`}>
@@ -309,7 +309,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
         )}
 
         {/* Run button */}
-        <div className="px-4 py-3">
+        <div className="px-6 py-4">
           <div className="relative">
             <Button
               type="submit"
