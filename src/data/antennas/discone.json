@@ -1,0 +1,147 @@
+{
+  "id": "discone",
+  "name": "Discone Antenna",
+  "category": "broadband",
+  "description": "A broadband omnidirectional antenna consisting of a disc and cone configuration that provides wide frequency coverage with consistent radiation patterns. The disc acts as a ground plane while the cone serves as the radiating element, creating a vertically polarized antenna with excellent broadband characteristics. Commonly used in applications requiring wide frequency coverage from VHF through microwave frequencies.",
+  "frequencyRange": {
+    "min": 30000000,
+    "max": 3000000000,
+    "unit": "Hz"
+  },
+  "typicalGain": {
+    "min": 0,
+    "max": 6,
+    "unit": "dBi"
+  },
+  "typicalBandwidth": ">80%",
+  "polarization": "linear",
+  "applications": [
+    "Scanner antennas",
+    "Wideband monitoring",
+    "EMC testing",
+    "Military communications",
+    "Frequency hopping systems",
+    "Test and measurement"
+  ],
+  "parameters": {
+    "disc_diameter": {
+      "name": "Disc Diameter",
+      "symbol": "D_disc",
+      "unit": "m",
+      "description": "Diameter of the disc element that acts as ground plane",
+      "defaultFormula": "0.7 * lambda_max",
+      "range": {
+        "min": 0.5,
+        "max": 1
+      }
+    },
+    "cone_diameter": {
+      "name": "Cone Base Diameter",
+      "symbol": "D_cone",
+      "unit": "m",
+      "description": "Diameter of the cone base at the feed point",
+      "defaultFormula": "0.6 * lambda_max",
+      "range": {
+        "min": 0.4,
+        "max": 0.8
+      }
+    },
+    "cone_height": {
+      "name": "Cone Height",
+      "symbol": "H_cone",
+      "unit": "m",
+      "description": "Height of the cone element from base to apex",
+      "defaultFormula": "0.25 * lambda_max",
+      "range": {
+        "min": 0.2,
+        "max": 0.35
+      }
+    },
+    "cone_angle": {
+      "name": "Cone Half Angle",
+      "symbol": "alpha",
+      "unit": "degrees",
+      "description": "Half angle of the cone measured from vertical axis",
+      "defaultFormula": "atan(D_cone / (2 * H_cone))",
+      "range": {
+        "min": 25,
+        "max": 75
+      }
+    },
+    "gap_height": {
+      "name": "Gap Height",
+      "symbol": "h_gap",
+      "unit": "m",
+      "description": "Vertical separation between disc and cone base",
+      "defaultFormula": "0.01 * lambda_max",
+      "range": {
+        "min": 0.005,
+        "max": 0.02
+      }
+    }
+  },
+  "designMethodology": {
+    "overview": "Design process involves determining optimal disc and cone dimensions based on desired frequency range, calculating cone angle for impedance matching, and optimizing gap spacing for broadband performance.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Determine Operating Frequency Range",
+        "description": "Define the lowest and highest operating frequencies to establish wavelength constraints",
+        "formula": "lambda_max = c / f_min, lambda_min = c / f_max"
+      },
+      {
+        "step": 2,
+        "title": "Calculate Disc Diameter",
+        "description": "Size the disc to provide adequate ground plane at the lowest frequency",
+        "formula": "D_disc = 0.7 * lambda_max"
+      },
+      {
+        "step": 3,
+        "title": "Determine Cone Dimensions",
+        "description": "Calculate cone base diameter and height for optimal impedance matching",
+        "formula": "D_cone = 0.6 * lambda_max, H_cone = 0.25 * lambda_max"
+      },
+      {
+        "step": 4,
+        "title": "Calculate Cone Half Angle",
+        "description": "Determine the cone angle that provides 50-ohm impedance match",
+        "formula": "alpha = atan(D_cone / (2 * H_cone))"
+      },
+      {
+        "step": 5,
+        "title": "Set Gap Height",
+        "description": "Establish vertical gap between disc and cone for proper feed structure",
+        "formula": "h_gap = 0.01 * lambda_max"
+      },
+      {
+        "step": 6,
+        "title": "Optimize for VSWR",
+        "description": "Fine-tune dimensions to achieve VSWR < 2:1 across the band",
+        "formula": "VSWR = (1 + |Gamma|) / (1 - |Gamma|)"
+      }
+    ]
+  },
+  "equations": {
+    "resonantFrequency": "f_res = c / (4 * H_cone) for fundamental mode",
+    "inputImpedance": "Z_in ≈ 377 * sin(alpha) for small cone angles",
+    "gain": "G(dBi) ≈ 10 * log10(2 * sin²(alpha)) + 2.15",
+    "radiationPattern": "E(theta) = sin(theta) * cos(alpha) for vertical plane",
+    "bandwidth": "BW = (f_max - f_min) / f_center where VSWR < 2:1"
+  },
+  "mockSolverHints": {
+    "impedanceModel": "Use transmission line model with tapered cone impedance transformation from disc ground plane to free space",
+    "radiationModel": "Apply method of moments with triangular surface patches on cone and disc, accounting for edge diffraction effects",
+    "keyAssumptions": [
+      "Perfect conductor assumption for disc and cone",
+      "Infinite ground plane approximation for disc",
+      "Linear taper impedance transformation along cone",
+      "Negligible mutual coupling between disc and cone edges"
+    ]
+  },
+  "references": [
+    "Balanis, C.A. 'Antenna Theory: Analysis and Design', 4th Edition, Chapter 9",
+    "Stutzman, W.L. & Thiele, G.A. 'Antenna Theory and Design', 3rd Edition, Chapter 8",
+    "Volakis, J.L. 'Antenna Engineering Handbook', 4th Edition, Chapter 15",
+    "Pozar, D.M. 'Microwave Engineering', 4th Edition, Chapter 12"
+  ]
+}
