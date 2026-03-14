@@ -186,26 +186,26 @@ const ExportPanel: FC<ExportPanelProps> = ({
       </div>
       
       {showSettings && (
-        <div className="p-3 border rounded-md bg-muted/50 space-y-3">
-          <div className="space-y-2">
-            <label className="text-xs font-medium">S1P Format:</label>
-            <select 
-              value={s1pFormat} 
+        <div className="p-3 border border-border rounded-lg bg-surface space-y-3" style={{ animation: 'fadeIn 0.15s ease-out' }}>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-text-muted">S1P Format:</label>
+            <select
+              value={s1pFormat}
               onChange={(e) => setS1pFormat(e.target.value as S1PFormat)}
-              className="w-full px-2 py-1 text-xs border rounded"
+              className="w-full h-8 px-2.5 text-xs border border-border rounded-md bg-base text-text focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
             >
               <option value="RI">Real/Imaginary</option>
               <option value="MA">Magnitude/Angle</option>
               <option value="DB">dB/Angle</option>
             </select>
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-xs font-medium">Frequency Unit:</label>
-            <select 
-              value={frequencyUnit} 
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-text-muted">Frequency Unit:</label>
+            <select
+              value={frequencyUnit}
               onChange={(e) => setFrequencyUnit(e.target.value as FrequencyUnit)}
-              className="w-full px-2 py-1 text-xs border rounded"
+              className="w-full h-8 px-2.5 text-xs border border-border rounded-md bg-base text-text focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
             >
               <option value="Hz">Hz</option>
               <option value="kHz">kHz</option>
