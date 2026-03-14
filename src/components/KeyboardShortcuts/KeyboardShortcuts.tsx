@@ -67,7 +67,7 @@ const KeyboardShortcuts: FC<KeyboardShortcutsProps> = ({
   }
 
   return (
-    <div className={cn('fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm', className)} onClick={onClose}>
+    <div className={cn('fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm', className)} onClick={onClose}>
       <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold text-text">Keyboard Shortcuts</CardTitle>
