@@ -731,13 +731,13 @@ function App() {
                 <div className="flex-1 flex flex-col items-center justify-center gap-6 text-text-dim">
                   <div className="relative">
                     <svg width="96" height="96" viewBox="0 0 96 96" fill="none">
-                      <rect x="12" y="60" width="5" height="20" rx="2.5" fill="#1a1a2e" />
-                      <rect x="23" y="46" width="5" height="34" rx="2.5" fill="#1a1a2e" />
-                      <rect x="34" y="32" width="5" height="48" rx="2.5" fill="#252540" />
+                      <rect x="12" y="60" width="5" height="20" rx="2.5" fill="var(--color-surface)" />
+                      <rect x="23" y="46" width="5" height="34" rx="2.5" fill="var(--color-surface)" />
+                      <rect x="34" y="32" width="5" height="48" rx="2.5" fill="var(--color-elevated)" />
                       <rect x="45" y="12" width="6" height="68" rx="3" fill="url(#emptyGrad)" />
-                      <rect x="57" y="32" width="5" height="48" rx="2.5" fill="#252540" />
-                      <rect x="68" y="46" width="5" height="34" rx="2.5" fill="#1a1a2e" />
-                      <rect x="79" y="60" width="5" height="20" rx="2.5" fill="#1a1a2e" />
+                      <rect x="57" y="32" width="5" height="48" rx="2.5" fill="var(--color-elevated)" />
+                      <rect x="68" y="46" width="5" height="34" rx="2.5" fill="var(--color-surface)" />
+                      <rect x="79" y="60" width="5" height="20" rx="2.5" fill="var(--color-surface)" />
                       <defs>
                         <linearGradient id="emptyGrad" x1="48" y1="12" x2="48" y2="80" gradientUnits="userSpaceOnUse">
                           <stop stopColor="#0ea5e9" stopOpacity="0.5" />

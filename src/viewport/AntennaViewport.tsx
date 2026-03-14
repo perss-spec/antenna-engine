@@ -72,8 +72,8 @@ function AntennaScene({
         sectionSize={1}
         fadeDistance={30}
         fadeStrength={1}
-        cellColor="#444444"
-        sectionColor="#666666"
+        cellColor="#2a2a32"
+        sectionColor="#3a3a42"
       />
       <axesHelper args={[1]} />
 

@@ -41,7 +41,7 @@ export function AntennaView({
     <div className={className} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <Canvas
         camera={{ position: [5, 5, 5], fov: 50 }}
-        style={{ background: '#1a1a1a' }}
+        style={{ background: '#0c0c0f' }}
       >
         <ambientLight intensity={0.4} />
         <directionalLight position={[10, 10, 5]} intensity={0.8} />
@@ -53,8 +53,8 @@ export function AntennaView({
           sectionSize={2} 
           fadeDistance={30} 
           fadeStrength={1}
-          cellColor="#444444"
-          sectionColor="#666666"
+          cellColor="#2a2a32"
+          sectionColor="#3a3a42"
         />
         <axesHelper args={[2]} />
         
@@ -82,7 +82,7 @@ export function AntennaView({
         position: 'absolute',
         top: '20px',
         right: '20px',
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: 'rgba(12, 12, 15, 0.9)',
         borderRadius: '8px',
         padding: '16px',
         color: 'white',
@@ -114,7 +114,7 @@ export function AntennaView({
         )}
         
         {selectedElementId && (
-          <div style={{ marginTop: '12px', fontSize: '12px', color: '#ccc' }}>
+          <div style={{ marginTop: '12px', fontSize: '12px', color: '#e0e0f2' }}>
             Selected: {selectedElementId}
           </div>
         )}

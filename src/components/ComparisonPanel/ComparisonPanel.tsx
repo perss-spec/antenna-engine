@@ -133,39 +133,39 @@ const ComparisonPanel: FC<ComparisonPanelProps> = ({
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
               <XAxis
                 dataKey="frequency"
                 type="number"
                 scale="linear"
                 domain={['dataMin', 'dataMax']}
                 tickFormatter={formatXAxis}
-                stroke="#555"
-                tick={{ fill: '#666', fontSize: 11 }}
+                stroke="#5c5c68"
+                tick={{ fill: '#8e8e9a', fontSize: 11 }}
               />
               <YAxis
                 domain={[-40, 0]}
-                label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#666' }}
-                stroke="#555"
-                tick={{ fill: '#666', fontSize: 11 }}
+                label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#8e8e9a' }}
+                stroke="#5c5c68"
+                tick={{ fill: '#8e8e9a', fontSize: 11 }}
               />
               <Tooltip
                 formatter={formatTooltip}
                 labelFormatter={(value) => `${formatXAxis(Number(value))}Hz`}
                 contentStyle={{
-                  background: '#1a1a28',
-                  border: '1px solid #2a2a3e',
+                  background: '#151518',
+                  border: '1px solid #2a2a32',
                   borderRadius: '6px',
-                  color: '#e0e0e0',
+                  color: '#f0f0f2',
                   fontSize: '12px',
                 }}
               />
-              <Legend wrapperStyle={{ color: '#888', fontSize: '12px' }} />
+              <Legend wrapperStyle={{ color: '#8e8e9a', fontSize: '12px' }} />
               
               <Line
                 type="monotone"
                 dataKey="s11_a"
-                stroke="#6366f1"
+                stroke="#0ea5e9"
                 strokeWidth={2}
                 dot={false}
                 name={resultA.label || 'Result A'}

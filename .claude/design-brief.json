@@ -1,69 +1,284 @@
 {
   "layout_strategy": {
-    "type": "3-column CSS Grid",
-    "template": "280px 4px 1fr 4px 320px",
-    "sidebar": { "minWidth": 200, "defaultWidth": 280, "maxWidth": 480, "collapseWidth": 48 },
-    "main": { "minWidth": 400 },
-    "divider": { "width": 4, "style": "bg-zinc-800 hover:bg-blue-500/60 cursor-col-resize transition-colors active:bg-blue-500" }
+    "structure": "3-column",
+    "sidebar_width": "280px",
+    "sidebar_min_width": "240px",
+    "main_content_min_width": "600px",
+    "right_panel_width": "320px",
+    "dividers": {
+      "resizable": true,
+      "width": "1px",
+      "drag_handle_width": "8px"
+    },
+    "header_height": "56px",
+    "footer_height": "40px"
   },
   "spacing_system": {
     "base": 4,
-    "scale": { "0.5": "2px", "1": "4px", "1.5": "6px", "2": "8px", "3": "12px", "4": "16px", "5": "20px", "6": "24px", "8": "32px", "10": "40px", "12": "48px" },
-    "field_gap": "8px",
-    "section_gap": "24px",
-    "label_gap": "6px"
+    "scale": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px",
+      "2xl": "48px"
+    },
+    "usage_rules": {
+      "xs": "icon padding, tight spacing",
+      "sm": "button padding, input padding",
+      "md": "component margins, card padding",
+      "lg": "section spacing, panel margins",
+      "xl": "major section separation",
+      "2xl": "page-level spacing"
+    }
   },
   "typography": {
-    "sizes": { "xs": "11px", "sm": "12px", "base": "13px", "md": "14px", "lg": "16px", "xl": "18px", "2xl": "22px" },
-    "weights": { "normal": 400, "medium": 500, "semibold": 600, "bold": 700 },
-    "rules": "base(13px/medium) for labels. sm(12px) for metadata. xs(11px) only for chart ticks. lg(16px/semibold) for panel titles."
+    "font_family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "scale": {
+      "h1": {
+        "size": "24px",
+        "weight": 600,
+        "line_height": "32px"
+      },
+      "h2": {
+        "size": "20px",
+        "weight": 600,
+        "line_height": "28px"
+      },
+      "h3": {
+        "size": "16px",
+        "weight": 600,
+        "line_height": "24px"
+      },
+      "body": {
+        "size": "14px",
+        "weight": 400,
+        "line_height": "20px"
+      },
+      "body_small": {
+        "size": "12px",
+        "weight": 400,
+        "line_height": "16px"
+      },
+      "label": {
+        "size": "12px",
+        "weight": 500,
+        "line_height": "16px"
+      },
+      "caption": {
+        "size": "11px",
+        "weight": 400,
+        "line_height": "14px"
+      }
+    }
   },
   "color_tokens": {
-    "backgrounds": { "base": "#09090b", "surface": "#18181b", "surface-hover": "#27272a99", "elevated": "#27272a" },
-    "borders": { "default": "#3f3f4680", "hover": "#52525b", "strong": "#52525b" },
-    "text": { "primary": "#fafafa", "secondary": "#d4d4d8", "muted": "#a1a1aa", "dim": "#71717a" },
-    "accent": { "default": "#3b82f6", "hover": "#60a5fa", "muted": "#3b82f633" },
-    "status": { "success": "#10b981", "warning": "#fbbf24", "error": "#ef4444", "info": "#38bdf8" },
-    "chart_palette": ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#a78bfa", "#fb923c"]
+    "backgrounds": {
+      "primary": "#ffffff",
+      "secondary": "#f8f9fa",
+      "tertiary": "#f1f3f4",
+      "quaternary": "#e8eaed",
+      "dark": "#1a1a1a",
+      "sidebar": "#f8f9fa",
+      "panel": "#ffffff"
+    },
+    "borders": {
+      "light": "#e8eaed",
+      "medium": "#dadce0",
+      "strong": "#9aa0a6"
+    },
+    "text": {
+      "primary": "#202124",
+      "secondary": "#5f6368",
+      "tertiary": "#80868b",
+      "disabled": "#9aa0a6",
+      "inverse": "#ffffff"
+    },
+    "accent": {
+      "primary": "#1976d2",
+      "primary_hover": "#1565c0",
+      "primary_active": "#0d47a1"
+    },
+    "status": {
+      "success": "#0d8043",
+      "warning": "#ea8600",
+      "error": "#d32f2f",
+      "info": "#1976d2"
+    },
+    "chart_palette": [
+      "#1976d2",
+      "#dc004e",
+      "#0d8043",
+      "#ea8600",
+      "#7b1fa2",
+      "#0097a7",
+      "#bf360c",
+      "#558b2f"
+    ]
   },
   "component_sizes": {
-    "input": { "sm": "28px", "md": "32px", "lg": "36px" },
-    "button": { "sm": "28px", "md": "32px", "lg": "36px" },
-    "icon": { "sm": "14px", "md": "16px", "lg": "20px" },
-    "radius": { "sm": "4px", "md": "6px", "lg": "8px", "xl": "12px" }
+    "inputs": {
+      "height": "36px",
+      "padding": "8px 12px"
+    },
+    "buttons": {
+      "small": {
+        "height": "32px",
+        "padding": "6px 12px",
+        "font_size": "12px"
+      },
+      "medium": {
+        "height": "36px",
+        "padding": "8px 16px",
+        "font_size": "14px"
+      },
+      "large": {
+        "height": "44px",
+        "padding": "12px 24px",
+        "font_size": "16px"
+      }
+    },
+    "icons": {
+      "small": "16px",
+      "medium": "20px",
+      "large": "24px"
+    },
+    "border_radius": {
+      "small": "4px",
+      "medium": "6px",
+      "large": "8px"
+    }
   },
   "interactive_states": {
-    "focus_ring": "outline-2 outline-offset-2 outline-blue-500 focus-visible only",
-    "hover": "bg-zinc-800/60 transition-colors duration-100",
-    "active": "bg-zinc-700/80 scale-[0.98]",
-    "disabled": "opacity-40 cursor-not-allowed pointer-events-none"
+    "buttons": {
+      "hover": {
+        "background_opacity": 0.08,
+        "transition": "all 150ms ease"
+      },
+      "focus": {
+        "outline": "2px solid #1976d2",
+        "outline_offset": "2px"
+      },
+      "active": {
+        "background_opacity": 0.12,
+        "transform": "scale(0.98)"
+      },
+      "disabled": {
+        "opacity": 0.5,
+        "cursor": "not-allowed"
+      }
+    },
+    "inputs": {
+      "hover": {
+        "border_color": "#9aa0a6"
+      },
+      "focus": {
+        "border_color": "#1976d2",
+        "box_shadow": "0 0 0 2px rgba(25, 118, 210, 0.2)"
+      },
+      "disabled": {
+        "background_color": "#f1f3f4",
+        "opacity": 0.7
+      }
+    },
+    "navigation": {
+      "hover": {
+        "background_color": "rgba(25, 118, 210, 0.04)"
+      },
+      "active": {
+        "background_color": "rgba(25, 118, 210, 0.08)",
+        "border_left": "3px solid #1976d2"
+      }
+    }
   },
   "shadows": {
-    "xs": "0 1px 2px rgba(0,0,0,0.4)",
-    "sm": "0 2px 4px rgba(0,0,0,0.5)",
-    "md": "0 4px 12px rgba(0,0,0,0.6)",
-    "lg": "0 8px 24px rgba(0,0,0,0.7)"
+    "small": "0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)",
+    "medium": "0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12)",
+    "large": "0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.10)",
+    "modal": "0 25px 50px rgba(0, 0, 0, 0.25)"
   },
   "panel_system": {
-    "header_height": 48,
-    "section_header_height": 36,
-    "content_padding": 16
+    "collapsible_sections": {
+      "animation_duration": "200ms",
+      "easing": "ease-out"
+    },
+    "header_height": "48px",
+    "footer_height": "40px",
+    "scroll_behavior": {
+      "type": "custom",
+      "track_width": "8px",
+      "thumb_radius": "4px"
+    },
+    "panel_padding": "16px",
+    "section_spacing": "24px"
   },
   "responsive_rules": {
-    "min_app_width": 1024,
-    "collapse_right_at": 1280,
-    "breakpoints": { "md": 1024, "lg": 1280, "xl": 1536 }
+    "breakpoints": {
+      "tablet": "768px",
+      "desktop": "1024px"
+    },
+    "sidebar": {
+      "min_width": "240px",
+      "collapse_at": "768px",
+      "mobile_overlay": true
+    },
+    "panel_priorities": [
+      "main_content",
+      "sidebar",
+      "right_panel"
+    ],
+    "right_panel_collapse": "1200px"
   },
   "priority_changes": [
-    { "change": "Add focus-visible rings to all interactive elements", "impact": "high", "effort": "small" },
-    { "change": "Replace hardcoded colors with token system", "impact": "high", "effort": "medium" },
-    { "change": "CSS Grid 3-column layout + resize dividers", "impact": "high", "effort": "large" },
-    { "change": "Add aria-expanded/controls to CollapsibleSections", "impact": "high", "effort": "small" },
-    { "change": "Normalize input heights to md(32px)", "impact": "high", "effort": "small" },
-    { "change": "Fix CardTitle min size", "impact": "high", "effort": "small" },
-    { "change": "Fix scrollbar visibility", "impact": "medium", "effort": "small" },
-    { "change": "Consolidate typography scale", "impact": "medium", "effort": "medium" },
-    { "change": "Standardize border-radius tokens", "impact": "medium", "effort": "small" },
-    { "change": "Add viewport toolbar overlay", "impact": "medium", "effort": "medium" }
+    {
+      "change": "Implement unified spacing system with 4px base unit",
+      "impact": "high",
+      "effort": "medium"
+    },
+    {
+      "change": "Update color palette with proper semantic tokens",
+      "impact": "high",
+      "effort": "small"
+    },
+    {
+      "change": "Replace system fonts with Inter typography",
+      "impact": "medium",
+      "effort": "small"
+    },
+    {
+      "change": "Add consistent interactive states across all components",
+      "impact": "high",
+      "effort": "medium"
+    },
+    {
+      "change": "Implement proper visual hierarchy with typography scale",
+      "impact": "high",
+      "effort": "small"
+    },
+    {
+      "change": "Add elevation system with consistent shadows",
+      "impact": "medium",
+      "effort": "small"
+    },
+    {
+      "change": "Implement resizable panel system with proper constraints",
+      "impact": "medium",
+      "effort": "large"
+    },
+    {
+      "change": "Add responsive behavior for mobile and tablet viewports",
+      "impact": "high",
+      "effort": "large"
+    },
+    {
+      "change": "Create loading states and skeleton screens",
+      "impact": "medium",
+      "effort": "medium"
+    },
+    {
+      "change": "Implement accessible focus management and keyboard navigation",
+      "impact": "medium",
+      "effort": "medium"
+    }
   ]
 }

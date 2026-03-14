@@ -93,7 +93,7 @@ const styles = {
     zIndex: 1000
   },
   toggleButton: {
-    background: 'rgba(0, 0, 0, 0.8)',
+    background: 'rgba(12, 12, 15, 0.9)',
     color: 'white',
     border: 'none',
     padding: '8px 12px',
@@ -103,7 +103,7 @@ const styles = {
     fontFamily: 'monospace'
   },
   panel: {
-    background: 'rgba(0, 0, 0, 0.9)',
+    background: 'rgba(12, 12, 15, 0.9)',
     color: 'white',
     padding: '16px',
     borderRadius: '8px',
@@ -119,8 +119,8 @@ const styles = {
     margin: '0 0 8px 0',
     fontSize: '13px',
     fontWeight: 'bold',
-    color: '#00ff88',
-    borderBottom: '1px solid #333',
+    color: '#22c55e',
+    borderBottom: '1px solid #2a2a32',
     paddingBottom: '4px'
   },
   control: {
@@ -139,7 +139,7 @@ const styles = {
   },
   info: {
     fontSize: '11px',
-    color: '#ccc',
+    color: '#e0e0f2',
     lineHeight: '1.4'
   }
 }

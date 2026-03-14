@@ -60,7 +60,7 @@ export function FrequencySweep({
 
   if (!patterns.length) {
     return (
-      <div style={{ padding: '16px', color: '#666' }}>
+      <div style={{ padding: '16px', color: '#8e8e9a' }}>
         No frequency data available
       </div>
     )
@@ -75,7 +75,7 @@ export function FrequencySweep({
       bottom: '20px',
       left: '20px',
       right: '20px',
-      background: 'rgba(0, 0, 0, 0.8)',
+      background: 'rgba(12, 12, 15, 0.9)',
       borderRadius: '8px',
       padding: '16px',
       color: 'white',
@@ -85,7 +85,7 @@ export function FrequencySweep({
         <button
           onClick={handlePlay}
           style={{
-            background: isPlaying ? '#ff4444' : '#44ff44',
+            background: isPlaying ? '#ef4444' : '#44ff44',
             border: 'none',
             borderRadius: '4px',
             padding: '8px 16px',
@@ -100,7 +100,7 @@ export function FrequencySweep({
         <button
           onClick={handleReset}
           style={{
-            background: '#666',
+            background: '#8e8e9a',
             border: 'none',
             borderRadius: '4px',
             padding: '8px 16px',
@@ -116,7 +116,7 @@ export function FrequencySweep({
           <strong>Frequency: {frequencyGHz} GHz</strong>
         </div>
         
-        <div style={{ fontSize: '12px', color: '#ccc' }}>
+        <div style={{ fontSize: '12px', color: '#f0f0f2' }}>
           {currentIndex + 1} / {patterns.length}
         </div>
       </div>
@@ -132,7 +132,7 @@ export function FrequencySweep({
             width: '100%',
             height: '6px',
             borderRadius: '3px',
-            background: '#333',
+            background: '#2a2a32',
             outline: 'none',
             cursor: 'pointer'
           }}
@@ -146,7 +146,7 @@ export function FrequencySweep({
             left: '0',
             height: '6px',
             width: `${progress}%`,
-            background: 'linear-gradient(90deg, #4444ff, #ff4444)',
+            background: 'linear-gradient(90deg, #0ea5e9, #ef4444)',
             borderRadius: '3px',
             pointerEvents: 'none',
             transition: isPlaying ? 'width 0.1s ease' : 'none'
@@ -157,7 +157,7 @@ export function FrequencySweep({
       <div style={{ 
         marginTop: '8px', 
         fontSize: '11px', 
-        color: '#aaa',
+        color: '#8e8e9a',
         display: 'flex',
         justifyContent: 'space-between'
       }}>

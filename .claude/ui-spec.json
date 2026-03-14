@@ -1,0 +1,359 @@
+{
+  "layout": {
+    "container": {
+      "type": "grid",
+      "columns": "320px 1fr 300px",
+      "rows": "60px 1fr 40px",
+      "gap": "16px",
+      "padding": "16px",
+      "minHeight": "100vh"
+    },
+    "areas": {
+      "header": {
+        "gridArea": "1 / 1 / 1 / 4",
+        "zIndex": 100
+      },
+      "sidebar": {
+        "gridArea": "2 / 1 / 2 / 2",
+        "zIndex": 10
+      },
+      "main": {
+        "gridArea": "2 / 2 / 2 / 3",
+        "zIndex": 1
+      },
+      "panel": {
+        "gridArea": "2 / 3 / 2 / 4",
+        "zIndex": 20
+      },
+      "footer": {
+        "gridArea": "3 / 1 / 3 / 4",
+        "zIndex": 5
+      }
+    },
+    "responsive": {
+      "breakpoints": [
+        "768px",
+        "1024px",
+        "1440px"
+      ],
+      "mobile": {
+        "columns": "1fr",
+        "rows": "60px 1fr"
+      },
+      "tablet": {
+        "columns": "280px 1fr",
+        "rows": "60px 1fr 40px"
+      }
+    }
+  },
+  "forms": {
+    "containers": {
+      "formGroup": {
+        "display": "flex",
+        "flexDirection": "column",
+        "gap": "12px",
+        "marginBottom": "24px"
+      },
+      "fieldset": {
+        "border": "1px solid var(--color-border-subtle)",
+        "borderRadius": "8px",
+        "padding": "16px",
+        "margin": "0 0 24px 0"
+      }
+    },
+    "inputs": {
+      "base": {
+        "height": "40px",
+        "padding": "8px 12px",
+        "borderRadius": "6px",
+        "border": "1px solid var(--color-border-default)",
+        "fontSize": "14px",
+        "fontFamily": "var(--font-family-base)",
+        "transition": "all 0.2s ease"
+      },
+      "states": {
+        "focus": {
+          "borderColor": "var(--color-primary-500)",
+          "outline": "2px solid var(--color-primary-100)"
+        },
+        "error": {
+          "borderColor": "var(--color-error-500)"
+        },
+        "disabled": {
+          "backgroundColor": "var(--color-surface-disabled)",
+          "cursor": "not-allowed"
+        }
+      }
+    },
+    "validation": {
+      "errorMessage": {
+        "color": "var(--color-error-500)",
+        "fontSize": "12px",
+        "marginTop": "4px"
+      },
+      "successMessage": {
+        "color": "var(--color-success-500)",
+        "fontSize": "12px",
+        "marginTop": "4px"
+      }
+    }
+  },
+  "charts": {
+    "container": {
+      "backgroundColor": "var(--color-surface-primary)",
+      "borderRadius": "12px",
+      "padding": "24px",
+      "border": "1px solid var(--color-border-subtle)",
+      "minHeight": "400px"
+    },
+    "colorPalette": {
+      "primary": [
+        "var(--color-primary-500)",
+        "var(--color-primary-400)",
+        "var(--color-primary-300)"
+      ],
+      "secondary": [
+        "var(--color-secondary-500)",
+        "var(--color-secondary-400)",
+        "var(--color-secondary-300)"
+      ],
+      "categorical": [
+        "var(--color-primary-500)",
+        "var(--color-secondary-500)",
+        "var(--color-accent-500)",
+        "var(--color-warning-500)",
+        "var(--color-success-500)",
+        "var(--color-error-500)"
+      ]
+    },
+    "typography": {
+      "title": {
+        "fontSize": "18px",
+        "fontWeight": "600",
+        "color": "var(--color-text-primary)",
+        "marginBottom": "16px"
+      },
+      "axis": {
+        "fontSize": "12px",
+        "color": "var(--color-text-secondary)"
+      },
+      "legend": {
+        "fontSize": "13px",
+        "color": "var(--color-text-primary)"
+      }
+    },
+    "grid": {
+      "strokeColor": "var(--color-border-subtle)",
+      "strokeWidth": 1,
+      "strokeDasharray": "2,2"
+    }
+  },
+  "viewport": {
+    "container": {
+      "position": "relative",
+      "width": "100%",
+      "height": "100%",
+      "backgroundColor": "var(--color-surface-secondary)",
+      "borderRadius": "8px",
+      "overflow": "hidden"
+    },
+    "canvas": {
+      "position": "absolute",
+      "top": 0,
+      "left": 0,
+      "zIndex": 1
+    },
+    "overlays": {
+      "controls": {
+        "position": "absolute",
+        "top": "16px",
+        "right": "16px",
+        "zIndex": 50,
+        "display": "flex",
+        "gap": "8px"
+      },
+      "info": {
+        "position": "absolute",
+        "bottom": "16px",
+        "left": "16px",
+        "zIndex": 30,
+        "backgroundColor": "var(--color-surface-overlay)",
+        "padding": "8px 12px",
+        "borderRadius": "6px",
+        "backdropFilter": "blur(8px)"
+      },
+      "toolbar": {
+        "position": "absolute",
+        "top": "16px",
+        "left": "16px",
+        "zIndex": 40,
+        "display": "flex",
+        "flexDirection": "column",
+        "gap": "4px"
+      }
+    },
+    "interactions": {
+      "cursor": {
+        "default": "default",
+        "pan": "grab",
+        "panning": "grabbing",
+        "rotate": "crosshair"
+      }
+    }
+  },
+  "tokens": {
+    "colors": {
+      "primary": {
+        "50": "#f0f9ff",
+        "100": "#e0f2fe",
+        "200": "#bae6fd",
+        "300": "#7dd3fc",
+        "400": "#38bdf8",
+        "500": "#0ea5e9",
+        "600": "#0284c7",
+        "700": "#0369a1",
+        "800": "#075985",
+        "900": "#0c4a6e"
+      },
+      "secondary": {
+        "50": "#f8fafc",
+        "100": "#f1f5f9",
+        "200": "#e2e8f0",
+        "300": "#cbd5e1",
+        "400": "#94a3b8",
+        "500": "#64748b",
+        "600": "#475569",
+        "700": "#334155",
+        "800": "#1e293b",
+        "900": "#0f172a"
+      },
+      "accent": {
+        "500": "#8b5cf6"
+      },
+      "success": {
+        "500": "#10b981"
+      },
+      "warning": {
+        "500": "#f59e0b"
+      },
+      "error": {
+        "500": "#ef4444"
+      },
+      "text": {
+        "primary": "#0f172a",
+        "secondary": "#64748b",
+        "tertiary": "#94a3b8",
+        "inverse": "#ffffff"
+      },
+      "surface": {
+        "primary": "#ffffff",
+        "secondary": "#f8fafc",
+        "tertiary": "#f1f5f9",
+        "overlay": "rgba(255, 255, 255, 0.9)",
+        "disabled": "#f1f5f9"
+      },
+      "border": {
+        "default": "#e2e8f0",
+        "subtle": "#f1f5f9",
+        "strong": "#cbd5e1"
+      }
+    },
+    "spacing": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "12px",
+      "lg": "16px",
+      "xl": "24px",
+      "2xl": "32px",
+      "3xl": "48px"
+    },
+    "typography": {
+      "fontFamily": {
+        "base": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "mono": "'Fira Code', 'Monaco', 'Consolas', monospace"
+      },
+      "fontSize": {
+        "xs": "12px",
+        "sm": "13px",
+        "base": "14px",
+        "lg": "16px",
+        "xl": "18px",
+        "2xl": "20px",
+        "3xl": "24px"
+      },
+      "fontWeight": {
+        "normal": "400",
+        "medium": "500",
+        "semibold": "600",
+        "bold": "700"
+      },
+      "lineHeight": {
+        "tight": "1.2",
+        "normal": "1.5",
+        "relaxed": "1.7"
+      }
+    },
+    "shadows": {
+      "sm": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      "base": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      "lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+      "overlay": "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+    },
+    "borderRadius": {
+      "sm": "4px",
+      "base": "6px",
+      "md": "8px",
+      "lg": "12px",
+      "full": "9999px"
+    }
+  },
+  "conflicts_resolved": [
+    "Chart color palette aligned with design tokens - replaced hardcoded colors with CSS custom properties",
+    "Viewport overlay z-index values adjusted to match layout z-index hierarchy (controls: 50, toolbar: 40, info: 30)",
+    "Form spacing values updated to use design token spacing scale instead of custom values",
+    "Layout container padding standardized to 16px (lg spacing token) across all breakpoints",
+    "Typography tokens applied consistently across all components - charts, forms, and viewport overlays"
+  ],
+  "implementation_order": [
+    {
+      "step": 1,
+      "target": "styles/tokens.css",
+      "description": "Define CSS custom properties for all design tokens"
+    },
+    {
+      "step": 2,
+      "target": "styles/globals.css",
+      "description": "Apply base typography and layout styles"
+    },
+    {
+      "step": 3,
+      "target": "components/ui/primitives.tsx",
+      "description": "Update base UI components with token-based styling"
+    },
+    {
+      "step": 4,
+      "target": "components/Layout.tsx",
+      "description": "Implement grid-based layout system"
+    },
+    {
+      "step": 5,
+      "target": "components/forms/*.tsx",
+      "description": "Update form components with new styling system"
+    },
+    {
+      "step": 6,
+      "target": "components/charts/*.tsx",
+      "description": "Apply token-based color palette and typography to charts"
+    },
+    {
+      "step": 7,
+      "target": "components/Viewport3D.tsx",
+      "description": "Implement 3D viewport with overlay system and proper z-indexing"
+    },
+    {
+      "step": 8,
+      "target": "styles/responsive.css",
+      "description": "Add responsive breakpoint styles"
+    }
+  ]
+}
