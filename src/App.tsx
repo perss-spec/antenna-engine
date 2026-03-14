@@ -656,7 +656,7 @@ function App() {
 
                   <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4">
                     {/* Stats cards */}
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                       {[
                         { icon: Radio, label: 'Resonant Freq', value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
                         { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, iconBg: 'bg-success/10', iconColor: 'text-success', valueColor: 'text-success' },
