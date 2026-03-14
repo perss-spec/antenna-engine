@@ -89,7 +89,7 @@ export function EMCanvas() {
 
       ctx.save()
 
-      ctx.strokeStyle = "rgba(118,185,0,0.04)"
+      ctx.strokeStyle = "rgba(14,165,233,0.04)"
       ctx.lineWidth = 0.5
       const spacing = 52
       for (let x = cx % spacing; x < canvas.width; x += spacing) {
@@ -106,7 +106,7 @@ export function EMCanvas() {
       }
 
       const radii = [100, 220, 360]
-      ctx.strokeStyle = "rgba(0,229,200,0.05)"
+      ctx.strokeStyle = "rgba(56,189,248,0.05)"
       ctx.lineWidth = 0.5
       for (const r of radii) {
         ctx.beginPath()
@@ -118,9 +118,9 @@ export function EMCanvas() {
     }
 
     const getParticleColor = (p: Particle, alpha: number) => {
-      const r = Math.round(118 * (1 - p.hue) + 0 * p.hue)
-      const g = Math.round(185 * (1 - p.hue) + 229 * p.hue)
-      const b = Math.round(0 * (1 - p.hue) + 200 * p.hue)
+      const r = Math.round(14 * (1 - p.hue) + 56 * p.hue)
+      const g = Math.round(165 * (1 - p.hue) + 189 * p.hue)
+      const b = Math.round(233 * (1 - p.hue) + 248 * p.hue)
       return `rgba(${r},${g},${b},${alpha})`
     }
 
@@ -128,7 +128,7 @@ export function EMCanvas() {
       frameCount++
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = "rgba(10,10,15,1)"
+      ctx.fillStyle = "rgba(12,12,15,1)"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
       drawGrid()
@@ -138,14 +138,14 @@ export function EMCanvas() {
       waves = waves.filter((w) => w.alpha > 0.015)
       for (const w of waves) {
         ctx.save()
-        ctx.strokeStyle = `rgba(0,229,200,${w.alpha * 0.55})`
+        ctx.strokeStyle = `rgba(56,189,248,${w.alpha * 0.55})`
         ctx.lineWidth = 1.2
         ctx.beginPath()
         ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2)
         ctx.stroke()
 
         if (w.radius > 40) {
-          ctx.strokeStyle = `rgba(118,185,0,${w.alpha * 0.3})`
+          ctx.strokeStyle = `rgba(14,165,233,${w.alpha * 0.3})`
           ctx.lineWidth = 0.6
           ctx.beginPath()
           ctx.arc(w.x, w.y, w.radius * 0.72, 0, Math.PI * 2)
@@ -209,8 +209,8 @@ export function EMCanvas() {
         canvas.width / 2, canvas.height / 2, 0,
         canvas.width / 2, canvas.height / 2, 320
       )
-      lg.addColorStop(0, "rgba(118,185,0,0.05)")
-      lg.addColorStop(0.5, "rgba(0,229,200,0.02)")
+      lg.addColorStop(0, "rgba(14,165,233,0.05)")
+      lg.addColorStop(0.5, "rgba(56,189,248,0.02)")
       lg.addColorStop(1, "rgba(0,0,0,0)")
       ctx.fillStyle = lg
       ctx.fillRect(0, 0, canvas.width, canvas.height)

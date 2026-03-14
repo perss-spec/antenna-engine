@@ -19,8 +19,8 @@ const CustomTriangleDot = (props: any) => {
   return (
     <polygon
       points={`${cx},${cy + 6} ${cx - 5},${cy - 4} ${cx + 5},${cy - 4}`}
-      fill="#6366f1"
-      stroke="#fff"
+      fill="#0ea5e9" /* --color-accent */
+      stroke="#f0f0f2" /* --color-text-primary */
       strokeWidth={2}
     />
   );
@@ -142,7 +142,7 @@ const S11Chart: FC<S11ChartProps> = ({
               <span
                 className="text-xs"
                 style={{
-                  color: isVisible ? '#888' : '#555'
+                  color: isVisible ? '#8e8e9a' : '#5c5c68' /* --color-text-muted / --color-text-dim */
                 }}
               >
                 {entry.value}
@@ -159,31 +159,31 @@ const S11Chart: FC<S11ChartProps> = ({
       <h3 className="text-sm font-semibold text-text mb-3">S11 Return Loss</h3>
       <ResponsiveContainer width="100%" height={400}>
         <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" opacity={0.3} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" opacity={0.3} /> {/* --color-border */}
           <XAxis
             dataKey="frequency"
             type="number"
             scale="linear"
             domain={['dataMin', 'dataMax']}
             tickFormatter={formatXAxis}
-            stroke="#555"
-            tick={{ fill: '#666', fontSize: 11 }}
-            label={{ value: 'Frequency (MHz)', position: 'insideBottom', offset: -10, fill: '#666', fontSize: 11 }}
+            stroke="#5c5c68" /* --color-text-dim */
+            tick={{ fill: '#8e8e9a', fontSize: 11 }} /* --color-text-muted */
+            label={{ value: 'Frequency (MHz)', position: 'insideBottom', offset: -10, fill: '#8e8e9a', fontSize: 11 }} /* --color-text-muted */
           />
           <YAxis
             domain={yAxisDomain}
-            label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#666' }}
-            stroke="#555"
-            tick={{ fill: '#666', fontSize: 11 }}
+            label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#8e8e9a' }} /* --color-text-muted */
+            stroke="#5c5c68" /* --color-text-dim */
+            tick={{ fill: '#8e8e9a', fontSize: 11 }} /* --color-text-muted */
           />
           <Tooltip
             formatter={formatTooltip}
             labelFormatter={(value) => `${formatXAxis(Number(value))}Hz`}
             contentStyle={{
-              background: '#1a1a28',
-              border: '1px solid #2a2a3e',
+              background: '#151518', /* --color-surface */
+              border: '1px solid #2a2a32', /* --color-border */
               borderRadius: '6px',
-              color: '#e0e0e0',
+              color: '#f0f0f2', /* --color-text-primary */
               fontSize: '12px',
             }}
           />
@@ -193,30 +193,30 @@ const S11Chart: FC<S11ChartProps> = ({
             <ReferenceArea
               x1={bandwidthData.f1}
               x2={bandwidthData.f2}
-              fill="#22c55e"
+              fill="#22c55e" /* --color-chart-2 */
               fillOpacity={0.05}
             />
           )}
 
           <ReferenceLine
             y={-10}
-            stroke="#ef4444"
+            stroke="#ef4444" /* --color-chart-4 (error) */
             strokeDasharray="6 3"
             strokeWidth={1}
-            label={{ value: '-10 dB', position: 'right', fill: '#ef4444', fontSize: 10 }}
+            label={{ value: '-10 dB', position: 'right', fill: '#ef4444', fontSize: 10 }} /* --color-chart-4 */
           />
 
           {bandwidthData && (
             <>
               <ReferenceLine
                 x={bandwidthData.f1}
-                stroke="#22c55e"
+                stroke="#22c55e" /* --color-chart-2 */
                 strokeDasharray="4 2"
                 strokeWidth={1}
               />
               <ReferenceLine
                 x={bandwidthData.f2}
-                stroke="#22c55e"
+                stroke="#22c55e" /* --color-chart-2 */
                 strokeDasharray="4 2"
                 strokeWidth={1}
               />
@@ -229,7 +229,7 @@ const S11Chart: FC<S11ChartProps> = ({
                 <Label
                   value={`BW: ${bandwidthData.bandwidthLabel}`}
                   position="top"
-                  fill="#22c55e"
+                  fill="#22c55e" /* --color-chart-2 */
                   fontSize={10}
                   fontWeight="bold"
                 />
@@ -255,7 +255,7 @@ const S11Chart: FC<S11ChartProps> = ({
                 <Label
                   value={`${formatXAxis(minPoint.frequency)}Hz`}
                   position="top"
-                  fill="#6366f1"
+                  fill="#0ea5e9" /* --color-accent */
                   fontSize={9}
                   fontWeight="bold"
                 />
@@ -268,7 +268,7 @@ const S11Chart: FC<S11ChartProps> = ({
               data={data}
               type="monotone"
               dataKey="s11_db"
-              stroke="#6366f1"
+              stroke="#0ea5e9" /* --color-chart-1 (accent) */
               strokeWidth={2}
               dot={false}
               name="Current Simulation"
@@ -280,7 +280,7 @@ const S11Chart: FC<S11ChartProps> = ({
               data={simulationData}
               type="monotone"
               dataKey="s11_db"
-              stroke="#22c55e"
+              stroke="#22c55e" /* --color-chart-2 */
               strokeWidth={2}
               dot={false}
               name="Previous Simulation"
@@ -292,7 +292,7 @@ const S11Chart: FC<S11ChartProps> = ({
               data={touchstoneData}
               type="monotone"
               dataKey="s11_db"
-              stroke="#f59e0b"
+              stroke="#eab308" /* --color-chart-3 (warning) */
               strokeWidth={2}
               dot={false}
               name="Touchstone Import"

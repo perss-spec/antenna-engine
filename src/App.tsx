@@ -658,22 +658,22 @@ function App() {
                     {/* Stats cards */}
                     <div className="grid grid-cols-4 gap-3">
                       {[
-                        { icon: Radio, label: 'Resonant Freq', value: formatFreq(summary.resonantFreq), color: 'accent' },
-                        { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, color: 'success' },
-                        { icon: Zap, label: 'VSWR', value: `${vswr}:1`, color: 'warning' },
-                        { icon: Signal, label: 'BW (-10 dB)', value: formatFreq(summary.bandwidth), color: 'info' },
-                      ].map(({ icon: Icon, label, value, color }) => (
+                        { icon: Radio, label: 'Resonant Freq', value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
+                        { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, iconBg: 'bg-success/10', iconColor: 'text-success', valueColor: 'text-success' },
+                        { icon: Zap, label: 'VSWR', value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
+                        { icon: Signal, label: 'BW (-10 dB)', value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
+                      ].map(({ icon: Icon, label, value, iconBg, iconColor, valueColor }) => (
                         <div
                           key={label}
                           className="flex items-center gap-3.5 rounded-xl border border-border bg-surface px-5 py-4"
                           style={{ animation: 'fadeInScale 0.3s ease-out' }}
                         >
-                          <div className={`w-10 h-10 rounded-lg bg-${color}/10 flex items-center justify-center shrink-0`}>
-                            <Icon className={`w-[18px] h-[18px] text-${color}`} />
+                          <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+                            <Icon className={`w-[18px] h-[18px] ${iconColor}`} />
                           </div>
                           <div>
                             <div className="text-[11px] text-text-dim mb-0.5">{label}</div>
-                            <div className={`text-[15px] font-semibold text-${color} tabular-nums leading-tight`}>{value}</div>
+                            <div className={`text-[15px] font-semibold ${valueColor} tabular-nums leading-tight`}>{value}</div>
                           </div>
                         </div>
                       ))}
