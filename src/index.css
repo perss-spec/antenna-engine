@@ -53,16 +53,27 @@
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
   --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.15);
 
+  /* ═══ Spacing ═══ */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* ═══ Transitions ═══ */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+
   /* ═══ Component sizes ═══ */
-  --size-input-sm: 32px;
-  --size-input-md: 36px;
-  --size-input-lg: 40px;
+  --size-input-sm: 34px;
+  --size-input-md: 40px;
+  --size-input-lg: 44px;
 
   /* ═══ Typography ═══ */
   --font-size-2xs: 10px;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
-  --font-size-base: 13px;
+  --font-size-base: 14px;
   --font-size-md: 14px;
   --font-size-lg: 16px;
   --font-size-xl: 18px;
@@ -85,7 +96,7 @@ body {
   background: var(--color-base);
   color: var(--color-text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   line-height: 1.5;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
@@ -102,7 +113,7 @@ body {
 /* ═══ Resize handle (react-resizable-panels) ═══ */
 [data-panel-resize-handle-id] {
   background: var(--color-border);
-  transition: background 0.15s ease;
+  transition: background var(--transition-fast);
 }
 [data-panel-resize-handle-id]:hover,
 [data-panel-resize-handle-id][data-resize-handle-active] {

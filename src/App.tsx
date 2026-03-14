@@ -247,7 +247,7 @@ function SidebarSection({ title, defaultOpen = false, children }: { title: strin
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-3.5 text-[11px] font-semibold uppercase tracking-widest text-text-dim hover:text-text-muted transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 text-[11px] font-semibold uppercase tracking-widest text-text-dim hover:text-text-muted transition-colors"
       >
         {title}
         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -538,7 +538,7 @@ function App() {
   return (
     <div className="h-screen bg-base text-text-primary overflow-hidden flex flex-col">
       {/* ═══ Top Header Bar ═══ */}
-      <div className="h-12 bg-surface border-b border-border flex items-center justify-between px-5 shrink-0">
+      <div className="h-14 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-accent to-cyan-400 rounded-lg flex items-center justify-center text-sm font-bold text-white shadow-md shadow-accent/20">
@@ -609,7 +609,7 @@ function App() {
               />
 
               <SidebarSection title="Frequency Presets" defaultOpen>
-                <div className="px-5">
+                <div className="px-6">
                   <FrequencyPresets
                     onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
                     disabled={isSimulating || isOptimizing}
@@ -631,12 +631,12 @@ function App() {
         </Panel>
 
         {/* ─── Resize Handle ─── */}
-        <PanelResizeHandle className="w-[3px] bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize" />
+        <PanelResizeHandle className="w-1 bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize relative before:content-[''] before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5" />
 
         {/* ─── Main Area ─── */}
         <Panel minSize="40%">
           <div className="h-full flex flex-col overflow-auto">
-            <div className="flex-1 p-5 flex flex-col gap-4">
+            <div className="flex-1 p-6 flex flex-col gap-5">
               {error && (
                 <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-[13px] flex items-center gap-3" style={{ animation: 'fadeIn 0.2s ease-out' }}>
                   <span className="w-2 h-2 rounded-full bg-error shrink-0" />
@@ -665,7 +665,7 @@ function App() {
                       ].map(({ icon: Icon, label, value, color }) => (
                         <div
                           key={label}
-                          className="flex items-center gap-3.5 rounded-xl border border-border bg-surface px-4 py-3.5"
+                          className="flex items-center gap-3.5 rounded-xl border border-border bg-surface px-5 py-4"
                           style={{ animation: 'fadeInScale 0.3s ease-out' }}
                         >
                           <div className={`w-10 h-10 rounded-lg bg-${color}/10 flex items-center justify-center shrink-0`}>

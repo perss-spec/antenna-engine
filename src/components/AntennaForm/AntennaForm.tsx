@@ -58,13 +58,13 @@ function CollapsibleSection({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={contentId}
-        className="w-full flex items-center justify-between px-5 py-3.5 text-[11px] font-semibold uppercase tracking-widest text-text-dim/70 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+        className="w-full flex items-center justify-between px-6 py-4 text-xs font-semibold uppercase tracking-widest text-text-dim/70 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         {title}
         <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', open && 'rotate-180')} />
       </button>
       {open && (
-        <div id={contentId} className="px-5 pb-5" style={{ animation: 'fadeIn 0.15s ease-out' }}>
+        <div id={contentId} className="px-6 pb-6" style={{ animation: 'fadeIn 0.15s ease-out' }}>
           {children}
         </div>
       )}
@@ -74,7 +74,7 @@ function CollapsibleSection({
 
 function UnitBadge({ unit }: { unit: string }) {
   return (
-    <span className="shrink-0 inline-flex items-center justify-center px-2.5 h-9 text-xs text-text-dim bg-elevated border border-border rounded-r-lg border-l-0">
+    <span className="shrink-0 inline-flex items-center justify-center px-2.5 h-10 text-xs text-text-dim bg-elevated border border-border rounded-r-lg border-l-0">
       {unit}
     </span>
   );
@@ -82,8 +82,8 @@ function UnitBadge({ unit }: { unit: string }) {
 
 function FieldRow({ label, htmlFor, unit, children }: { label: string; htmlFor: string; unit?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2.5">
-      <Label htmlFor={htmlFor} className="text-[13px] font-medium text-text-muted">{label}</Label>
+    <div className="flex flex-col gap-3">
+      <Label htmlFor={htmlFor} className="text-xs font-medium text-text-muted">{label}</Label>
       <div className={cn('flex', unit && 'items-stretch')}>
         <div className={cn('flex-1', unit && '[&>input]:rounded-r-none [&>input]:border-r-0')}>
           {children}
@@ -185,15 +185,15 @@ const AntennaForm: FC<AntennaFormProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col">
 
         {/* Antenna Type */}
-        <div className="px-5 py-5 flex flex-col gap-6">
-          <div className="flex flex-col gap-2.5">
-            <Label htmlFor="antennaType" className="text-[13px] font-medium text-text-muted">Antenna Type</Label>
+        <div className="px-6 py-6 flex flex-col gap-8">
+          <div className="flex flex-col gap-3">
+            <Label htmlFor="antennaType" className="text-xs font-medium text-text-muted">Antenna Type</Label>
             <Select
               id="antennaType"
               value={localParams.antennaType}
               onChange={handleTypeChange}
               disabled={isSimulating}
-              className="h-9 text-[13px]"
+              className="h-10 text-sm"
             >
               {CATEGORY_ORDER.map(cat => {
                 const items = grouped[cat];
@@ -215,7 +215,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
           </div>
 
           {/* Core Parameters */}
-          <div className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3">
             <FieldRow label="Frequency" htmlFor="frequency" unit="MHz">
               <Input
                 id="frequency"
@@ -227,7 +227,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                 step={0.1}
                 disabled={isSimulating}
                 required
-                className="h-9 text-[13px]"
+                className="h-10 text-sm"
               />
             </FieldRow>
 
@@ -243,7 +243,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     max={100000}
                     step={0.1}
                     disabled={isSimulating}
-                    className="h-9 text-[13px]"
+                    className="h-10 text-sm"
                   />
                 </FieldRow>
                 <FieldRow label="Radius" htmlFor="radius" unit="mm">
@@ -256,7 +256,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     max={10}
                     step={0.01}
                     disabled={isSimulating}
-                    className="h-9 text-[13px]"
+                    className="h-10 text-sm"
                   />
                 </FieldRow>
               </div>
@@ -274,7 +274,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     max={500}
                     step={0.1}
                     disabled={isSimulating}
-                    className="h-9 text-[13px]"
+                    className="h-10 text-sm"
                   />
                 </FieldRow>
                 <FieldRow label="εr" htmlFor="substrateEr">
@@ -287,7 +287,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     max={20}
                     step={0.1}
                     disabled={isSimulating}
-                    className="h-9 text-[13px]"
+                    className="h-10 text-sm"
                   />
                 </FieldRow>
                 <FieldRow label="Sub. Height" htmlFor="substrateHeight" unit="mm">
@@ -300,7 +300,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     max={10}
                     step={0.1}
                     disabled={isSimulating}
-                    className="h-9 text-[13px]"
+                    className="h-10 text-sm"
                   />
                 </FieldRow>
               </div>
@@ -313,7 +313,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                 onChange={handleInputChange('material')}
                 disabled={isSimulating}
                 required
-                className="h-9 text-[13px]"
+                className="h-10 text-sm"
               >
                 <option value="copper">Copper</option>
                 <option value="aluminum">Aluminum</option>
@@ -329,10 +329,10 @@ const AntennaForm: FC<AntennaFormProps> = ({
           <CollapsibleSection title="KB Parameters">
             <div className="grid grid-cols-2 gap-3">
               {extraKBParams.slice(0, 6).map(([key, param]) => (
-                <div key={key} className="flex flex-col gap-2.5">
+                <div key={key} className="flex flex-col gap-3">
                   <Label
                     htmlFor={`extra-${key}`}
-                    className="text-[13px] font-medium text-text-muted truncate"
+                    className="text-xs font-medium text-text-muted truncate"
                     title={`${param.name} (${param.symbol})`}
                   >
                     {param.symbol} <span className="text-text-dim font-normal">({param.unit})</span>
@@ -347,7 +347,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     max={param.range.max}
                     step="any"
                     disabled={isSimulating}
-                    className="h-9 text-[13px]"
+                    className="h-10 text-sm"
                   />
                 </div>
               ))}
@@ -356,12 +356,12 @@ const AntennaForm: FC<AntennaFormProps> = ({
         )}
 
         {/* Run button */}
-        <div className="px-5 py-5">
+        <div className="px-6 py-6">
           <div className="relative">
             <Button
               type="submit"
               disabled={isSimulating}
-              className="w-full h-11 bg-gradient-to-r from-accent to-sky-400 hover:opacity-90 text-white text-sm font-semibold shadow-lg shadow-accent/25 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="w-full h-12 bg-gradient-to-r from-accent to-sky-400 hover:opacity-90 text-white text-base font-semibold shadow-lg shadow-accent/25 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               {isSimulating ? (
                 <span className="inline-flex items-center gap-2">

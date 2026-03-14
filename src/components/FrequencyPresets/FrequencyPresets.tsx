@@ -55,11 +55,11 @@ interface FrequencyPresetsProps {
 
 const FrequencyPresets: FC<FrequencyPresetsProps> = ({ onSelect, className, disabled = false }) => {
   return (
-    <div className={cn('flex flex-col gap-3.5', className)}>
+    <div className={cn('flex flex-col gap-4', className)}>
       {presetCategories.map((category) => (
         <div key={category.name} className="flex items-center gap-3">
-          <span className="text-[11px] font-medium text-text-dim w-9 shrink-0">{category.name}</span>
-          <div className="flex flex-wrap gap-2">
+          <span className="text-xs font-medium text-text-dim w-10 shrink-0">{category.name}</span>
+          <div className="flex flex-wrap gap-2.5">
             {category.presets.map((preset) => (
               <button
                 key={preset.name}
@@ -68,9 +68,9 @@ const FrequencyPresets: FC<FrequencyPresetsProps> = ({ onSelect, className, disa
                 disabled={disabled}
                 title={`${preset.frequency} MHz`}
                 className={cn(
-                  'h-8 px-3.5 text-[12px] rounded-lg transition-all duration-150',
+                  'h-9 px-4 text-xs rounded-lg transition-all duration-150',
                   'border border-border/60 bg-elevated',
-                  'hover:border-accent/40 hover:bg-accent/10 hover:text-accent hover:shadow-sm hover:shadow-accent/10',
+                  'hover:border-accent/50 hover:bg-accent/10 hover:text-accent hover:shadow-sm hover:shadow-accent/10',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
                   'disabled:pointer-events-none disabled:opacity-40',
                 )}
