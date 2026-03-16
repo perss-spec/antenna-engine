@@ -1,9 +1,7 @@
-//! Method of Moments electromagnetic solver
-
-pub mod physical_constants;
-pub mod green_function; 
+pub mod impedance;
+pub mod excitation;
 pub mod solver;
 
-pub use physical_constants::PhysicalConstants;
-pub use green_function::GreenFunction;
-pub use solver::{MoMSolver, SolverError};
+pub use impedance::ImpedanceMatrix;
+pub use excitation::ExcitationVector;
+pub use solver::MoMSolver;

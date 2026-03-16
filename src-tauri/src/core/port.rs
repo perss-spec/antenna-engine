@@ -1,129 +1,125 @@
+use crate::core::linear_algebra::{ComplexMatrix, ComplexVector};
+use crate::core::mom_solver::{MoMSolver, MoMSolution};
 use nalgebra::{Complex, DMatrix, DVector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::core::linear_algebra::LinearAlgebra;
-use crate::core::mom_solver::MoMSolver;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PortType {
     Voltage,
     Current,
-    Impedance,
     Balanced,
     Unbalanced,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortConfig {
+pub struct Port {
+    pub id: usize,
+    pub name: String,
     pub port_type: PortType,
-    pub impedance: f64,
     pub position: [f64; 3],
     pub direction: [f64; 3],
-    pub width: f64,
-    pub active: bool,
-}
-
-impl Default for PortConfig {
-    fn default() -> Self {
-        Self {
-            port_type: PortType::Voltage,
-            impedance: 50.0,
-            position: [0.0, 0.0, 0.0],
-            direction: [1.0, 0.0, 0.0],
-            width: 1e-3,
-            active: true,
-        }
-    }
+    pub impedance: Complex<f64>,
+    pub wire_index: Option<usize>,
+    pub segment_index: Option<usize>,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Port {
-    pub id: String,
-    pub config: PortConfig,
-    pub segments: Vec<usize>, // Wire segments associated with this port
-}
-
-impl Port {
-    pub fn new(id: String, config: PortConfig) -> Self {
-        Self {
-            id,
-            config,
-            segments: Vec::new(),
-        }
-    }
-
-    pub fn add_segment(&mut self, segment_id: usize) {
-        if !self.segments.contains(&segment_id) {
-            self.segments.push(segment_id);
-        }
-    }
-
-    pub fn is_balanced(&self) -> bool {
-        matches!(self.config.port_type, PortType::Balanced)
-    }
-
-    pub fn reference_impedance(&self) -> f64 {
-        self.config.impedance
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SParameter {
-    pub s11: Complex<f64>,
-    pub s12: Complex<f64>,
-    pub s21: Complex<f64>,
-    pub s22: Complex<f64>,
-    pub frequency: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct MultiPortSParameters {
-    pub matrix: DMatrix<Complex<f64>>,
+pub struct SParameters {
     pub frequencies: Vec<f64>,
-    pub port_impedances: Vec<f64>,
+    pub s_matrix: Vec<ComplexMatrix>,
+    pub z_matrix: Vec<ComplexMatrix>,
+    pub port_impedances: Vec<Vec<Complex<f64>>>,
     pub num_ports: usize,
 }
 
-impl MultiPortSParameters {
-    pub fn new(num_ports: usize) -> Self {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortExcitation {
+    pub port_id: usize,
+    pub voltage: Complex<f64>,
+    pub current: Complex<f64>,
+    pub power: f64,
+}
+
+pub struct PortManager {
+    ports: Vec<Port>,
+    reference_impedance: f64,
+}
+
+impl Default for Port {
+    fn default() -> Self {
         Self {
-            matrix: DMatrix::zeros(num_ports, num_ports),
-            frequencies: Vec::new(),
-            port_impedances: vec![50.0; num_ports],
-            num_ports,
-        }
-    }
-
-    pub fn get_s_parameter(&self, i: usize, j: usize) -> Option<Complex<f64>> {
-        if i < self.num_ports && j < self.num_ports {
-            Some(self.matrix[(i, j)])
-        } else {
-            None
-        }
-    }
-
-    pub fn set_s_parameter(&mut self, i: usize, j: usize, value: Complex<f64>) {
-        if i < self.num_ports && j < self.num_ports {
-            self.matrix[(i, j)] = value;
+            id: 0,
+            name: "Port1".to_string(),
+            port_type: PortType::Voltage,
+            position: [0.0, 0.0, 0.0],
+            direction: [1.0, 0.0, 0.0],
+            impedance: Complex::new(50.0, 0.0),
+            wire_index: None,
+            segment_index: None,
+            enabled: true,
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortManager {
-    pub ports: HashMap<String, Port>,
-    pub active_ports: Vec<String>,
-    pub s_parameters: Option<MultiPortSParameters>,
-    pub z_matrix: Option<DMatrix<Complex<f64>>>,
+impl Port {
+    pub fn new(id: usize, name: String) -> Self {
+        Self {
+            id,
+            name,
+            ..Default::default()
+        }
+    }
+
+    pub fn voltage_port(id: usize, name: String, position: [f64; 3], impedance: f64) -> Self {
+        Self {
+            id,
+            name,
+            port_type: PortType::Voltage,
+            position,
+            impedance: Complex::new(impedance, 0.0),
+            ..Default::default()
+        }
+    }
+
+    pub fn current_port(id: usize, name: String, position: [f64; 3], impedance: f64) -> Self {
+        Self {
+            id,
+            name,
+            port_type: PortType::Current,
+            position,
+            impedance: Complex::new(impedance, 0.0),
+            ..Default::default()
+        }
+    }
+
+    pub fn balanced_port(id: usize, name: String, position: [f64; 3], impedance: f64) -> Self {
+        Self {
+            id,
+            name,
+            port_type: PortType::Balanced,
+            position,
+            impedance: Complex::new(impedance, 0.0),
+            ..Default::default()
+        }
+    }
+
+    pub fn set_wire_segment(&mut self, wire_index: usize, segment_index: usize) {
+        self.wire_index = Some(wire_index);
+        self.segment_index = Some(segment_index);
+    }
+
+    pub fn is_attached(&self) -> bool {
+        self.wire_index.is_some() && self.segment_index.is_some()
+    }
 }
 
 impl Default for PortManager {
     fn default() -> Self {
         Self {
-            ports: HashMap::new(),
-            active_ports: Vec::new(),
-            s_parameters: None,
-            z_matrix: None,
+            ports: Vec::new(),
+            reference_impedance: 50.0,
         }
     }
 }
@@ -133,356 +129,348 @@ impl PortManager {
         Self::default()
     }
 
+    pub fn with_reference_impedance(mut self, z0: f64) -> Self {
+        self.reference_impedance = z0;
+        self
+    }
+
     pub fn add_port(&mut self, port: Port) -> Result<(), String> {
-        let id = port.id.clone();
-        
-        if self.ports.contains_key(&id) {
-            return Err(format!("Port {} already exists", id));
+        if self.ports.iter().any(|p| p.id == port.id) {
+            return Err(format!("Port with ID {} already exists", port.id));
         }
-
-        if port.config.active {
-            self.active_ports.push(id.clone());
-        }
-
-        self.ports.insert(id, port);
+        self.ports.push(port);
         Ok(())
     }
 
-    pub fn remove_port(&mut self, id: &str) -> Option<Port> {
-        if let Some(port) = self.ports.remove(id) {
-            self.active_ports.retain(|p| p != id);
-            Some(port)
-        } else {
-            None
+    pub fn remove_port(&mut self, port_id: usize) -> Result<(), String> {
+        let initial_len = self.ports.len();
+        self.ports.retain(|p| p.id != port_id);
+        if self.ports.len() == initial_len {
+            return Err(format!("Port with ID {} not found", port_id));
         }
+        Ok(())
     }
 
-    pub fn get_port(&self, id: &str) -> Option<&Port> {
-        self.ports.get(id)
+    pub fn get_port(&self, port_id: usize) -> Option<&Port> {
+        self.ports.iter().find(|p| p.id == port_id)
     }
 
-    pub fn get_port_mut(&mut self, id: &str) -> Option<&mut Port> {
-        self.ports.get_mut(id)
+    pub fn get_port_mut(&mut self, port_id: usize) -> Option<&mut Port> {
+        self.ports.iter_mut().find(|p| p.id == port_id)
     }
 
     pub fn get_active_ports(&self) -> Vec<&Port> {
-        self.active_ports.iter()
-            .filter_map(|id| self.ports.get(id))
-            .collect()
+        self.ports.iter().filter(|p| p.enabled).collect()
     }
 
-    pub fn num_active_ports(&self) -> usize {
-        self.active_ports.len()
+    pub fn get_num_ports(&self) -> usize {
+        self.ports.len()
     }
 
     pub fn calculate_s_parameters(
-        &mut self, 
-        solver: &MoMSolver,
-        linear_algebra: &LinearAlgebra,
-        frequency: f64
-    ) -> Result<(), String> {
+        &self,
+        frequencies: &[f64],
+        mom_solver: &mut MoMSolver,
+    ) -> Result<SParameters, String> {
         let active_ports = self.get_active_ports();
         let num_ports = active_ports.len();
-        
+
         if num_ports == 0 {
             return Err("No active ports found".to_string());
         }
 
-        // Calculate Z-matrix first
-        self.calculate_z_matrix(solver, linear_algebra, frequency)?;
-        
-        // Convert Z-matrix to S-parameters
-        if let Some(ref z_matrix) = self.z_matrix {
-            let s_matrix = self.z_to_s_matrix(z_matrix, &active_ports)?;
+        let mut s_matrices = Vec::new();
+        let mut z_matrices = Vec::new();
+        let mut port_impedances = Vec::new();
+
+        for &freq in frequencies {
+            mom_solver.set_frequency(freq);
             
-            let mut s_params = MultiPortSParameters::new(num_ports);
-            s_params.matrix = s_matrix;
-            s_params.frequencies = vec![frequency];
-            s_params.port_impedances = active_ports.iter()
-                .map(|p| p.reference_impedance())
-                .collect();
-            
-            self.s_parameters = Some(s_params);
+            let (z_matrix, port_z) = self.calculate_z_matrix(mom_solver, &active_ports)?;
+            let s_matrix = self.z_to_s_matrix(&z_matrix, &port_z)?;
+
+            z_matrices.push(z_matrix);
+            s_matrices.push(s_matrix);
+            port_impedances.push(port_z);
         }
 
-        Ok(())
+        Ok(SParameters {
+            frequencies: frequencies.to_vec(),
+            s_matrix: s_matrices,
+            z_matrix: z_matrices,
+            port_impedances,
+            num_ports,
+        })
     }
 
-    pub fn calculate_z_matrix(
-        &mut self,
-        solver: &MoMSolver,
-        linear_algebra: &LinearAlgebra,
-        frequency: f64
-    ) -> Result<(), String> {
-        let active_ports = self.get_active_ports();
+    fn calculate_z_matrix(
+        &self,
+        mom_solver: &mut MoMSolver,
+        active_ports: &[&Port],
+    ) -> Result<(ComplexMatrix, Vec<Complex<f64>>), String> {
         let num_ports = active_ports.len();
-        
-        if num_ports == 0 {
-            return Err("No active ports found".to_string());
-        }
+        let mut z_matrix = ComplexMatrix::zeros(num_ports, num_ports);
+        let mut port_impedances = vec![Complex::new(self.reference_impedance, 0.0); num_ports];
 
-        let mut z_matrix = DMatrix::zeros(num_ports, num_ports);
-
-        // For each port excitation
-        for (i, port_i) in active_ports.iter().enumerate() {
-            // Create excitation vector - only port i is excited
-            let mut excitation = self.create_port_excitation(port_i, &active_ports)?;
+        // Calculate Z-matrix by exciting each port individually
+        for (i, &port_i) in active_ports.iter().enumerate() {
+            // Set up excitation for port i
+            let excitation = self.create_port_excitation(port_i)?;
             
-            // Solve for currents
-            let currents = solver.solve_system(&excitation, linear_algebra)?;
+            // Solve MoM system with this excitation
+            let solution = mom_solver.solve_with_excitation(&excitation)?;
             
-            // Calculate port voltages and extract Z-parameters
-            for (j, port_j) in active_ports.iter().enumerate() {
-                let voltage = self.calculate_port_voltage(port_j, &currents)?;
-                let current = if i == j { 
-                    Complex::new(1.0, 0.0) // Unit excitation current
-                } else { 
-                    self.calculate_port_current(port_j, &currents)? 
-                };
+            // Extract voltages and currents at all ports
+            for (j, &port_j) in active_ports.iter().enumerate() {
+                let (voltage, current) = self.extract_port_vi(port_j, &solution)?;
                 
-                // Z_ij = V_j / I_i when port i is excited
-                z_matrix[(j, i)] = voltage / current;
+                if i == j {
+                    // Diagonal term: input impedance Z_ii = V_i / I_i
+                    if current.norm() > 1e-12 {
+                        z_matrix[(j, i)] = voltage / current;
+                        port_impedances[j] = voltage / current;
+                    } else {
+                        return Err(format!("Zero current at port {}", port_j.id));
+                    }
+                } else {
+                    // Off-diagonal term: transfer impedance Z_ji = V_j / I_i
+                    let excitation_current = self.get_excitation_current(port_i, &solution)?;
+                    if excitation_current.norm() > 1e-12 {
+                        z_matrix[(j, i)] = voltage / excitation_current;
+                    }
+                }
             }
         }
 
-        self.z_matrix = Some(z_matrix);
-        Ok(())
+        Ok((z_matrix, port_impedances))
     }
 
-    fn create_port_excitation(
-        &self, 
-        excited_port: &Port, 
-        all_ports: &[&Port]
-    ) -> Result<DVector<Complex<f64>>, String> {
-        // Create excitation vector based on port type
-        let size = self.estimate_system_size(all_ports);
-        let mut excitation = DVector::zeros(size);
-
-        match excited_port.config.port_type {
-            PortType::Voltage => {
-                // Voltage excitation: apply unit voltage across port
-                for &segment_id in &excited_port.segments {
-                    if segment_id < size {
-                        excitation[segment_id] = Complex::new(1.0, 0.0);
-                    }
+    fn create_port_excitation(&self, port: &Port) -> Result<ComplexVector, String> {
+        if let (Some(wire_idx), Some(seg_idx)) = (port.wire_index, port.segment_index) {
+            // Create excitation vector based on port type
+            let mut excitation = ComplexVector::zeros(1); // This should match MoM matrix size
+            
+            match port.port_type {
+                PortType::Voltage => {
+                    // Voltage excitation: apply 1V at the port segment
+                    excitation[0] = Complex::new(1.0, 0.0);
                 }
-            },
-            PortType::Current => {
-                // Current excitation: apply unit current through port
-                for &segment_id in &excited_port.segments {
-                    if segment_id < size {
-                        excitation[segment_id] = Complex::new(1.0, 0.0);
-                    }
+                PortType::Current => {
+                    // Current excitation: apply 1A at the port segment
+                    excitation[0] = Complex::new(1.0, 0.0);
                 }
-            },
-            PortType::Balanced => {
-                // Balanced excitation: differential voltage
-                let mid = excited_port.segments.len() / 2;
-                for (idx, &segment_id) in excited_port.segments.iter().enumerate() {
-                    if segment_id < size {
-                        excitation[segment_id] = if idx < mid {
-                            Complex::new(0.5, 0.0)
-                        } else {
-                            Complex::new(-0.5, 0.0)
-                        };
-                    }
+                PortType::Balanced => {
+                    // Balanced excitation: differential mode
+                    excitation[0] = Complex::new(0.5, 0.0);
                 }
-            },
-            _ => {
-                // Default to voltage excitation
-                for &segment_id in &excited_port.segments {
-                    if segment_id < size {
-                        excitation[segment_id] = Complex::new(1.0, 0.0);
-                    }
+                PortType::Unbalanced => {
+                    // Unbalanced excitation: single-ended
+                    excitation[0] = Complex::new(1.0, 0.0);
                 }
             }
-        }
-
-        Ok(excitation)
-    }
-
-    fn calculate_port_voltage(
-        &self, 
-        port: &Port, 
-        currents: &DVector<Complex<f64>>
-    ) -> Result<Complex<f64>, String> {
-        let mut voltage = Complex::new(0.0, 0.0);
-        let mut count = 0;
-
-        for &segment_id in &port.segments {
-            if segment_id < currents.len() {
-                voltage += currents[segment_id];
-                count += 1;
-            }
-        }
-
-        if count > 0 {
-            Ok(voltage / count as f64)
+            
+            Ok(excitation)
         } else {
-            Err("No valid segments for port voltage calculation".to_string())
+            Err(format!("Port {} is not attached to a wire segment", port.id))
         }
     }
 
-    fn calculate_port_current(
-        &self, 
-        port: &Port, 
-        currents: &DVector<Complex<f64>>
-    ) -> Result<Complex<f64>, String> {
-        let mut current = Complex::new(0.0, 0.0);
+    fn extract_port_vi(&self, port: &Port, solution: &MoMSolution) -> Result<(Complex<f64>, Complex<f64>), String> {
+        if let (Some(wire_idx), Some(seg_idx)) = (port.wire_index, port.segment_index) {
+            // Extract voltage and current from MoM solution
+            let current = solution.get_current_at_segment(wire_idx, seg_idx)
+                .ok_or_else(|| format!("Cannot extract current for port {}", port.id))?;
+            
+            let voltage = solution.get_voltage_at_segment(wire_idx, seg_idx)
+                .ok_or_else(|| format!("Cannot extract voltage for port {}", port.id))?;
 
-        for &segment_id in &port.segments {
-            if segment_id < currents.len() {
-                current += currents[segment_id];
-            }
+            Ok((voltage, current))
+        } else {
+            Err(format!("Port {} is not attached to a wire segment", port.id))
         }
+    }
 
-        Ok(current)
+    fn get_excitation_current(&self, port: &Port, solution: &MoMSolution) -> Result<Complex<f64>, String> {
+        // Get the current at the excitation port
+        self.extract_port_vi(port, solution).map(|(_, current)| current)
     }
 
     fn z_to_s_matrix(
         &self,
-        z_matrix: &DMatrix<Complex<f64>>,
-        ports: &[&Port]
-    ) -> Result<DMatrix<Complex<f64>>, String> {
+        z_matrix: &ComplexMatrix,
+        port_impedances: &[Complex<f64>],
+    ) -> Result<ComplexMatrix, String> {
         let n = z_matrix.nrows();
-        
+        if n != port_impedances.len() {
+            return Err("Z-matrix size doesn't match number of port impedances".to_string());
+        }
+
         // Create reference impedance matrix
-        let mut z0_matrix = DMatrix::zeros(n, n);
-        for (i, port) in ports.iter().enumerate() {
-            z0_matrix[(i, i)] = Complex::new(port.reference_impedance(), 0.0);
+        let mut z0_matrix = ComplexMatrix::zeros(n, n);
+        for i in 0..n {
+            z0_matrix[(i, i)] = Complex::new(self.reference_impedance, 0.0);
         }
 
-        // S = (Z - Z0) * (Z + Z0)^(-1)
-        let z_plus_z0 = z_matrix + &z0_matrix;
+        // S = (Z - Z0) * (Z + Z0)^-1
         let z_minus_z0 = z_matrix - &z0_matrix;
-        
-        match z_plus_z0.try_inverse() {
-            Some(inv) => Ok(z_minus_z0 * inv),
-            None => Err("Failed to invert (Z + Z0) matrix".to_string())
-        }
+        let z_plus_z0 = z_matrix + &z0_matrix;
+
+        // Invert (Z + Z0)
+        let z_plus_z0_inv = z_plus_z0.try_inverse()
+            .ok_or("Cannot invert (Z + Z0) matrix")?;
+
+        let s_matrix = z_minus_z0 * z_plus_z0_inv;
+        Ok(s_matrix)
     }
 
-    fn estimate_system_size(&self, ports: &[&Port]) -> usize {
-        // Estimate system size based on maximum segment ID
-        ports.iter()
-            .flat_map(|p| &p.segments)
-            .max()
-            .unwrap_or(&0) + 1
+    // Legacy compatibility methods
+    pub fn set_reference_impedance(&mut self, z0: f64) {
+        self.reference_impedance = z0;
     }
 
-    pub fn get_input_impedance(&self, port_id: &str) -> Option<Complex<f64>> {
-        if let (Some(z_matrix), Some(port_index)) = 
-            (&self.z_matrix, self.get_port_index(port_id)) {
-            Some(z_matrix[(port_index, port_index)])
+    pub fn get_reference_impedance(&self) -> f64 {
+        self.reference_impedance
+    }
+
+    pub fn clear_ports(&mut self) {
+        self.ports.clear();
+    }
+
+    pub fn get_ports(&self) -> &[Port] {
+        &self.ports
+    }
+
+    pub fn enable_port(&mut self, port_id: usize, enabled: bool) -> Result<(), String> {
+        if let Some(port) = self.get_port_mut(port_id) {
+            port.enabled = enabled;
+            Ok(())
         } else {
-            None
+            Err(format!("Port {} not found", port_id))
         }
     }
 
-    fn get_port_index(&self, port_id: &str) -> Option<usize> {
-        self.active_ports.iter().position(|id| id == port_id)
-    }
-
-    pub fn get_s11(&self, port_id: &str) -> Option<Complex<f64>> {
-        if let (Some(s_params), Some(idx)) = 
-            (&self.s_parameters, self.get_port_index(port_id)) {
-            s_params.get_s_parameter(idx, idx)
-        } else {
-            None
+    pub fn calculate_vswr(&self, s_parameters: &SParameters, port_index: usize) -> Result<Vec<f64>, String> {
+        if port_index >= s_parameters.num_ports {
+            return Err("Port index out of range".to_string());
         }
-    }
 
-    pub fn get_s21(&self, port1_id: &str, port2_id: &str) -> Option<Complex<f64>> {
-        if let (Some(s_params), Some(idx1), Some(idx2)) = 
-            (&self.s_parameters, self.get_port_index(port1_id), self.get_port_index(port2_id)) {
-            s_params.get_s_parameter(idx2, idx1) // S21 = output/input
-        } else {
-            None
-        }
-    }
-
-    // Backward compatibility methods
-    pub fn calculate_vswr(&self, port_id: &str) -> Option<f64> {
-        self.get_s11(port_id).map(|s11| {
-            let magnitude = s11.norm();
-            if magnitude < 1.0 {
-                (1.0 + magnitude) / (1.0 - magnitude)
+        let mut vswr = Vec::new();
+        for s_matrix in &s_parameters.s_matrix {
+            let s11 = s_matrix[(port_index, port_index)];
+            let gamma = s11.norm();
+            let vswr_val = if gamma < 1.0 {
+                (1.0 + gamma) / (1.0 - gamma)
             } else {
                 f64::INFINITY
-            }
-        })
+            };
+            vswr.push(vswr_val);
+        }
+
+        Ok(vswr)
     }
 
-    pub fn calculate_return_loss_db(&self, port_id: &str) -> Option<f64> {
-        self.get_s11(port_id).map(|s11| -20.0 * s11.norm().log10())
+    pub fn calculate_return_loss(&self, s_parameters: &SParameters, port_index: usize) -> Result<Vec<f64>, String> {
+        if port_index >= s_parameters.num_ports {
+            return Err("Port index out of range".to_string());
+        }
+
+        let mut return_loss = Vec::new();
+        for s_matrix in &s_parameters.s_matrix {
+            let s11 = s_matrix[(port_index, port_index)];
+            let rl = -20.0 * s11.norm().log10();
+            return_loss.push(rl);
+        }
+
+        Ok(return_loss)
     }
 
-    pub fn calculate_insertion_loss_db(&self, port1_id: &str, port2_id: &str) -> Option<f64> {
-        self.get_s21(port1_id, port2_id).map(|s21| -20.0 * s21.norm().log10())
+    pub fn calculate_insertion_loss(
+        &self,
+        s_parameters: &SParameters,
+        port1_index: usize,
+        port2_index: usize,
+    ) -> Result<Vec<f64>, String> {
+        if port1_index >= s_parameters.num_ports || port2_index >= s_parameters.num_ports {
+            return Err("Port index out of range".to_string());
+        }
+
+        let mut insertion_loss = Vec::new();
+        for s_matrix in &s_parameters.s_matrix {
+            let s21 = s_matrix[(port2_index, port1_index)];
+            let il = -20.0 * s21.norm().log10();
+            insertion_loss.push(il);
+        }
+
+        Ok(insertion_loss)
     }
 }
 
-// Utility functions for S-parameter analysis
-impl PortManager {
-    pub fn is_passive(&self) -> bool {
-        if let Some(ref s_params) = self.s_parameters {
-            // Check if sum of |S_ij|^2 <= 1 for each port (passivity condition)
-            for i in 0..s_params.num_ports {
-                let mut sum = 0.0;
-                for j in 0..s_params.num_ports {
-                    sum += s_params.matrix[(i, j)].norm_sqr();
-                }
-                if sum > 1.001 { // Small tolerance for numerical errors
-                    return false;
-                }
-            }
-            true
+// Helper functions for S-parameter analysis
+impl SParameters {
+    pub fn get_s11(&self, freq_index: usize, port_index: usize) -> Option<Complex<f64>> {
+        if freq_index < self.s_matrix.len() && port_index < self.num_ports {
+            Some(self.s_matrix[freq_index][(port_index, port_index)])
         } else {
-            false
+            None
         }
     }
 
-    pub fn is_reciprocal(&self, tolerance: f64) -> bool {
-        if let Some(ref s_params) = self.s_parameters {
-            for i in 0..s_params.num_ports {
-                for j in 0..s_params.num_ports {
-                    let sij = s_params.matrix[(i, j)];
-                    let sji = s_params.matrix[(j, i)];
-                    if (sij - sji).norm() > tolerance {
-                        return false;
-                    }
-                }
-            }
-            true
+    pub fn get_s21(&self, freq_index: usize, port1_index: usize, port2_index: usize) -> Option<Complex<f64>> {
+        if freq_index < self.s_matrix.len() && port1_index < self.num_ports && port2_index < self.num_ports {
+            Some(self.s_matrix[freq_index][(port2_index, port1_index)])
         } else {
-            false
+            None
         }
     }
 
-    pub fn export_touchstone(&self, filename: &str) -> Result<(), std::io::Error> {
-        use std::fs::File;
-        use std::io::Write;
+    pub fn get_frequency_range(&self) -> (f64, f64) {
+        if self.frequencies.is_empty() {
+            (0.0, 0.0)
+        } else {
+            (*self.frequencies.first().unwrap(), *self.frequencies.last().unwrap())
+        }
+    }
 
-        if let Some(ref s_params) = self.s_parameters {
-            let mut file = File::create(filename)?;
-            
-            // Touchstone header
-            writeln!(file, "# Hz S RI R {}", s_params.port_impedances[0])?;
-            
-            for (freq_idx, &freq) in s_params.frequencies.iter().enumerate() {
-                write!(file, "{:.6e}", freq)?;
-                
-                for i in 0..s_params.num_ports {
-                    for j in 0..s_params.num_ports {
-                        let s = s_params.matrix[(i, j)];
-                        write!(file, " {:.6e} {:.6e}", s.re, s.im)?;
-                    }
-                }
-                writeln!(file)?;
+    pub fn interpolate_at_frequency(&self, target_freq: f64) -> Option<ComplexMatrix> {
+        // Linear interpolation of S-parameters at arbitrary frequency
+        if self.frequencies.len() < 2 {
+            return None;
+        }
+
+        // Find interpolation indices
+        let mut lower_idx = 0;
+        let mut upper_idx = self.frequencies.len() - 1;
+
+        for (i, &freq) in self.frequencies.iter().enumerate() {
+            if freq <= target_freq {
+                lower_idx = i;
+            }
+            if freq >= target_freq {
+                upper_idx = i;
+                break;
             }
         }
-        
-        Ok(())
+
+        if lower_idx == upper_idx {
+            return Some(self.s_matrix[lower_idx].clone());
+        }
+
+        let f1 = self.frequencies[lower_idx];
+        let f2 = self.frequencies[upper_idx];
+        let t = (target_freq - f1) / (f2 - f1);
+
+        let s1 = &self.s_matrix[lower_idx];
+        let s2 = &self.s_matrix[upper_idx];
+
+        // Linear interpolation of complex values
+        let mut result = ComplexMatrix::zeros(self.num_ports, self.num_ports);
+        for i in 0..self.num_ports {
+            for j in 0..self.num_ports {
+                result[(i, j)] = s1[(i, j)] * (1.0 - t) + s2[(i, j)] * t;
+            }
+        }
+
+        Some(result)
     }
 }
 
@@ -492,28 +480,39 @@ mod tests {
 
     #[test]
     fn test_port_creation() {
-        let config = PortConfig::default();
-        let port = Port::new("port1".to_string(), config);
-        assert_eq!(port.id, "port1");
-        assert_eq!(port.reference_impedance(), 50.0);
+        let port = Port::voltage_port(1, "Test".to_string(), [0.0, 0.0, 0.0], 50.0);
+        assert_eq!(port.id, 1);
+        assert_eq!(port.name, "Test");
+        assert!(matches!(port.port_type, PortType::Voltage));
     }
 
     #[test]
     fn test_port_manager() {
         let mut manager = PortManager::new();
-        let port = Port::new("port1".to_string(), PortConfig::default());
+        let port = Port::new(1, "Port1".to_string());
         
         assert!(manager.add_port(port).is_ok());
-        assert_eq!(manager.num_active_ports(), 1);
-        assert!(manager.get_port("port1").is_some());
+        assert_eq!(manager.get_num_ports(), 1);
+        
+        assert!(manager.remove_port(1).is_ok());
+        assert_eq!(manager.get_num_ports(), 0);
     }
 
     #[test]
-    fn test_s_parameter_matrix() {
-        let mut s_params = MultiPortSParameters::new(2);
-        let s11 = Complex::new(0.1, 0.2);
-        s_params.set_s_parameter(0, 0, s11);
-        
-        assert_eq!(s_params.get_s_parameter(0, 0), Some(s11));
+    fn test_z_to_s_conversion() {
+        let manager = PortManager::new();
+        let mut z_matrix = ComplexMatrix::zeros(2, 2);
+        z_matrix[(0, 0)] = Complex::new(60.0, 10.0);
+        z_matrix[(0, 1)] = Complex::new(5.0, 2.0);
+        z_matrix[(1, 0)] = Complex::new(5.0, 2.0);
+        z_matrix[(1, 1)] = Complex::new(40.0, -5.0);
+
+        let port_impedances = vec![
+            Complex::new(50.0, 0.0),
+            Complex::new(50.0, 0.0)
+        ];
+
+        let result = manager.z_to_s_matrix(&z_matrix, &port_impedances);
+        assert!(result.is_ok());
     }
 }

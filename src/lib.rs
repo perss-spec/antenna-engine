@@ -1,8 +1,6 @@
-//! PROMIN Antenna Studio - Method of Moments electromagnetic solver
-
 pub mod geometry;
 pub mod mom;
+pub mod utils;
 
-// Re-export main types
-pub use geometry::{Wire, Segment};
-pub use mom::{MoMSolver, SolverError, PhysicalConstants};
+pub use geometry::{Point3D, Segment, Wire};
+pub use mom::{MoMSolver, ImpedanceMatrix, ExcitationVector};

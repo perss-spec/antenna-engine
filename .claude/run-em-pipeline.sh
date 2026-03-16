@@ -2,7 +2,7 @@
 # EM Pipeline Runner — calls orchestrator repeatedly until all phases complete
 WEBHOOK="http://localhost:5678/webhook/EQevFbE3p71rqif4/webhook/ae/em-orchestrator"
 STATE_FILE="/mnt/d/NAS-DATA/antenna-engine/.claude/em-pipeline-state.json"
-MAX_ITERATIONS=20
+MAX_ITERATIONS=50
 
 echo "=== EM Pipeline Runner ==="
 echo "Start: $(date)"
@@ -50,8 +50,8 @@ else:
 
   echo "Response: $(echo "$RESULT" | head -c 200)"
 
-  # Brief pause between iterations
-  sleep 2
+  # Wait between iterations — orchestrator takes ~2 min per phase
+  sleep 30
 done
 
 echo ""
