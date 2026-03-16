@@ -1,17 +1,12 @@
-//! Core functionality for PROMIN Antenna Studio
-//! 
-//! This module contains the core data structures and algorithms for antenna simulation,
-//! geometry processing, and electromagnetic field calculations.
-
 pub mod geometry;
-pub mod field;
-pub mod antenna;
+pub mod materials;
 pub mod simulation;
-pub mod parsers;
+pub mod analysis;
 pub mod import;
 
-pub use geometry::*;
-pub use field::*;
-pub use antenna::*;
-pub use simulation::*;
-pub use import::*;
+// Re-export commonly used types
+pub use geometry::{Vertex, Triangle, Mesh};
+pub use materials::{Material, MaterialProperties};
+pub use simulation::{SimulationParameters, SimulationResult};
+pub use analysis::{AnalysisType, AnalysisResult};
+pub use import::{ImportFormat, ImportedModel, ImportMetadata, import_file, detect_format};
