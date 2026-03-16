@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [
+        220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -22,11 +25,19 @@
       "name": "Read Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
-        "model": "claude-sonnet-4-20250514",
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-20250514"
+        },
         "maxTokensToSample": 16384,
         "temperature": 0.1,
         "options": {}
@@ -35,7 +46,10 @@
       "name": "Sonnet LLM",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
-      "position": [900, 520],
+      "position": [
+        900,
+        520
+      ],
       "credentials": {
         "anthropicApi": {
           "id": "xyS2ZoWkkNPBoTTS",
@@ -45,7 +59,12 @@
     },
     {
       "parameters": {
-        "model": "claude-opus-4-20250514",
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-opus-4-20250514"
+        },
         "maxTokensToSample": 16384,
         "temperature": 0.1,
         "options": {}
@@ -54,7 +73,10 @@
       "name": "Opus LLM",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
-      "position": [900, 700],
+      "position": [
+        900,
+        700
+      ],
       "credentials": {
         "anthropicApi": {
           "id": "xyS2ZoWkkNPBoTTS",
@@ -64,42 +86,54 @@
     },
     {
       "parameters": {
-        "text": "You are implementing a triangle surface mesher for PROMIN Antenna Studio (Rust).\n\nExisting geometry types:\n```rust\n{{ $json.context.geometry }}\n```\n\nExisting element types:\n```rust\n{{ $json.context.element }}\n```\n\nGenerate `mesher.rs` — surface mesh generation:\n\n1. **Wire mesher** (already exists in solver.rs, improve it):\n   - Subdivide wire elements into N segments\n   - Support non-uniform spacing (finer near feed point)\n\n2. **Patch mesher**:\n   - Rectangular patch → regular triangle grid (Nx × Ny × 2 triangles)\n   - Configurable mesh density based on wavelength (λ/10 default)\n   - Edge meshing for microstrip feed\n\n3. **General surface mesher**:\n   - Given vertices + triangles (from STL/NASTRAN import), compute mesh quality metrics\n   - Triangle aspect ratio, minimum angle check\n   - Vertex-to-triangle adjacency map\n\n4. **QFH mesher**:\n   - Helical wire segments with specified turns and diameter\n\nPublic API:\n```rust\npub struct MeshConfig {\n    pub wavelength: f64,\n    pub elements_per_wavelength: usize, // default 10\n    pub min_edge_length: f64,\n    pub max_edge_length: f64,\n    pub adaptive: bool,\n}\n\npub fn mesh_antenna(element: &AntennaElement, config: &MeshConfig) -> Result<Mesh>\npub fn compute_mesh_quality(mesh: &Mesh) -> MeshQuality\n```\n\nInclude tests for dipole and patch meshing.\n\n<file path=\"src-tauri/src/core/mesher.rs\">\n...complete Rust code...\n</file>",
+        "text": "You are implementing a triangle surface mesher for PROMIN Antenna Studio (Rust).\n\nExisting geometry types:\n```rust\n{{ $json.context.geometry }}\n```\n\nExisting element types:\n```rust\n{{ $json.context.element }}\n```\n\nGenerate `mesher.rs` \u2014 surface mesh generation:\n\n1. **Wire mesher** (already exists in solver.rs, improve it):\n   - Subdivide wire elements into N segments\n   - Support non-uniform spacing (finer near feed point)\n\n2. **Patch mesher**:\n   - Rectangular patch \u2192 regular triangle grid (Nx \u00d7 Ny \u00d7 2 triangles)\n   - Configurable mesh density based on wavelength (\u03bb/10 default)\n   - Edge meshing for microstrip feed\n\n3. **General surface mesher**:\n   - Given vertices + triangles (from STL/NASTRAN import), compute mesh quality metrics\n   - Triangle aspect ratio, minimum angle check\n   - Vertex-to-triangle adjacency map\n\n4. **QFH mesher**:\n   - Helical wire segments with specified turns and diameter\n\nPublic API:\n```rust\npub struct MeshConfig {\n    pub wavelength: f64,\n    pub elements_per_wavelength: usize, // default 10\n    pub min_edge_length: f64,\n    pub max_edge_length: f64,\n    pub adaptive: bool,\n}\n\npub fn mesh_antenna(element: &AntennaElement, config: &MeshConfig) -> Result<Mesh>\npub fn compute_mesh_quality(mesh: &Mesh) -> MeshQuality\n```\n\nInclude tests for dipole and patch meshing.\n\n<file path=\"src-tauri/src/core/mesher.rs\">\n...complete Rust code...\n</file>",
         "options": {
           "systemMessage": "You are a computational geometry specialist. Write efficient mesh generation code in Rust. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-mesher",
       "name": "Gen Surface Mesher",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 200]
+      "position": [
+        660,
+        200
+      ]
     },
     {
       "parameters": {
-        "text": "You are implementing Rao-Wilton-Glisson (RWG) basis functions for PROMIN Antenna Studio.\n\nThis is the MOST CRITICAL module for surface MoM — it defines the vector basis functions on triangular meshes.\n\nExisting geometry:\n```rust\n{{ $('Read Context').item.json.context.geometry }}\n```\n\nExisting Green's function:\n```rust\n{{ $('Read Context').item.json.context.green }}\n```\n\nSurface mesher (just generated):\n{{ $('Gen Surface Mesher').item.json.output }}\n\nGenerate `rwg.rs` — RWG basis functions:\n\n1. **RWG edge identification**:\n   - Find all interior edges shared by exactly 2 triangles (T+, T-)\n   - Each interior edge = one RWG basis function\n   - Store: edge vertices, T+ (triangle with edge in CCW), T- (triangle with edge in CW)\n   - Free vertex of T+ = ρ+, free vertex of T- = ρ-\n\n2. **RWG basis function evaluation**:\n   - f_n(r) = l_n/(2A+) * ρ+(r)  for r in T+\n   - f_n(r) = l_n/(2A-) * ρ-(r)  for r in T-\n   - where ρ+(r) = r - vertex_opposite_to_edge_in_T+\n   - l_n = edge length, A+ = area of T+\n\n3. **Divergence**:\n   - ∇·f_n = l_n/A+  in T+\n   - ∇·f_n = -l_n/A-  in T-\n\n4. **Impedance matrix element Z_mn (EFIE)**:\n   - Z_mn = jωμ ∫∫ f_m · f_n G dS dS' + (1/jωε) ∫∫ (∇·f_m)(∇·f_n) G dS dS'\n   - Use Gaussian quadrature on triangles (3, 4, or 7 point rules)\n   - Handle singularity extraction for self-terms\n\nPublic API:\n```rust\npub struct RwgBasis {\n    pub edges: Vec<RwgEdge>,\n    pub num_basis: usize,\n}\n\npub struct RwgEdge {\n    pub v1: usize, pub v2: usize,  // edge vertices\n    pub t_plus: usize, pub t_minus: usize,  // triangle indices\n    pub v_plus: usize, pub v_minus: usize,  // free vertices\n    pub length: f64,\n    pub area_plus: f64, pub area_minus: f64,\n}\n\nimpl RwgBasis {\n    pub fn from_mesh(mesh: &Mesh) -> Result<Self>\n    pub fn evaluate(&self, basis_idx: usize, point: &Point3D, tri_idx: usize) -> Point3D\n    pub fn divergence(&self, basis_idx: usize, tri_idx: usize) -> f64\n}\n```\n\nInclude tests verifying:\n- Edge count for a known mesh (e.g., 2 triangles sharing 1 edge → 1 RWG basis)\n- Basis function evaluation correctness\n- Divergence theorem consistency\n\n<file path=\"src-tauri/src/core/rwg.rs\">\n...complete Rust code...\n</file>",
+        "text": "You are implementing Rao-Wilton-Glisson (RWG) basis functions for PROMIN Antenna Studio.\n\nThis is the MOST CRITICAL module for surface MoM \u2014 it defines the vector basis functions on triangular meshes.\n\nExisting geometry:\n```rust\n{{ $('Read Context').item.json.context.geometry }}\n```\n\nExisting Green's function:\n```rust\n{{ $('Read Context').item.json.context.green }}\n```\n\nSurface mesher (just generated):\n{{ $('Gen Surface Mesher').item.json.output }}\n\nGenerate `rwg.rs` \u2014 RWG basis functions:\n\n1. **RWG edge identification**:\n   - Find all interior edges shared by exactly 2 triangles (T+, T-)\n   - Each interior edge = one RWG basis function\n   - Store: edge vertices, T+ (triangle with edge in CCW), T- (triangle with edge in CW)\n   - Free vertex of T+ = \u03c1+, free vertex of T- = \u03c1-\n\n2. **RWG basis function evaluation**:\n   - f_n(r) = l_n/(2A+) * \u03c1+(r)  for r in T+\n   - f_n(r) = l_n/(2A-) * \u03c1-(r)  for r in T-\n   - where \u03c1+(r) = r - vertex_opposite_to_edge_in_T+\n   - l_n = edge length, A+ = area of T+\n\n3. **Divergence**:\n   - \u2207\u00b7f_n = l_n/A+  in T+\n   - \u2207\u00b7f_n = -l_n/A-  in T-\n\n4. **Impedance matrix element Z_mn (EFIE)**:\n   - Z_mn = j\u03c9\u03bc \u222b\u222b f_m \u00b7 f_n G dS dS' + (1/j\u03c9\u03b5) \u222b\u222b (\u2207\u00b7f_m)(\u2207\u00b7f_n) G dS dS'\n   - Use Gaussian quadrature on triangles (3, 4, or 7 point rules)\n   - Handle singularity extraction for self-terms\n\nPublic API:\n```rust\npub struct RwgBasis {\n    pub edges: Vec<RwgEdge>,\n    pub num_basis: usize,\n}\n\npub struct RwgEdge {\n    pub v1: usize, pub v2: usize,  // edge vertices\n    pub t_plus: usize, pub t_minus: usize,  // triangle indices\n    pub v_plus: usize, pub v_minus: usize,  // free vertices\n    pub length: f64,\n    pub area_plus: f64, pub area_minus: f64,\n}\n\nimpl RwgBasis {\n    pub fn from_mesh(mesh: &Mesh) -> Result<Self>\n    pub fn evaluate(&self, basis_idx: usize, point: &Point3D, tri_idx: usize) -> Point3D\n    pub fn divergence(&self, basis_idx: usize, tri_idx: usize) -> f64\n}\n```\n\nInclude tests verifying:\n- Edge count for a known mesh (e.g., 2 triangles sharing 1 edge \u2192 1 RWG basis)\n- Basis function evaluation correctness\n- Divergence theorem consistency\n\n<file path=\"src-tauri/src/core/rwg.rs\">\n...complete Rust code...\n</file>",
         "options": {
           "systemMessage": "You are a computational electromagnetics expert implementing RWG basis functions. This is critical for MoM surface integrals. Be mathematically precise. Use proper Gaussian quadrature. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-rwg",
       "name": "Gen RWG Basis",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1100, 200]
+      "position": [
+        1100,
+        200
+      ]
     },
     {
       "parameters": {
-        "text": "You are implementing adaptive mesh refinement for PROMIN Antenna Studio.\n\nExisting geometry:\n```rust\n{{ $('Read Context').item.json.context.geometry }}\n```\n\nMesher:\n{{ $('Gen Surface Mesher').item.json.output }}\n\nRWG:\n{{ $('Gen RWG Basis').item.json.output }}\n\nGenerate `mesh_refine.rs` — adaptive mesh refinement:\n\n1. **Error estimator**: based on current density discontinuity across edges\n2. **Triangle bisection**: longest-edge bisection to maintain quality\n3. **Refinement loop**: refine triangles where error > threshold, up to max iterations\n4. **Wire refinement**: subdivide wire segments near feed point or high-current regions\n\nPublic API:\n```rust\npub struct RefinementConfig {\n    pub max_iterations: usize,\n    pub error_threshold: f64,\n    pub max_elements: usize,\n    pub min_edge_length: f64,\n}\n\npub fn refine_mesh(mesh: &Mesh, currents: &[Complex64], config: &RefinementConfig) -> Result<Mesh>\npub fn refine_wire_mesh(mesh: &Mesh, feed_segment: usize, refinement_factor: usize) -> Result<Mesh>\n```\n\nInclude tests.\n\n<file path=\"src-tauri/src/core/mesh_refine.rs\">\n...complete Rust code...\n</file>",
+        "text": "You are implementing adaptive mesh refinement for PROMIN Antenna Studio.\n\nExisting geometry:\n```rust\n{{ $('Read Context').item.json.context.geometry }}\n```\n\nMesher:\n{{ $('Gen Surface Mesher').item.json.output }}\n\nRWG:\n{{ $('Gen RWG Basis').item.json.output }}\n\nGenerate `mesh_refine.rs` \u2014 adaptive mesh refinement:\n\n1. **Error estimator**: based on current density discontinuity across edges\n2. **Triangle bisection**: longest-edge bisection to maintain quality\n3. **Refinement loop**: refine triangles where error > threshold, up to max iterations\n4. **Wire refinement**: subdivide wire segments near feed point or high-current regions\n\nPublic API:\n```rust\npub struct RefinementConfig {\n    pub max_iterations: usize,\n    pub error_threshold: f64,\n    pub max_elements: usize,\n    pub min_edge_length: f64,\n}\n\npub fn refine_mesh(mesh: &Mesh, currents: &[Complex64], config: &RefinementConfig) -> Result<Mesh>\npub fn refine_wire_mesh(mesh: &Mesh, feed_segment: usize, refinement_factor: usize) -> Result<Mesh>\n```\n\nInclude tests.\n\n<file path=\"src-tauri/src/core/mesh_refine.rs\">\n...complete Rust code...\n</file>",
         "options": {
           "systemMessage": "You are a mesh refinement specialist. Write efficient adaptive refinement in Rust. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-refine",
       "name": "Gen Mesh Refinement",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1320, 200]
+      "position": [
+        1320,
+        200
+      ]
     },
     {
       "parameters": {
@@ -109,30 +143,40 @@
       "name": "Write + Test",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 300]
+      "position": [
+        1540,
+        300
+      ]
     },
     {
       "parameters": {
         "text": "Fix the following Rust compilation/test errors in PROMIN Antenna Studio mesh generation modules.\n\nCargo check output:\n{{ $json.cargoResult }}\n\nTest output:\n{{ $json.testResult }}\n\nFiles written:\n{{ JSON.stringify($json.results) }}\n\nFor each error, generate the COMPLETE fixed file:\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
         "options": {
           "systemMessage": "You are a Rust compiler error specialist. Fix all errors. Output complete files."
-        }
+        },
+        "promptType": "define"
       },
       "id": "self-fix",
       "name": "Self-Fix Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1760, 300]
+      "position": [
+        1760,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Write + Test').item.json;\nconst needsFix = prev.cargoResult !== 'OK' || prev.testResult.includes('FAILED');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  try {\n    execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 });\n    fixResult = 'Fix applied — cargo check OK';\n  } catch (e) {\n    fixResult = 'Fix applied but still errors: ' + (e.stdout?.toString().slice(0, 500) || e.message);\n  }\n}\n\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"feat(mesh): add surface mesher, RWG basis functions, adaptive refinement\\n\\nTriangle mesh generation for patch antennas, RWG edge detection,\\nGaussian quadrature for surface integrals, longest-edge bisection.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'mesh-gen', status: 'complete' } }];"
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Write + Test').item.json;\nconst needsFix = prev.cargoResult !== 'OK' || prev.testResult.includes('FAILED');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  try {\n    execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 });\n    fixResult = 'Fix applied \u2014 cargo check OK';\n  } catch (e) {\n    fixResult = 'Fix applied but still errors: ' + (e.stdout?.toString().slice(0, 500) || e.message);\n  }\n}\n\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"feat(mesh): add surface mesher, RWG basis functions, adaptive refinement\\n\\nTriangle mesh generation for patch antennas, RWG edge detection,\\nGaussian quadrature for surface integrals, longest-edge bisection.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'mesh-gen', status: 'complete' } }];"
       },
       "id": "fix-git",
       "name": "Apply Fix + Git",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        1980,
+        300
+      ]
     },
     {
       "parameters": {
@@ -144,48 +188,151 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2200, 300]
+      "position": [
+        2200,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Read Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Read Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Context": {
-      "main": [[{ "node": "Gen Surface Mesher", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Surface Mesher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen Surface Mesher": {
-      "main": [[{ "node": "Gen RWG Basis", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen RWG Basis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen RWG Basis": {
-      "main": [[{ "node": "Gen Mesh Refinement", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Mesh Refinement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen Mesh Refinement": {
-      "main": [[{ "node": "Write + Test", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Write + Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Write + Test": {
-      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Self-Fix Agent": {
-      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Apply Fix + Git",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Apply Fix + Git": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Sonnet LLM": {
       "ai_languageModel": [
-        [{ "node": "Gen Surface Mesher", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen Mesh Refinement", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "Gen Surface Mesher",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen Mesh Refinement",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     },
     "Opus LLM": {
       "ai_languageModel": [
-        [{ "node": "Gen RWG Basis", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "Gen RWG Basis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
-  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    {
+      "name": "antenna-engine"
+    },
+    {
+      "name": "em-solver"
+    }
+  ]
 }

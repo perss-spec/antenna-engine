@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [
+        220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -22,11 +25,19 @@
       "name": "Read Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
-        "model": "claude-sonnet-4-20250514",
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-20250514"
+        },
         "maxTokensToSample": 16384,
         "temperature": 0.1,
         "options": {}
@@ -35,7 +46,10 @@
       "name": "Sonnet LLM",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
-      "position": [1300, 520],
+      "position": [
+        1300,
+        520
+      ],
       "credentials": {
         "anthropicApi": {
           "id": "xyS2ZoWkkNPBoTTS",
@@ -45,55 +59,71 @@
     },
     {
       "parameters": {
-        "text": "You are implementing an STL file parser for PROMIN Antenna Studio (Rust).\n\nExisting types:\n```rust\n{{ $json.context.geometry }}\n```\n\nExisting error types:\n```rust\n{{ $json.context.types }}\n```\n\nGenerate `import_stl.rs` — a complete STL parser that:\n1. Parses both ASCII and binary STL files\n2. Extracts triangles into `Vec<Triangle>` and vertices into `Vec<Point3D>`\n3. Deduplicates vertices (merge if distance < 1e-9)\n4. Returns a `Mesh` struct with triangles populated\n5. Handles errors with `AntennaError::ImportError(String)`\n6. Add to types.rs if ImportError variant missing\n\nPublic API:\n```rust\npub fn parse_stl(data: &[u8]) -> Result<Mesh>\npub fn parse_stl_file(path: &std::path::Path) -> Result<Mesh>\n```\n\nInclude unit tests with a small inline ASCII STL.\n\nOutput the COMPLETE file:\n<file path=\"src-tauri/src/core/import_stl.rs\">\n...complete Rust code...\n</file>",
+        "text": "You are implementing an STL file parser for PROMIN Antenna Studio (Rust).\n\nExisting types:\n```rust\n{{ $json.context.geometry }}\n```\n\nExisting error types:\n```rust\n{{ $json.context.types }}\n```\n\nGenerate `import_stl.rs` \u2014 a complete STL parser that:\n1. Parses both ASCII and binary STL files\n2. Extracts triangles into `Vec<Triangle>` and vertices into `Vec<Point3D>`\n3. Deduplicates vertices (merge if distance < 1e-9)\n4. Returns a `Mesh` struct with triangles populated\n5. Handles errors with `AntennaError::ImportError(String)`\n6. Add to types.rs if ImportError variant missing\n\nPublic API:\n```rust\npub fn parse_stl(data: &[u8]) -> Result<Mesh>\npub fn parse_stl_file(path: &std::path::Path) -> Result<Mesh>\n```\n\nInclude unit tests with a small inline ASCII STL.\n\nOutput the COMPLETE file:\n<file path=\"src-tauri/src/core/import_stl.rs\">\n...complete Rust code...\n</file>",
         "options": {
           "systemMessage": "You are a Rust systems programmer specializing in file format parsers. Write safe, efficient Rust with proper error handling. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-stl",
       "name": "Gen STL Parser",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 100]
+      "position": [
+        660,
+        100
+      ]
     },
     {
       "parameters": {
-        "text": "You are implementing a NEC2 file parser for PROMIN Antenna Studio (Rust).\n\nExisting types:\n```rust\n{{ $json.context.geometry }}\n```\n\n```rust\n{{ $json.context.types }}\n```\n\n```rust\n{{ $json.context.element }}\n```\n\nGenerate `import_nec.rs` — NEC2 format parser:\n1. Parse NEC2 card format (GW=wire, GA=arc, GH=helix, SP=patch, EX=excitation, FR=frequency)\n2. GW cards → wire segments (start, end, radius) → Mesh segments\n3. SP cards → patch surfaces → Mesh triangles\n4. EX cards → excitation port info\n5. FR cards → frequency range\n6. Return structured `NecModel { mesh, ports, frequency_range }`\n\nPublic API:\n```rust\npub struct NecModel {\n    pub mesh: Mesh,\n    pub ports: Vec<(usize, Complex64)>,  // segment_idx, voltage\n    pub frequency: Option<f64>,\n    pub wire_radius: f64,\n}\npub fn parse_nec(content: &str) -> Result<NecModel>\npub fn parse_nec_file(path: &std::path::Path) -> Result<NecModel>\n```\n\nInclude tests with a dipole NEC2 file.\n\n<file path=\"src-tauri/src/core/import_nec.rs\">\n...complete Rust code...\n</file>",
+        "text": "You are implementing a NEC2 file parser for PROMIN Antenna Studio (Rust).\n\nExisting types:\n```rust\n{{ $json.context.geometry }}\n```\n\n```rust\n{{ $json.context.types }}\n```\n\n```rust\n{{ $json.context.element }}\n```\n\nGenerate `import_nec.rs` \u2014 NEC2 format parser:\n1. Parse NEC2 card format (GW=wire, GA=arc, GH=helix, SP=patch, EX=excitation, FR=frequency)\n2. GW cards \u2192 wire segments (start, end, radius) \u2192 Mesh segments\n3. SP cards \u2192 patch surfaces \u2192 Mesh triangles\n4. EX cards \u2192 excitation port info\n5. FR cards \u2192 frequency range\n6. Return structured `NecModel { mesh, ports, frequency_range }`\n\nPublic API:\n```rust\npub struct NecModel {\n    pub mesh: Mesh,\n    pub ports: Vec<(usize, Complex64)>,  // segment_idx, voltage\n    pub frequency: Option<f64>,\n    pub wire_radius: f64,\n}\npub fn parse_nec(content: &str) -> Result<NecModel>\npub fn parse_nec_file(path: &std::path::Path) -> Result<NecModel>\n```\n\nInclude tests with a dipole NEC2 file.\n\n<file path=\"src-tauri/src/core/import_nec.rs\">\n...complete Rust code...\n</file>",
         "options": {
           "systemMessage": "You are a Rust developer with expertise in antenna simulation file formats. Write robust parsers for NEC2 card format. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-nec",
       "name": "Gen NEC Parser",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 300]
+      "position": [
+        660,
+        300
+      ]
     },
     {
       "parameters": {
-        "text": "You are implementing a NASTRAN bulk data parser for PROMIN Antenna Studio (Rust).\n\nExisting types:\n```rust\n{{ $json.context.geometry }}\n```\n\n```rust\n{{ $json.context.types }}\n```\n\nGenerate `import_nastran.rs` — NASTRAN BDF parser:\n1. Parse GRID cards → Point3D vertices\n2. Parse CTRIA3 cards → Triangle elements\n3. Parse CBAR/CBEAM cards → Segment (wire) elements\n4. Parse CQUAD4 → split into 2 triangles\n5. Free-field and fixed-field format support\n6. Handle continuation lines (+)\n7. Return Mesh with all elements\n\nPublic API:\n```rust\npub fn parse_nastran(content: &str) -> Result<Mesh>\npub fn parse_nastran_file(path: &std::path::Path) -> Result<Mesh>\n```\n\nInclude tests.\n\n<file path=\"src-tauri/src/core/import_nastran.rs\">\n...complete Rust code...\n</file>",
+        "text": "You are implementing a NASTRAN bulk data parser for PROMIN Antenna Studio (Rust).\n\nExisting types:\n```rust\n{{ $json.context.geometry }}\n```\n\n```rust\n{{ $json.context.types }}\n```\n\nGenerate `import_nastran.rs` \u2014 NASTRAN BDF parser:\n1. Parse GRID cards \u2192 Point3D vertices\n2. Parse CTRIA3 cards \u2192 Triangle elements\n3. Parse CBAR/CBEAM cards \u2192 Segment (wire) elements\n4. Parse CQUAD4 \u2192 split into 2 triangles\n5. Free-field and fixed-field format support\n6. Handle continuation lines (+)\n7. Return Mesh with all elements\n\nPublic API:\n```rust\npub fn parse_nastran(content: &str) -> Result<Mesh>\npub fn parse_nastran_file(path: &std::path::Path) -> Result<Mesh>\n```\n\nInclude tests.\n\n<file path=\"src-tauri/src/core/import_nastran.rs\">\n...complete Rust code...\n</file>",
         "options": {
           "systemMessage": "You are a Rust developer specializing in finite element mesh formats. Write a robust NASTRAN BDF parser. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-nastran",
       "name": "Gen NASTRAN Parser",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 500]
+      "position": [
+        660,
+        500
+      ]
     },
     {
       "parameters": {
-        "text": "You are creating the unified import module and STEP loader for PROMIN Antenna Studio.\n\nExisting parsers generated by other agents:\nSTL: {{ $('Gen STL Parser').item.json.output }}\nNEC: {{ $('Gen NEC Parser').item.json.output }}\nNASTRAN: {{ $('Gen NASTRAN Parser').item.json.output }}\n\nExisting types:\n```rust\n{{ $('Read Context').item.json.context.geometry }}\n```\n\nmod.rs (current):\n```rust\n{{ $('Read Context').item.json.context.mod_rs }}\n```\n\nGenerate TWO files:\n\n1. `import.rs` — unified import dispatcher:\n```rust\npub enum ImportFormat { Stl, Nec, Nastran, Step }\npub fn detect_format(path: &Path) -> Result<ImportFormat>\npub fn import_file(path: &Path) -> Result<ImportedModel>\npub struct ImportedModel {\n    pub mesh: Mesh,\n    pub format: ImportFormat,\n    pub metadata: ImportMetadata,\n}\n```\n\n2. `stepLoader.ts` — TypeScript STEP loader for frontend:\n- Use fetch to send STEP file to Tauri backend\n- Parse response into mesh data for Three.js\n- Export function: `loadStepFile(file: File): Promise<MeshData>`\n\nAlso output the UPDATED `mod.rs` that adds the new modules.\n\n<file path=\"src-tauri/src/core/import.rs\">\n...complete code...\n</file>\n<file path=\"src/lib/stepLoader.ts\">\n...complete code...\n</file>\n<file path=\"src-tauri/src/core/mod.rs\">\n...updated mod.rs with new pub mod imports...\n</file>",
+        "text": "You are creating the unified import module and STEP loader for PROMIN Antenna Studio.\n\nExisting parsers generated by other agents:\nSTL: {{ $('Gen STL Parser').item.json.output }}\nNEC: {{ $('Gen NEC Parser').item.json.output }}\nNASTRAN: {{ $('Gen NASTRAN Parser').item.json.output }}\n\nExisting types:\n```rust\n{{ $('Read Context').item.json.context.geometry }}\n```\n\nmod.rs (current):\n```rust\n{{ $('Read Context').item.json.context.mod_rs }}\n```\n\nGenerate TWO files:\n\n1. `import.rs` \u2014 unified import dispatcher:\n```rust\npub enum ImportFormat { Stl, Nec, Nastran, Step }\npub fn detect_format(path: &Path) -> Result<ImportFormat>\npub fn import_file(path: &Path) -> Result<ImportedModel>\npub struct ImportedModel {\n    pub mesh: Mesh,\n    pub format: ImportFormat,\n    pub metadata: ImportMetadata,\n}\n```\n\n2. `stepLoader.ts` \u2014 TypeScript STEP loader for frontend:\n- Use fetch to send STEP file to Tauri backend\n- Parse response into mesh data for Three.js\n- Export function: `loadStepFile(file: File): Promise<MeshData>`\n\nAlso output the UPDATED `mod.rs` that adds the new modules.\n\n<file path=\"src-tauri/src/core/import.rs\">\n...complete code...\n</file>\n<file path=\"src/lib/stepLoader.ts\">\n...complete code...\n</file>\n<file path=\"src-tauri/src/core/mod.rs\">\n...updated mod.rs with new pub mod imports...\n</file>",
         "options": {
           "systemMessage": "You are a full-stack developer. Generate both Rust backend and TypeScript frontend code. Output only file blocks."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-import",
       "name": "Gen Import Module",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1100, 300]
+      "position": [
+        1100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -103,30 +133,40 @@
       "name": "Write + Cargo Check",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 300]
+      "position": [
+        1540,
+        300
+      ]
     },
     {
       "parameters": {
         "text": "Fix the following Rust compilation/test errors in PROMIN Antenna Studio CAD import modules.\n\nCargo check output:\n{{ $json.cargoResult }}\n\nTest output:\n{{ $json.testResult }}\n\nFiles written:\n{{ JSON.stringify($json.results) }}\n\nRead the error messages carefully. For each error:\n1. Identify the file and line number\n2. Understand the root cause (missing use, wrong type, missing trait impl, etc.)\n3. Generate the COMPLETE fixed file\n\nOutput ALL files that need fixing:\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
         "options": {
           "systemMessage": "You are a Rust compiler error specialist. You read cargo check/test output and fix all errors. Always output complete files, not patches. Output only file blocks."
-        }
+        },
+        "promptType": "define"
       },
       "id": "self-fix",
       "name": "Self-Fix Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1760, 300]
+      "position": [
+        1760,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Write + Cargo Check').item.json;\nconst needsFix = prev.cargoResult !== 'OK' || prev.testResult.includes('FAILED');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  try {\n    execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 });\n    fixResult = 'Fix applied — cargo check OK';\n  } catch (e) {\n    fixResult = 'Fix applied but still errors: ' + (e.stdout?.toString().slice(0, 500) || e.message);\n  }\n}\n\n// Git commit\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"feat(import): add CAD import parsers (STL, NEC, NASTRAN)\\n\\nAdded STL binary/ASCII parser, NEC2 card format parser,\\nNASTRAN BDF parser, unified import dispatcher, and STEP loader stub.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'cad-import', status: 'complete' } }];"
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Write + Cargo Check').item.json;\nconst needsFix = prev.cargoResult !== 'OK' || prev.testResult.includes('FAILED');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  try {\n    execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 });\n    fixResult = 'Fix applied \u2014 cargo check OK';\n  } catch (e) {\n    fixResult = 'Fix applied but still errors: ' + (e.stdout?.toString().slice(0, 500) || e.message);\n  }\n}\n\n// Git commit\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"feat(import): add CAD import parsers (STL, NEC, NASTRAN)\\n\\nAdded STL binary/ASCII parser, NEC2 card format parser,\\nNASTRAN BDF parser, unified import dispatcher, and STEP loader stub.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'cad-import', status: 'complete' } }];"
       },
       "id": "fix-git",
       "name": "Apply Fix + Git",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        1980,
+        300
+      ]
     },
     {
       "parameters": {
@@ -138,54 +178,175 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2200, 300]
+      "position": [
+        2200,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Read Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Read Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Context": {
       "main": [
         [
-          { "node": "Gen STL Parser", "type": "main", "index": 0 },
-          { "node": "Gen NEC Parser", "type": "main", "index": 0 },
-          { "node": "Gen NASTRAN Parser", "type": "main", "index": 0 }
+          {
+            "node": "Gen STL Parser",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gen NEC Parser",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gen NASTRAN Parser",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Gen STL Parser": {
-      "main": [[{ "node": "Gen Import Module", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Import Module",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen NEC Parser": {
-      "main": [[{ "node": "Gen Import Module", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Import Module",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen NASTRAN Parser": {
-      "main": [[{ "node": "Gen Import Module", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Import Module",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen Import Module": {
-      "main": [[{ "node": "Write + Cargo Check", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Write + Cargo Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Write + Cargo Check": {
-      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Self-Fix Agent": {
-      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Apply Fix + Git",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Apply Fix + Git": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Sonnet LLM": {
       "ai_languageModel": [
-        [{ "node": "Gen STL Parser", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen NEC Parser", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen NASTRAN Parser", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen Import Module", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "Gen STL Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen NEC Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen NASTRAN Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen Import Module",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
-  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    {
+      "name": "antenna-engine"
+    },
+    {
+      "name": "em-solver"
+    }
+  ]
 }

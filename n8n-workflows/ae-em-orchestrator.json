@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [
+        220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -22,7 +25,10 @@
       "name": "Init State",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -34,107 +40,179 @@
       "name": "Phase Router",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [660, 300]
+      "position": [
+        660,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const { execSync } = require('child_process');\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst checks = {};\n\ntry { execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 }); checks.cargo = 'OK'; }\ncatch (e) { checks.cargo = 'FAIL: ' + (e.stdout?.toString().slice(0, 200) || e.message); }\n\ntry { execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 60000 }); checks.tsc = 'OK'; }\ncatch (e) { checks.tsc = 'FAIL: ' + (e.stdout?.toString().slice(0, 200) || e.message); }\n\ntry { execSync('python3 --version 2>&1', { cwd: PROJECT }); checks.python = 'OK'; }\ncatch (e) { checks.python = 'FAIL'; }\n\ntry {\n  const status = execSync('git status --porcelain', { cwd: PROJECT }).toString();\n  checks.git = status.trim() === '' ? 'CLEAN' : 'DIRTY: ' + status.slice(0, 200);\n} catch (e) { checks.git = 'FAIL'; }\n\nconst allOk = Object.values(checks).every(v => v === 'OK' || v === 'CLEAN');\nreturn [{ json: { checks, status: allOk ? 'complete' : 'failed', phase: 'preflight' } }];"
+        "jsCode": "const { execSync } = require('child_process');\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst checks = {};\n\ntry { execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 }); checks.cargo = 'OK'; }\ncatch (e) { checks.cargo = 'FAIL: ' + (e.stdout?.toString().slice(0, 200) || e.message); }\n\ntry { execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 60000 }); checks.tsc = 'OK'; }\ncatch (e) { checks.tsc = 'FAIL: ' + (e.stdout?.toString().slice(0, 200) || e.message); }\n\ntry { execSync('python3 --version 2>&1', { cwd: PROJECT }); checks.python = 'OK'; }\ncatch (e) { checks.python = 'FAIL'; }\n\ntry {\n  const status = execSync('git status --porcelain', { cwd: PROJECT }).toString();\n  checks.git = status.trim() === '' ? 'CLEAN' : 'DIRTY: ' + status.slice(0, 200);\n} catch (e) { checks.git = 'FAIL'; }\n\nconst critical = ['cargo', 'tsc', 'python'].every(k => checks[k] === 'OK');\nreturn [{ json: { checks, status: critical ? 'complete' : 'failed', phase: 'preflight' } }];"
       },
       "id": "run-preflight",
       "name": "Run Preflight",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 0]
+      "position": [
+        880,
+        0
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-cad-import",
+        "url": "http://localhost:5678/webhook/7GNYa6FGCl3pdJW2/webhook/ae/em-cad-import",
+        "method": "POST",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+          "parameters": [
+            {
+              "name": "trigger",
+              "value": "orchestrator"
+            }
+          ]
         },
-        "options": { "timeout": 600000 }
+        "options": {
+          "timeout": 600000
+        }
       },
       "id": "run-wf1",
       "name": "Run CAD Import",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 100]
+      "position": [
+        880,
+        100
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-mesh-gen",
+        "url": "http://localhost:5678/webhook/RPxoHMp1EZ8fVgyb/webhook/ae/em-mesh-gen",
+        "method": "POST",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+          "parameters": [
+            {
+              "name": "trigger",
+              "value": "orchestrator"
+            }
+          ]
         },
-        "options": { "timeout": 600000 }
+        "options": {
+          "timeout": 600000
+        }
       },
       "id": "run-wf2",
       "name": "Run Mesh Gen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 250]
+      "position": [
+        880,
+        250
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-mom-solver",
+        "url": "http://localhost:5678/webhook/fTJaBlywovzXESi0/webhook/ae/em-mom-solver",
+        "method": "POST",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+          "parameters": [
+            {
+              "name": "trigger",
+              "value": "orchestrator"
+            }
+          ]
         },
-        "options": { "timeout": 1200000 }
+        "options": {
+          "timeout": 1200000
+        }
       },
       "id": "run-wf3",
       "name": "Run MoM Solver",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 400]
+      "position": [
+        880,
+        400
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-fdtd-python",
+        "url": "http://localhost:5678/webhook/6RaoBSsjsdnKoCQx/webhook/ae/em-fdtd-python",
+        "method": "POST",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+          "parameters": [
+            {
+              "name": "trigger",
+              "value": "orchestrator"
+            }
+          ]
         },
-        "options": { "timeout": 600000 }
+        "options": {
+          "timeout": 600000
+        }
       },
       "id": "run-wf4",
       "name": "Run FDTD",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 550]
+      "position": [
+        880,
+        550
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-frontend",
+        "url": "http://localhost:5678/webhook/Nl7Iid0n2hbsCA3G/webhook/ae/em-frontend",
+        "method": "POST",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+          "parameters": [
+            {
+              "name": "trigger",
+              "value": "orchestrator"
+            }
+          ]
         },
-        "options": { "timeout": 600000 }
+        "options": {
+          "timeout": 600000
+        }
       },
       "id": "run-wf5",
       "name": "Run Frontend",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 700]
+      "position": [
+        880,
+        700
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-tests",
+        "url": "http://localhost:5678/webhook/VFyqPXYmzYDOD1eD/webhook/ae/em-tests",
+        "method": "POST",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+          "parameters": [
+            {
+              "name": "trigger",
+              "value": "orchestrator"
+            }
+          ]
         },
-        "options": { "timeout": 900000 }
+        "options": {
+          "timeout": 900000
+        }
       },
       "id": "run-wf6",
       "name": "Run Tests",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 850]
+      "position": [
+        880,
+        850
+      ]
     },
     {
       "parameters": {
@@ -144,7 +222,10 @@
       "name": "Check Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, 300]
+      "position": [
+        1100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -156,21 +237,30 @@
       "name": "Action Router",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [1320, 300]
+      "position": [
+        1320,
+        300
+      ]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/ae/em-hotfix",
+        "url": "http://localhost:5678/webhook/9oAbdDTOUNwCUQKE/webhook/ae/em-hotfix",
+        "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ phase: $json.phase, error: $json.result, state: $json.state }) }}",
-        "options": { "timeout": 600000 }
+        "options": {
+          "timeout": 600000
+        }
       },
       "id": "run-hotfix",
       "name": "Run Hotfix",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1540, 450]
+      "position": [
+        1540,
+        450
+      ]
     },
     {
       "parameters": {
@@ -180,7 +270,10 @@
       "name": "Pipeline Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 200]
+      "position": [
+        1540,
+        200
+      ]
     },
     {
       "parameters": {
@@ -190,7 +283,10 @@
       "name": "Abort Handler",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 600]
+      "position": [
+        1540,
+        600
+      ]
     },
     {
       "parameters": {
@@ -202,73 +298,260 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1760, 300]
+      "position": [
+        1760,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Init State", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Init State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Init State": {
-      "main": [[{ "node": "Phase Router", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Phase Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Phase Router": {
       "main": [
-        [{ "node": "Run Preflight", "type": "main", "index": 0 }],
-        [{ "node": "Run CAD Import", "type": "main", "index": 0 }],
-        [{ "node": "Run Mesh Gen", "type": "main", "index": 0 }],
         [
-          { "node": "Run MoM Solver", "type": "main", "index": 0 },
-          { "node": "Run FDTD", "type": "main", "index": 0 }
+          {
+            "node": "Run Preflight",
+            "type": "main",
+            "index": 0
+          }
         ],
-        [{ "node": "Run Frontend", "type": "main", "index": 0 }],
-        [{ "node": "Run Tests", "type": "main", "index": 0 }],
-        [{ "node": "Pipeline Complete", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Run CAD Import",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Mesh Gen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run MoM Solver",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Run FDTD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Frontend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Tests",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Run Preflight": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run CAD Import": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run Mesh Gen": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run MoM Solver": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run FDTD": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run Frontend": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run Tests": {
-      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Result": {
-      "main": [[{ "node": "Action Router", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Action Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Action Router": {
       "main": [
-        [{ "node": "Init State", "type": "main", "index": 0 }],
-        [{ "node": "Run Hotfix", "type": "main", "index": 0 }],
-        [{ "node": "Pipeline Complete", "type": "main", "index": 0 }],
-        [{ "node": "Abort Handler", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Init State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Hotfix",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Abort Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Run Hotfix": {
-      "main": [[{ "node": "Init State", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Init State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Pipeline Complete": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Abort Handler": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
-  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    {
+      "name": "antenna-engine"
+    },
+    {
+      "name": "em-solver"
+    }
+  ]
 }

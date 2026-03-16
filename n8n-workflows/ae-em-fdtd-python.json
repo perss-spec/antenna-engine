@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [
+        220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -22,11 +25,19 @@
       "name": "Read Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
-        "model": "claude-opus-4-20250514",
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-opus-4-20250514"
+        },
         "maxTokensToSample": 16384,
         "temperature": 0.1,
         "options": {}
@@ -35,7 +46,10 @@
       "name": "Opus LLM",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
-      "position": [1100, 600],
+      "position": [
+        1100,
+        600
+      ],
       "credentials": {
         "anthropicApi": {
           "id": "xyS2ZoWkkNPBoTTS",
@@ -45,7 +59,12 @@
     },
     {
       "parameters": {
-        "model": "claude-sonnet-4-20250514",
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-20250514"
+        },
         "maxTokensToSample": 16384,
         "temperature": 0.1,
         "options": {}
@@ -54,7 +73,10 @@
       "name": "Sonnet LLM",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
-      "position": [1100, 780],
+      "position": [
+        1100,
+        780
+      ],
       "credentials": {
         "anthropicApi": {
           "id": "xyS2ZoWkkNPBoTTS",
@@ -64,29 +86,37 @@
     },
     {
       "parameters": {
-        "text": "You are implementing a 3D FDTD (Finite-Difference Time-Domain) electromagnetic solver in Python for PROMIN Antenna Studio.\n\nGenerate 4 Python files for the FDTD solver:\n\n### 1. yee_grid.py — Yee Grid Implementation\n- 3D staggered Yee grid: E on edges, H on faces\n- Grid class with nx, ny, nz cells, dx, dy, dz spacing\n- E-field arrays: Ex, Ey, Ez (numpy 3D arrays)\n- H-field arrays: Hx, Hy, Hz\n- Material arrays: epsilon_r, mu_r, sigma (conductivity)\n- Courant stability condition: dt = 1/(c * sqrt(1/dx² + 1/dy² + 1/dz²))\n- Grid auto-sizing from antenna geometry + PML layers\n\n### 2. pml.py — Perfectly Matched Layer\n- Convolutional PML (CPML) absorbing boundaries\n- Thickness: configurable (default 10 cells)\n- Polynomial grading: σ(d) = σ_max * (d/D)^m, m=3\n- σ_max = (m+1)/(150π·dx)\n- Psi arrays for CPML update equations\n- Apply to all 6 faces of the grid\n\n### 3. sources.py — Source Types\n- Gaussian pulse: E(t) = exp(-(t-t0)²/(2τ²))\n- Sinusoidal: E(t) = sin(2πf·t) with optional Gaussian envelope\n- Soft source (additive) and hard source (replacement)\n- Voltage gap source for antenna feed\n- Place source at grid coordinates\n\n### 4. runner.py — FDTD Simulation Runner\n- Time-stepping loop: update E → update H → apply sources → apply PML → record\n- Near-to-far-field transform: record tangential fields on Huygens surface\n- S-parameter extraction: measure V and I at port, FFT, compute Z_in(f)\n- Far-field pattern from NF2FF surface currents\n- Convergence check: steady-state detection\n- Progress callback\n\nUse numpy for all arrays. Use scipy.fft for frequency-domain conversion.\n\nValidation target: half-wave dipole at 300 MHz → Z_in ≈ 73 Ω, within 10% of MoM result.\n\n<file path=\"python/antenna_ml/fdtd/__init__.py\">\nfrom .yee_grid import YeeGrid\nfrom .pml import CPML\nfrom .sources import GaussianSource, SinusoidalSource, VoltageGapSource\nfrom .runner import FDTDRunner\n</file>\n<file path=\"python/antenna_ml/fdtd/yee_grid.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/pml.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/sources.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/runner.py\">\n...complete code...\n</file>",
+        "text": "You are implementing a 3D FDTD (Finite-Difference Time-Domain) electromagnetic solver in Python for PROMIN Antenna Studio.\n\nGenerate 4 Python files for the FDTD solver:\n\n### 1. yee_grid.py \u2014 Yee Grid Implementation\n- 3D staggered Yee grid: E on edges, H on faces\n- Grid class with nx, ny, nz cells, dx, dy, dz spacing\n- E-field arrays: Ex, Ey, Ez (numpy 3D arrays)\n- H-field arrays: Hx, Hy, Hz\n- Material arrays: epsilon_r, mu_r, sigma (conductivity)\n- Courant stability condition: dt = 1/(c * sqrt(1/dx\u00b2 + 1/dy\u00b2 + 1/dz\u00b2))\n- Grid auto-sizing from antenna geometry + PML layers\n\n### 2. pml.py \u2014 Perfectly Matched Layer\n- Convolutional PML (CPML) absorbing boundaries\n- Thickness: configurable (default 10 cells)\n- Polynomial grading: \u03c3(d) = \u03c3_max * (d/D)^m, m=3\n- \u03c3_max = (m+1)/(150\u03c0\u00b7dx)\n- Psi arrays for CPML update equations\n- Apply to all 6 faces of the grid\n\n### 3. sources.py \u2014 Source Types\n- Gaussian pulse: E(t) = exp(-(t-t0)\u00b2/(2\u03c4\u00b2))\n- Sinusoidal: E(t) = sin(2\u03c0f\u00b7t) with optional Gaussian envelope\n- Soft source (additive) and hard source (replacement)\n- Voltage gap source for antenna feed\n- Place source at grid coordinates\n\n### 4. runner.py \u2014 FDTD Simulation Runner\n- Time-stepping loop: update E \u2192 update H \u2192 apply sources \u2192 apply PML \u2192 record\n- Near-to-far-field transform: record tangential fields on Huygens surface\n- S-parameter extraction: measure V and I at port, FFT, compute Z_in(f)\n- Far-field pattern from NF2FF surface currents\n- Convergence check: steady-state detection\n- Progress callback\n\nUse numpy for all arrays. Use scipy.fft for frequency-domain conversion.\n\nValidation target: half-wave dipole at 300 MHz \u2192 Z_in \u2248 73 \u03a9, within 10% of MoM result.\n\n<file path=\"python/antenna_ml/fdtd/__init__.py\">\nfrom .yee_grid import YeeGrid\nfrom .pml import CPML\nfrom .sources import GaussianSource, SinusoidalSource, VoltageGapSource\nfrom .runner import FDTDRunner\n</file>\n<file path=\"python/antenna_ml/fdtd/yee_grid.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/pml.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/sources.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/runner.py\">\n...complete code...\n</file>",
         "options": {
-          "systemMessage": "You are a computational electromagnetics expert implementing 3D FDTD. Use numpy vectorized operations for performance. Implement correct Yee algorithm with CPML. The physics must be accurate — validate against known dipole results. Output only file blocks."
-        }
+          "systemMessage": "You are a computational electromagnetics expert implementing 3D FDTD. Use numpy vectorized operations for performance. Implement correct Yee algorithm with CPML. The physics must be accurate \u2014 validate against known dipole results. Output only file blocks."
+        },
+        "promptType": "define"
       },
       "id": "gen-fdtd",
       "name": "FDTD Core",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 200]
+      "position": [
+        660,
+        200
+      ]
     },
     {
       "parameters": {
-        "text": "You are creating the Rust bridge to call the Python FDTD solver from PROMIN Antenna Studio.\n\nExisting bridge.rs pattern:\n```rust\n{{ $('Read Context').item.json.context.bridge_rs }}\n```\n\nFDTD solver (Python):\n{{ $('FDTD Core').item.json.output }}\n\nGenerate `fdtd_bridge.rs` — Rust ↔ Python FDTD bridge:\n\n1. Use `std::process::Command` to call Python FDTD\n2. Pass antenna parameters as JSON via stdin/file\n3. Read results (Z_in, S11, pattern) from stdout/file\n4. Parse into existing SimulationResult struct\n5. Handle timeouts and errors\n6. Tauri command: `run_fdtd_simulation(params: Value) -> Result<Value, String>`\n\nAlso create a Python CLI entry point:\n\n<file path=\"src-tauri/src/core/fdtd_bridge.rs\">\n...complete Rust code...\n</file>\n<file path=\"python/antenna_ml/fdtd/cli.py\">\n...Python CLI that reads JSON stdin, runs FDTD, outputs JSON...\n</file>",
+        "text": "You are creating the Rust bridge to call the Python FDTD solver from PROMIN Antenna Studio.\n\nExisting bridge.rs pattern:\n```rust\n{{ $('Read Context').item.json.context.bridge_rs }}\n```\n\nFDTD solver (Python):\n{{ $('FDTD Core').item.json.output }}\n\nGenerate `fdtd_bridge.rs` \u2014 Rust \u2194 Python FDTD bridge:\n\n1. Use `std::process::Command` to call Python FDTD\n2. Pass antenna parameters as JSON via stdin/file\n3. Read results (Z_in, S11, pattern) from stdout/file\n4. Parse into existing SimulationResult struct\n5. Handle timeouts and errors\n6. Tauri command: `run_fdtd_simulation(params: Value) -> Result<Value, String>`\n\nAlso create a Python CLI entry point:\n\n<file path=\"src-tauri/src/core/fdtd_bridge.rs\">\n...complete Rust code...\n</file>\n<file path=\"python/antenna_ml/fdtd/cli.py\">\n...Python CLI that reads JSON stdin, runs FDTD, outputs JSON...\n</file>",
         "options": {
           "systemMessage": "You are a systems integration developer. Bridge Rust and Python via process spawning with JSON I/O. Output only file blocks."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-bridge",
       "name": "FDTD Bridge",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1100, 200]
+      "position": [
+        1100,
+        200
+      ]
     },
     {
       "parameters": {
@@ -96,20 +126,27 @@
       "name": "Write + Check",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 300]
+      "position": [
+        1540,
+        300
+      ]
     },
     {
       "parameters": {
         "text": "Fix errors in PROMIN Antenna Studio FDTD module.\n\nCargo check:\n{{ $json.cargoResult }}\n\nPython check:\n{{ $json.pythonResult }}\n\nFiles:\n{{ JSON.stringify($json.results) }}\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
         "options": {
           "systemMessage": "Fix Rust and Python errors. Output complete files."
-        }
+        },
+        "promptType": "define"
       },
       "id": "self-fix",
       "name": "Self-Fix Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1760, 300]
+      "position": [
+        1760,
+        300
+      ]
     },
     {
       "parameters": {
@@ -119,7 +156,10 @@
       "name": "Apply Fix + Git",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        1980,
+        300
+      ]
     },
     {
       "parameters": {
@@ -131,44 +171,133 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2200, 300]
+      "position": [
+        2200,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Read Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Read Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Context": {
-      "main": [[{ "node": "FDTD Core", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "FDTD Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "FDTD Core": {
-      "main": [[{ "node": "FDTD Bridge", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "FDTD Bridge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "FDTD Bridge": {
-      "main": [[{ "node": "Write + Check", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Write + Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Write + Check": {
-      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Self-Fix Agent": {
-      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Apply Fix + Git",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Apply Fix + Git": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Opus LLM": {
       "ai_languageModel": [
-        [{ "node": "FDTD Core", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "FDTD Core",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     },
     "Sonnet LLM": {
       "ai_languageModel": [
-        [{ "node": "FDTD Bridge", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "FDTD Bridge",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
-  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    {
+      "name": "antenna-engine"
+    },
+    {
+      "name": "em-solver"
+    }
+  ]
 }

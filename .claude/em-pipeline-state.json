@@ -1,41 +1,12 @@
 {
   "phases": {
-    "preflight": {
-      "status": "failed",
-      "attempts": 1,
-      "result": null,
-      "lastError": "{\"checks\":{\"cargo\":\"OK\",\"tsc\":\"OK\",\"python\":\"OK\",\"git\":\"DIRTY: ?? .claude/em-pipeline-state.json\\n?? n8n-workflows/ae-em-cad-import.json\\n?? n8n-workflows/ae-em-fdtd-python.json\\n?? n8n-workflows/ae-em-frontend.json\\n?? n8n-workflows/ae-em-hotfix.json\\n?? n8n-workflow\"},\"status\":\"failed\",\"phase\":\"preflight\"}"
-    },
-    "cad-import": {
-      "status": "pending",
-      "attempts": 0,
-      "result": null
-    },
-    "mesh-gen": {
-      "status": "pending",
-      "attempts": 0,
-      "result": null
-    },
-    "mom-solver": {
-      "status": "pending",
-      "attempts": 0,
-      "result": null
-    },
-    "fdtd-python": {
-      "status": "pending",
-      "attempts": 0,
-      "result": null
-    },
-    "frontend": {
-      "status": "pending",
-      "attempts": 0,
-      "result": null
-    },
-    "tests": {
-      "status": "pending",
-      "attempts": 0,
-      "result": null
-    }
+    "preflight": { "status": "pending", "attempts": 0, "result": null },
+    "cad-import": { "status": "pending", "attempts": 0, "result": null },
+    "mesh-gen": { "status": "pending", "attempts": 0, "result": null },
+    "mom-solver": { "status": "pending", "attempts": 0, "result": null },
+    "fdtd-python": { "status": "pending", "attempts": 0, "result": null },
+    "frontend": { "status": "pending", "attempts": 0, "result": null },
+    "tests": { "status": "pending", "attempts": 0, "result": null }
   },
   "currentPhase": "preflight",
   "startedAt": null,

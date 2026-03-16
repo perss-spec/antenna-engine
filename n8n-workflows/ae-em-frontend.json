@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [220, 300]
+      "position": [
+        220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -22,11 +25,19 @@
       "name": "Read Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
-        "model": "claude-sonnet-4-20250514",
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-20250514"
+        },
         "maxTokensToSample": 16384,
         "temperature": 0.1,
         "options": {}
@@ -35,7 +46,10 @@
       "name": "Sonnet LLM",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
-      "position": [1300, 600],
+      "position": [
+        1300,
+        600
+      ],
       "credentials": {
         "anthropicApi": {
           "id": "xyS2ZoWkkNPBoTTS",
@@ -48,65 +62,85 @@
         "text": "You are creating a FileImport component for PROMIN Antenna Studio (React + TypeScript).\n\nUI Spec:\n{{ $json.context.uiSpec }}\n\nExisting App.tsx pattern:\n{{ $json.context.app }}\n\nBridge commands available (Rust):\n{{ $json.context.bridge }}\n\nCreate `FileImport.tsx`:\n1. Drag-and-drop zone for CAD files (STL, NEC, NASTRAN, STEP)\n2. File type detection from extension\n3. Call Tauri `import_cad_file` command\n4. Show import progress and file info\n5. Display mesh statistics after import (vertices, triangles, segments)\n6. Error handling with user-friendly messages\n7. File history (last 5 imported files)\n8. Use existing design tokens and UI components\n\nProps:\n```typescript\ninterface FileImportProps {\n  onMeshImported: (mesh: MeshData) => void;\n  onError: (error: string) => void;\n}\n```\n\n<file path=\"src/components/FileImport/FileImport.tsx\">\n...complete React component...\n</file>",
         "options": {
           "systemMessage": "You are a React/TypeScript developer building CAD file import UI. Use Tailwind CSS and existing design tokens. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-upload",
       "name": "Gen File Upload",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 100]
+      "position": [
+        660,
+        100
+      ]
     },
     {
       "parameters": {
-        "text": "You are creating a MeshViewer component for PROMIN Antenna Studio (React Three Fiber).\n\nExisting viewport:\n{{ $('Read Context').item.json.context.viewport }}\n\nCreate `MeshViewer.tsx` — 3D mesh visualization:\n1. Display imported mesh (triangles + wire segments)\n2. Color coding: triangles = surface (blue), segments = wires (copper)\n3. Toggle wireframe/solid/transparent modes\n4. Highlight selected elements\n5. Show mesh quality overlay (aspect ratio heatmap)\n6. Display current density magnitude as color map (after solve)\n7. Orbit controls (already in viewport)\n8. Grid + axis helpers\n\nUse React Three Fiber (@react-three/fiber, @react-three/drei).\n\n```typescript\ninterface MeshViewerProps {\n  mesh: MeshData | null;\n  currents?: ComplexArray;\n  mode: 'wireframe' | 'solid' | 'transparent';\n  showQuality: boolean;\n}\n```\n\n<file path=\"src/viewport/MeshViewer.tsx\">\n...complete React Three Fiber component...\n</file>",
+        "text": "You are creating a MeshViewer component for PROMIN Antenna Studio (React Three Fiber).\n\nExisting viewport:\n{{ $('Read Context').item.json.context.viewport }}\n\nCreate `MeshViewer.tsx` \u2014 3D mesh visualization:\n1. Display imported mesh (triangles + wire segments)\n2. Color coding: triangles = surface (blue), segments = wires (copper)\n3. Toggle wireframe/solid/transparent modes\n4. Highlight selected elements\n5. Show mesh quality overlay (aspect ratio heatmap)\n6. Display current density magnitude as color map (after solve)\n7. Orbit controls (already in viewport)\n8. Grid + axis helpers\n\nUse React Three Fiber (@react-three/fiber, @react-three/drei).\n\n```typescript\ninterface MeshViewerProps {\n  mesh: MeshData | null;\n  currents?: ComplexArray;\n  mode: 'wireframe' | 'solid' | 'transparent';\n  showQuality: boolean;\n}\n```\n\n<file path=\"src/viewport/MeshViewer.tsx\">\n...complete React Three Fiber component...\n</file>",
         "options": {
           "systemMessage": "You are a React Three Fiber developer. Build 3D mesh visualization for engineering data. Use drei helpers. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-viewer",
       "name": "Gen Mesh Viewer",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 300]
+      "position": [
+        660,
+        300
+      ]
     },
     {
       "parameters": {
-        "text": "You are creating a SolverPanel component for PROMIN Antenna Studio.\n\nExisting App.tsx:\n{{ $('Read Context').item.json.context.app }}\n\nBridge commands:\n{{ $('Read Context').item.json.context.bridge }}\n\nCreate `SolverPanel.tsx` — solver configuration and control:\n1. Solver type selection: MoM Wire / MoM Surface / FDTD\n2. Mesh resolution slider (elements per wavelength: 5-30)\n3. Frequency settings: single freq, sweep range, or preset\n4. Solver options:\n   - Linear solver: LU / GMRES\n   - Tolerance (for GMRES)\n   - Max iterations\n5. Run button with progress indicator\n6. Cancel button\n7. Results summary panel:\n   - Z_in (re + im)\n   - S11 (dB)\n   - VSWR\n   - Gain (dBi)\n   - Computation time\n   - Convergence info\n8. Comparison mode: run MoM and FDTD, show side-by-side\n\n```typescript\ninterface SolverPanelProps {\n  antennaType: string;\n  antennaParams: Record<string, number>;\n  onSolveComplete: (result: SimulationResult) => void;\n  onSweepComplete: (result: SweepResult) => void;\n}\n```\n\n<file path=\"src/components/SolverPanel/SolverPanel.tsx\">\n...complete React component...\n</file>",
+        "text": "You are creating a SolverPanel component for PROMIN Antenna Studio.\n\nExisting App.tsx:\n{{ $('Read Context').item.json.context.app }}\n\nBridge commands:\n{{ $('Read Context').item.json.context.bridge }}\n\nCreate `SolverPanel.tsx` \u2014 solver configuration and control:\n1. Solver type selection: MoM Wire / MoM Surface / FDTD\n2. Mesh resolution slider (elements per wavelength: 5-30)\n3. Frequency settings: single freq, sweep range, or preset\n4. Solver options:\n   - Linear solver: LU / GMRES\n   - Tolerance (for GMRES)\n   - Max iterations\n5. Run button with progress indicator\n6. Cancel button\n7. Results summary panel:\n   - Z_in (re + im)\n   - S11 (dB)\n   - VSWR\n   - Gain (dBi)\n   - Computation time\n   - Convergence info\n8. Comparison mode: run MoM and FDTD, show side-by-side\n\n```typescript\ninterface SolverPanelProps {\n  antennaType: string;\n  antennaParams: Record<string, number>;\n  onSolveComplete: (result: SimulationResult) => void;\n  onSweepComplete: (result: SweepResult) => void;\n}\n```\n\n<file path=\"src/components/SolverPanel/SolverPanel.tsx\">\n...complete React component...\n</file>",
         "options": {
           "systemMessage": "You are a React developer for engineering tools. Build a comprehensive solver control panel. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-panel",
       "name": "Gen Solver Panel",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [660, 500]
+      "position": [
+        660,
+        500
+      ]
     },
     {
       "parameters": {
-        "text": "You are creating SolverProgress and ResultsView components for PROMIN Antenna Studio.\n\nCreate two components:\n\n### SolverProgress.tsx\n- Real-time progress bar during simulation\n- Stage indicator (Meshing → Building Z-matrix → Solving → Post-processing)\n- ETA display\n- Memory usage indicator\n- Cancel button\n- Polls `get_simulation_status` Tauri command\n\n### ResultsView.tsx\n- Comprehensive results display after simulation\n- Tabs: Summary | Impedance | S-Parameters | Pattern | Currents\n- Summary: key metrics (Z_in, S11, VSWR, Gain, BW)\n- Impedance: Z vs frequency plot\n- S-Parameters: S11 magnitude/phase\n- Pattern: link to radiation pattern tab\n- Currents: current distribution on mesh\n- Export button (Touchstone S1P)\n\n<file path=\"src/components/SolverPanel/SolverProgress.tsx\">\n...complete component...\n</file>\n<file path=\"src/components/SolverPanel/ResultsView.tsx\">\n...complete component...\n</file>",
+        "text": "You are creating SolverProgress and ResultsView components for PROMIN Antenna Studio.\n\nCreate two components:\n\n### SolverProgress.tsx\n- Real-time progress bar during simulation\n- Stage indicator (Meshing \u2192 Building Z-matrix \u2192 Solving \u2192 Post-processing)\n- ETA display\n- Memory usage indicator\n- Cancel button\n- Polls `get_simulation_status` Tauri command\n\n### ResultsView.tsx\n- Comprehensive results display after simulation\n- Tabs: Summary | Impedance | S-Parameters | Pattern | Currents\n- Summary: key metrics (Z_in, S11, VSWR, Gain, BW)\n- Impedance: Z vs frequency plot\n- S-Parameters: S11 magnitude/phase\n- Pattern: link to radiation pattern tab\n- Currents: current distribution on mesh\n- Export button (Touchstone S1P)\n\n<file path=\"src/components/SolverPanel/SolverProgress.tsx\">\n...complete component...\n</file>\n<file path=\"src/components/SolverPanel/ResultsView.tsx\">\n...complete component...\n</file>",
         "options": {
           "systemMessage": "You are a React developer for simulation software. Build progress and results UI. Output only file blocks."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-progress",
       "name": "Gen Progress + Results",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [880, 300]
+      "position": [
+        880,
+        300
+      ]
     },
     {
       "parameters": {
         "text": "You are updating App.tsx to integrate the new EM solver components.\n\nCurrent App.tsx:\n{{ $('Read Context').item.json.context.app }}\n\nNew components generated:\n- FileImport: {{ $('Gen File Upload').item.json.output }}\n- MeshViewer: {{ $('Gen Mesh Viewer').item.json.output }}\n- SolverPanel: {{ $('Gen Solver Panel').item.json.output }}\n- Progress/Results: {{ $('Gen Progress + Results').item.json.output }}\n\nUpdate App.tsx:\n1. Add imports for new components\n2. Add state for: importedMesh, solverResult, solverMode, isSimulating\n3. Add new tab: \"Solver\" (next to existing tabs)\n4. In Solver tab: show SolverPanel + SolverProgress\n5. Add file import button/area in sidebar or toolbar\n6. When mesh imported: show in MeshViewer (replace or overlay on AntennaViewport)\n7. When solve complete: update all charts (S11, Smith, Radiation) with real data\n8. Keep ALL existing functionality working!\n9. Add keyboard shortcut: Ctrl+R = Run simulation\n\nIMPORTANT: Keep the existing analytical solver as fallback. Add a toggle \"Solver Engine: Analytical / MoM / FDTD\"\n\n<file path=\"src/App.tsx\">\n...COMPLETE updated App.tsx...\n</file>",
         "options": {
           "systemMessage": "You are a senior React developer. Integrate new components into existing App.tsx WITHOUT breaking existing functionality. Preserve all state management, tab system, and chart components. Output only the file block."
-        }
+        },
+        "promptType": "define"
       },
       "id": "gen-app",
       "name": "Gen App Update",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1100, 300]
+      "position": [
+        1100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -116,20 +150,27 @@
       "name": "Write + TSC + Build",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 300]
+      "position": [
+        1540,
+        300
+      ]
     },
     {
       "parameters": {
         "text": "Fix TypeScript compilation and build errors in PROMIN Antenna Studio frontend.\n\nTSC output:\n{{ $json.tscResult }}\n\nBuild output:\n{{ $json.buildResult }}\n\nFiles written:\n{{ JSON.stringify($json.results) }}\n\nFix ALL errors. Common issues:\n- Missing imports\n- Type mismatches with Tauri invoke\n- Missing props in component usage\n- CSS class name issues\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
         "options": {
           "systemMessage": "Fix TypeScript and React errors. Output complete files."
-        }
+        },
+        "promptType": "define"
       },
       "id": "self-fix",
       "name": "Self-Fix Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [1760, 300]
+      "position": [
+        1760,
+        300
+      ]
     },
     {
       "parameters": {
@@ -139,7 +180,10 @@
       "name": "Apply Fix + Git",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        1980,
+        300
+      ]
     },
     {
       "parameters": {
@@ -151,58 +195,193 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2200, 300]
+      "position": [
+        2200,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Read Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Read Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Read Context": {
       "main": [
         [
-          { "node": "Gen File Upload", "type": "main", "index": 0 },
-          { "node": "Gen Mesh Viewer", "type": "main", "index": 0 },
-          { "node": "Gen Solver Panel", "type": "main", "index": 0 }
+          {
+            "node": "Gen File Upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gen Mesh Viewer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gen Solver Panel",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Gen File Upload": {
-      "main": [[{ "node": "Gen Progress + Results", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Progress + Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen Mesh Viewer": {
-      "main": [[{ "node": "Gen Progress + Results", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Progress + Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen Solver Panel": {
-      "main": [[{ "node": "Gen Progress + Results", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen Progress + Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen Progress + Results": {
-      "main": [[{ "node": "Gen App Update", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gen App Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gen App Update": {
-      "main": [[{ "node": "Write + TSC + Build", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Write + TSC + Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Write + TSC + Build": {
-      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Self-Fix Agent": {
-      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Apply Fix + Git",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Apply Fix + Git": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Sonnet LLM": {
       "ai_languageModel": [
-        [{ "node": "Gen File Upload", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen Mesh Viewer", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen Solver Panel", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen Progress + Results", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Gen App Update", "type": "ai_languageModel", "index": 0 }],
-        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "Gen File Upload",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen Mesh Viewer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen Solver Panel",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen Progress + Results",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gen App Update",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Self-Fix Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
-  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    {
+      "name": "antenna-engine"
+    },
+    {
+      "name": "em-solver"
+    }
+  ]
 }
