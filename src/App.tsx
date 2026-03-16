@@ -1,107 +1,114 @@
 import React, { useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { ProjectSelector } from './components/ProjectSelector';
-import { SimulationSetup } from './components/SimulationSetup';
-import { ResultsViewer } from './components/ResultsViewer';
+import AntennaDesigner from './components/AntennaDesigner';
+import ResultsViewer from './components/ResultsViewer';
+import ExportPanel from './components/ExportPanel';
+import type { AntennaResult } from './lib/tauri';
+import './App.css';
 
-interface Project {
-  id: string;
-  name: string;
-  path: string;
-}
+type ActiveTab = 'design' | 'results' | 'export';
+type ChartType = 'gain' | 'vswr' | 'impedance' | 'efficiency';
 
-interface SimulationParams {
-  frequency: number;
-  meshSize: number;
-  material: string;
-  antennaType: string;
-}
+const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('design');
+  const [activeChart, setActiveChart] = useState<ChartType>('gain');
+  const [results, setResults] = useState<AntennaResult[]>([]);
 
-interface SimulationResult {
-  vswr: number;
-  gain: number;
-  bandwidth: number;
-  efficiency: number;
-  farFieldPattern?: number[][];
-}
-
-function App() {
-  const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const [simulationResults, setSimulationResults] = useState<SimulationResult | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [recentProjects] = useState<Project[]>([
-    { id: '1', name: 'Patch Antenna 2.4GHz', path: './projects/patch-antenna' },
-    { id: '2', name: 'Dipole Array', path: './projects/dipole-array' }
-  ]);
-
-  const handleProjectSelect = (project: Project) => {
-    setCurrentProject(project);
-    setSimulationResults(null);
+  const handleResultsUpdate = (newResults: AntennaResult[]) => {
+    setResults(newResults);
+    // Automatically switch to results tab after simulation
+    if (newResults.length > 0) {
+      setActiveTab('results');
+    }
   };
 
-  const handleRunSimulation = async (params: SimulationParams) => {
-    setIsSimulating(true);
-    try {
-      const result = await invoke<SimulationResult>('run_simulation', { params });
-      setSimulationResults(result);
-    } catch (error) {
-      console.error('Simulation failed:', error);
-      // Show mock results for demo purposes
-      setSimulationResults({
-        vswr: 1.2 + Math.random() * 0.5,
-        gain: 8.5 + Math.random() * 2,
-        bandwidth: 50 + Math.random() * 20,
-        efficiency: 0.85 + Math.random() * 0.1
-      });
-    } finally {
-      setIsSimulating(false);
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'design':
+        return <AntennaDesigner onResultsUpdate={handleResultsUpdate} />;
+      
+      case 'results':
+        return <ResultsViewer results={results} activeChart={activeChart} />;
+      
+      case 'export':
+        return <ExportPanel results={results} />;
+      
+      default:
+        return <AntennaDesigner onResultsUpdate={handleResultsUpdate} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">PROMIN Antenna Studio</h1>
-          <p className="text-muted-foreground">
-            Professional antenna design and simulation software
-          </p>
-        </header>
+    <div className="app">
+      <header className="app-header">
+        <div className="header-content">
+          <h1>PROMIN Antenna Studio</h1>
+          <p>Professional Antenna Design and Simulation Tool</p>
+        </div>
+      </header>
 
-        {!currentProject ? (
-          <ProjectSelector
-            onProjectSelect={handleProjectSelect}
-            recentProjects={recentProjects}
-          />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">
-                  Project: {currentProject.name}
-                </h2>
-                <button
-                  onClick={() => setCurrentProject(null)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  ← Back to projects
-                </button>
-              </div>
-              
-              <SimulationSetup
-                onRunSimulation={handleRunSimulation}
-                isSimulating={isSimulating}
-              />
-            </div>
+      <nav className="app-nav">
+        <div className="nav-tabs">
+          <button
+            className={`nav-tab ${activeTab === 'design' ? 'active' : ''}`}
+            onClick={() => setActiveTab('design')}
+          >
+            Design
+          </button>
+          <button
+            className={`nav-tab ${activeTab === 'results' ? 'active' : ''}`}
+            onClick={() => setActiveTab('results')}
+            disabled={results.length === 0}
+          >
+            Results
+          </button>
+          <button
+            className={`nav-tab ${activeTab === 'export' ? 'active' : ''}`}
+            onClick={() => setActiveTab('export')}
+            disabled={results.length === 0}
+          >
+            Export
+          </button>
+        </div>
 
-            <div>
-              <ResultsViewer results={simulationResults} />
-            </div>
+        {activeTab === 'results' && results.length > 0 && (
+          <div className="chart-selector">
+            <label>Chart Type:</label>
+            <select
+              value={activeChart}
+              onChange={(e) => setActiveChart(e.target.value as ChartType)}
+            >
+              <option value="gain">Gain</option>
+              <option value="vswr">VSWR</option>
+              <option value="impedance">Impedance</option>
+              <option value="efficiency">Efficiency</option>
+            </select>
           </div>
         )}
-      </div>
+      </nav>
+
+      <main className="app-main">
+        <div className="main-content">
+          {renderTabContent()}
+        </div>
+      </main>
+
+      <footer className="app-footer">
+        <div className="footer-content">
+          <p>&copy; 2024 PROMIN Antenna Studio. Professional antenna design and simulation.</p>
+          {results.length > 0 && (
+            <div className="status-info">
+              <span>Results: {results.length} points</span>
+              <span>|</span>
+              <span>
+                Range: {(Math.min(...results.map(r => r.frequency)) / 1000000).toFixed(0)}-
+                {(Math.max(...results.map(r => r.frequency)) / 1000000).toFixed(0)} MHz
+              </span>
+            </div>
+          )}
+        </div>
+      </footer>
     </div>
   );
-}
+};
 
 export default App;

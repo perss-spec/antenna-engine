@@ -1,87 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Play, Square, Clock, MemoryStick } from 'lucide-react';
+import { Play, Square, Clock, MemoryStick, Zap } from 'lucide-react';
 
 interface SimulationStatus {
-  stage: string;
+  stage: 'meshing' | 'building_matrix' | 'solving' | 'post_processing';
   progress: number;
-  eta_seconds?: number;
-  memory_mb?: number;
+  eta_seconds: number;
+  memory_mb: number;
   is_running: boolean;
-  is_complete: boolean;
   error?: string;
 }
 
-interface SolverProgressProps {
-  isVisible: boolean;
-  onComplete: () => void;
-  onCancel: () => void;
-}
+const SolverProgress: React.FC = () => {
+  const [status, setStatus] = useState<SimulationStatus | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
 
-const STAGES = [
-  { key: 'meshing', label: 'Meshing' },
-  { key: 'zmatrix', label: 'Building Z-matrix' },
-  { key: 'solving', label: 'Solving' },
-  { key: 'postprocess', label: 'Post-processing' }
-];
+  const stageLabels = {
+    meshing: 'Meshing Geometry',
+    building_matrix: 'Building Z-matrix',
+    solving: 'Solving System',
+    post_processing: 'Post-processing'
+  };
 
-export const SolverProgress: React.FC<SolverProgressProps> = ({
-  isVisible,
-  onComplete,
-  onCancel
-}) => {
-  const [status, setStatus] = useState<SimulationStatus>({
-    stage: 'meshing',
-    progress: 0,
-    is_running: false,
-    is_complete: false
-  });
-
-  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+  const stageIcons = {
+    meshing: <Zap className="w-4 h-4" />,
+    building_matrix: <MemoryStick className="w-4 h-4" />,
+    solving: <Play className="w-4 h-4" />,
+    post_processing: <Clock className="w-4 h-4" />
+  };
 
   useEffect(() => {
-    if (isVisible && !status.is_complete) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
-
-    return () => stopPolling();
-  }, [isVisible, status.is_complete]);
-
-  const startPolling = () => {
-    const interval = setInterval(async () => {
-      try {
-        const newStatus = await invoke<SimulationStatus>('get_simulation_status');
-        setStatus(newStatus);
-
-        if (newStatus.is_complete || newStatus.error) {
-          stopPolling();
-          if (newStatus.is_complete && !newStatus.error) {
-            onComplete();
+    let interval: NodeJS.Timeout;
+    
+    if (isPolling) {
+      interval = setInterval(async () => {
+        try {
+          const statusData = await invoke<SimulationStatus>('get_simulation_status');
+          setStatus(statusData);
+          
+          if (!statusData.is_running) {
+            setIsPolling(false);
           }
+        } catch (error) {
+          console.error('Failed to fetch simulation status:', error);
+          setIsPolling(false);
         }
-      } catch (error) {
-        console.error('Failed to get simulation status:', error);
-        setStatus(prev => ({ ...prev, error: 'Failed to get status' }));
-      }
-    }, 500);
-
-    setPollInterval(interval);
-  };
-
-  const stopPolling = () => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      setPollInterval(null);
+      }, 500);
     }
-  };
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isPolling]);
 
   const handleCancel = async () => {
     try {
       await invoke('cancel_simulation');
-      stopPolling();
-      onCancel();
+      setIsPolling(false);
+      setStatus(null);
     } catch (error) {
       console.error('Failed to cancel simulation:', error);
     }
@@ -89,8 +67,8 @@ export const SolverProgress: React.FC<SolverProgressProps> = ({
 
   const formatETA = (seconds: number): string => {
     if (seconds < 60) return `${Math.round(seconds)}s`;
-    if (seconds < 3600) return `${Math.round(seconds / 60)}m ${Math.round(seconds % 60)}s`;
-    return `${Math.round(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}m`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
   };
 
   const formatMemory = (mb: number): string => {
@@ -98,116 +76,86 @@ export const SolverProgress: React.FC<SolverProgressProps> = ({
     return `${(mb / 1024).toFixed(1)} GB`;
   };
 
-  const getCurrentStageIndex = () => {
-    return STAGES.findIndex(stage => stage.key === status.stage);
-  };
-
-  if (!isVisible) return null;
+  if (!status || !isPolling) {
+    return null;
+  }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <Play className="h-5 w-5 text-blue-600" />
-          Simulation Progress
-        </h3>
+    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Simulation Progress</h3>
         <button
           onClick={handleCancel}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 transition-colors"
+          className="flex items-center space-x-2 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
         >
-          <Square className="h-4 w-4" />
-          Cancel
+          <Square className="w-4 h-4" />
+          <span>Cancel</span>
         </button>
       </div>
 
-      {/* Stage Indicator */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-gray-700">Current Stage</span>
-          <span className="text-gray-500">
-            {getCurrentStageIndex() + 1} of {STAGES.length}
-          </span>
+      {status.error ? (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="text-red-800 font-medium mb-1">Simulation Error</div>
+          <div className="text-red-700 text-sm">{status.error}</div>
         </div>
-        <div className="flex items-center space-x-4">
-          {STAGES.map((stage, index) => {
-            const currentIndex = getCurrentStageIndex();
-            const isActive = index === currentIndex;
-            const isComplete = index < currentIndex;
-            
-            return (
-              <div key={stage.key} className="flex items-center flex-1">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    isComplete ? 'bg-green-500' : 
-                    isActive ? 'bg-blue-500' : 
-                    'bg-gray-300'
-                  }`} />
-                  <span className={`text-sm font-medium ${
-                    isActive ? 'text-blue-700' : 
-                    isComplete ? 'text-green-700' : 
-                    'text-gray-500'
-                  }`}>
-                    {stage.label}
-                  </span>
-                </div>
-                {index < STAGES.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-4 ${
-                    isComplete ? 'bg-green-500' : 'bg-gray-300'
-                  }`} />
-                )}
+      ) : (
+        <>
+          {/* Stage Indicator */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2 text-blue-600">
+                {stageIcons[status.stage]}
+                <span className="font-medium">{stageLabels[status.stage]}</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-gray-700">Overall Progress</span>
-          <span className="text-gray-500">{Math.round(status.progress)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div 
-            className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${status.progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Status Information */}
-      <div className="grid grid-cols-2 gap-4">
-        {status.eta_seconds && (
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Clock className="h-4 w-4" />
-            <span>ETA: {formatETA(status.eta_seconds)}</span>
+              <span className="text-sm text-gray-500">{Math.round(status.progress)}%</span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${status.progress}%` }}
+              />
+            </div>
           </div>
-        )}
-        
-        {status.memory_mb && (
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <MemoryStick className="h-4 w-4" />
-            <span>Memory: {formatMemory(status.memory_mb)}</span>
-          </div>
-        )}
-      </div>
 
-      {/* Error Display */}
-      {status.error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <div className="text-sm text-red-800">
-            <strong>Error:</strong> {status.error}
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center space-x-2 text-gray-600">
+              <Clock className="w-4 h-4" />
+              <span>ETA: {formatETA(status.eta_seconds)}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <MemoryStick className="w-4 h-4" />
+              <span>Memory: {formatMemory(status.memory_mb)}</span>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Running Indicator */}
-      {status.is_running && !status.error && (
-        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-          <span>Simulation running...</span>
-        </div>
+          {/* Stage Progress */}
+          <div className="mt-6">
+            <div className="flex space-x-1">
+              {Object.keys(stageLabels).map((stage, index) => (
+                <div key={stage} className="flex-1">
+                  <div
+                    className={`h-1 rounded-full ${
+                      index < Object.keys(stageLabels).indexOf(status.stage)
+                        ? 'bg-green-500'
+                        : index === Object.keys(stageLabels).indexOf(status.stage)
+                        ? 'bg-blue-500'
+                        : 'bg-gray-200'
+                    }`}
+                  />
+                  <div className="text-xs text-gray-500 mt-1 truncate">
+                    {stageLabels[stage as keyof typeof stageLabels]}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
 };
+
+export default SolverProgress;

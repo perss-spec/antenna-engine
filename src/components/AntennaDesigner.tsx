@@ -1,111 +1,61 @@
-import React, { useState, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
-
-interface AntennaParams {
-  frequency: number;
-  gain: number;
-  beamwidth: number;
-  impedance: number;
-  polarization: 'vertical' | 'horizontal' | 'circular';
-  antennaType: 'dipole' | 'yagi' | 'patch' | 'horn';
-}
-
-interface SimulationResult {
-  swr: number;
-  efficiency: number;
-  gainPattern: number[];
-  impedanceReal: number;
-  impedanceImag: number;
-}
+import React, { useState, useEffect } from 'react';
+import { simulateAntenna, type SimulationParams, type AntennaResult } from '../lib/tauri';
 
 interface AntennaDesignerProps {
-  onDesignChange?: (params: AntennaParams) => void;
+  onResultsUpdate?: (results: AntennaResult[]) => void;
 }
 
-const AntennaModel: React.FC<{ params: AntennaParams }> = ({ params }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.5;
+const AntennaDesigner: React.FC<AntennaDesignerProps> = ({ onResultsUpdate }) => {
+  const [params, setParams] = useState<SimulationParams>({
+    frequency_start: 2400,
+    frequency_end: 2500,
+    frequency_steps: 100,
+    antenna_type: 'dipole',
+    dimensions: {
+      length: 0.062,
+      diameter: 0.001
     }
   });
+  
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [results, setResults] = useState<AntennaResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const getGeometry = () => {
-    switch (params.antennaType) {
-      case 'dipole':
-        return <cylinderGeometry args={[0.02, 0.02, 2]} />;
-      case 'yagi':
-        return (
-          <group>
-            <mesh position={[0, 0, 0]}>
-              <cylinderGeometry args={[0.02, 0.02, 2]} />
-              <meshStandardMaterial color="#888888" />
-            </mesh>
-            <mesh position={[0, 0, -0.5]}>
-              <cylinderGeometry args={[0.01, 0.01, 1.5]} />
-              <meshStandardMaterial color="#666666" />
-            </mesh>
-            <mesh position={[0, 0, 0.3]}>
-              <cylinderGeometry args={[0.01, 0.01, 1.8]} />
-              <meshStandardMaterial color="#666666" />
-            </mesh>
-          </group>
-        );
-      case 'patch':
-        return <boxGeometry args={[1, 0.1, 1]} />;
-      case 'horn':
-        return <coneGeometry args={[1, 2, 8]} />;
-      default:
-        return <cylinderGeometry args={[0.02, 0.02, 2]} />;
+  const handleParamChange = (key: keyof SimulationParams, value: any) => {
+    if (key === 'dimensions') {
+      setParams(prev => ({
+        ...prev,
+        dimensions: { ...prev.dimensions, ...value }
+      }));
+    } else {
+      setParams(prev => ({
+        ...prev,
+        [key]: value
+      }));
     }
   };
 
-  if (params.antennaType === 'yagi') {
-    return <>{getGeometry()}</>;
-  }
-
-  return (
-    <mesh ref={meshRef}>
-      {getGeometry()}
-      <meshStandardMaterial color="#888888" />
-    </mesh>
-  );
-};
-
-const AntennaDesigner: React.FC<AntennaDesignerProps> = ({ onDesignChange }) => {
-  const [params, setParams] = useState<AntennaParams>({
-    frequency: 2400,
-    gain: 10,
-    beamwidth: 60,
-    impedance: 50,
-    polarization: 'vertical',
-    antennaType: 'dipole'
-  });
-
-  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleParamChange = (key: keyof AntennaParams, value: any) => {
-    const newParams = { ...params, [key]: value };
-    setParams(newParams);
-    onDesignChange?.(newParams);
+  const handleDimensionChange = (dimKey: string, value: number) => {
+    setParams(prev => ({
+      ...prev,
+      dimensions: {
+        ...prev.dimensions,
+        [dimKey]: value
+      }
+    }));
   };
 
   const runSimulation = async () => {
     setIsSimulating(true);
     setError(null);
-
+    
     try {
-      const result = await invoke<SimulationResult>('simulate_antenna', { params });
-      setSimulation(result);
+      const simulationResults = await simulateAntenna(params);
+      setResults(simulationResults);
+      onResultsUpdate?.(simulationResults);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Simulation failed');
-      console.error('Simulation error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
     } finally {
       setIsSimulating(false);
     }
@@ -113,84 +63,92 @@ const AntennaDesigner: React.FC<AntennaDesignerProps> = ({ onDesignChange }) => 
 
   return (
     <div className="antenna-designer">
-      <div className="design-panel">
-        <h2>Antenna Parameters</h2>
+      <div className="designer-panel">
+        <h3>Antenna Parameters</h3>
         
-        <div className="param-group">
+        <div className="parameter-group">
           <label>
             Antenna Type:
-            <select
-              value={params.antennaType}
-              onChange={(e) => handleParamChange('antennaType', e.target.value)}
+            <select 
+              value={params.antenna_type}
+              onChange={(e) => handleParamChange('antenna_type', e.target.value)}
             >
               <option value="dipole">Dipole</option>
-              <option value="yagi">Yagi-Uda</option>
+              <option value="monopole">Monopole</option>
               <option value="patch">Patch</option>
-              <option value="horn">Horn</option>
-            </select>
-          </label>
-
-          <label>
-            Frequency (MHz):
-            <input
-              type="number"
-              value={params.frequency}
-              onChange={(e) => handleParamChange('frequency', parseFloat(e.target.value))}
-              min="1"
-              max="10000"
-            />
-          </label>
-
-          <label>
-            Target Gain (dBi):
-            <input
-              type="number"
-              value={params.gain}
-              onChange={(e) => handleParamChange('gain', parseFloat(e.target.value))}
-              min="0"
-              max="30"
-            />
-          </label>
-
-          <label>
-            Beamwidth (degrees):
-            <input
-              type="number"
-              value={params.beamwidth}
-              onChange={(e) => handleParamChange('beamwidth', parseFloat(e.target.value))}
-              min="10"
-              max="360"
-            />
-          </label>
-
-          <label>
-            Impedance (Ω):
-            <input
-              type="number"
-              value={params.impedance}
-              onChange={(e) => handleParamChange('impedance', parseFloat(e.target.value))}
-              min="1"
-              max="1000"
-            />
-          </label>
-
-          <label>
-            Polarization:
-            <select
-              value={params.polarization}
-              onChange={(e) => handleParamChange('polarization', e.target.value)}
-            >
-              <option value="vertical">Vertical</option>
-              <option value="horizontal">Horizontal</option>
-              <option value="circular">Circular</option>
+              <option value="yagi">Yagi</option>
             </select>
           </label>
         </div>
 
-        <button
-          className="simulate-btn"
+        <div className="parameter-group">
+          <label>
+            Start Frequency (MHz):
+            <input
+              type="number"
+              value={params.frequency_start}
+              onChange={(e) => handleParamChange('frequency_start', parseFloat(e.target.value))}
+              min="1"
+              max="30000"
+            />
+          </label>
+        </div>
+
+        <div className="parameter-group">
+          <label>
+            End Frequency (MHz):
+            <input
+              type="number"
+              value={params.frequency_end}
+              onChange={(e) => handleParamChange('frequency_end', parseFloat(e.target.value))}
+              min="1"
+              max="30000"
+            />
+          </label>
+        </div>
+
+        <div className="parameter-group">
+          <label>
+            Frequency Steps:
+            <input
+              type="number"
+              value={params.frequency_steps}
+              onChange={(e) => handleParamChange('frequency_steps', parseInt(e.target.value))}
+              min="10"
+              max="1000"
+            />
+          </label>
+        </div>
+
+        <div className="dimensions-group">
+          <h4>Dimensions</h4>
+          <label>
+            Length (m):
+            <input
+              type="number"
+              value={params.dimensions.length || 0.062}
+              onChange={(e) => handleDimensionChange('length', parseFloat(e.target.value))}
+              step="0.001"
+              min="0.001"
+            />
+          </label>
+          
+          <label>
+            Diameter (m):
+            <input
+              type="number"
+              value={params.dimensions.diameter || 0.001}
+              onChange={(e) => handleDimensionChange('diameter', parseFloat(e.target.value))}
+              step="0.0001"
+              min="0.0001"
+            />
+          </label>
+        </div>
+
+        <button 
           onClick={runSimulation}
           disabled={isSimulating}
+          className="simulate-btn"
         >
           {isSimulating ? 'Simulating...' : 'Run Simulation'}
         </button>
@@ -200,37 +158,25 @@ const AntennaDesigner: React.FC<AntennaDesignerProps> = ({ onDesignChange }) => 
             Error: {error}
           </div>
         )}
+      </div>
 
-        {simulation && (
-          <div className="results-panel">
-            <h3>Simulation Results</h3>
-            <div className="result-item">
-              <span>SWR:</span>
-              <span>{simulation.swr.toFixed(2)}</span>
+      {results.length > 0 && (
+        <div className="results-preview">
+          <h4>Simulation Results</h4>
+          <p>Generated {results.length} frequency points</p>
+          <div className="results-summary">
+            <div>
+              Max Gain: {Math.max(...results.map(r => r.gain)).toFixed(2)} dBi
             </div>
-            <div className="result-item">
-              <span>Efficiency:</span>
-              <span>{(simulation.efficiency * 100).toFixed(1)}%</span>
+            <div>
+              Min VSWR: {Math.min(...results.map(r => r.vswr)).toFixed(2)}
             </div>
-            <div className="result-item">
-              <span>Impedance:</span>
-              <span>{simulation.impedanceReal.toFixed(1)} + j{simulation.impedanceImag.toFixed(1)} Ω</span>
+            <div>
+              Max Efficiency: {(Math.max(...results.map(r => r.efficiency)) * 100).toFixed(1)}%
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="preview-panel">
-        <h3>3D Preview</h3>
-        <div className="canvas-container">
-          <Canvas camera={{ position: [5, 5, 5], fov: 60 }}>
-            <ambientLight intensity={0.5} />
-            <pointLight position={[10, 10, 10]} />
-            <AntennaModel params={params} />
-            <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
-          </Canvas>
         </div>
-      </div>
+      )}
     </div>
   );
 };

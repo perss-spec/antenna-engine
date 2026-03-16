@@ -1,72 +1,45 @@
 import { invoke } from '@tauri-apps/api/tauri';
-import type { 
-  AntennaPattern, 
-  SimulationConfig, 
-  SimulationResult, 
-  OptimizationTarget, 
-  OptimizationResult,
-  TauriResponse,
-  TauriInvokeArgs
-} from '../types';
 
-export async function createPattern(pattern: Omit<AntennaPattern, 'id' | 'created_at' | 'updated_at'>): Promise<TauriResponse<AntennaPattern>> {
-  return await invoke<TauriResponse<AntennaPattern>>('create_pattern', { pattern });
+export interface AntennaResult {
+  frequency: number;
+  gain: number;
+  vswr: number;
+  impedance: { real: number; imaginary: number };
+  efficiency: number;
 }
 
-export async function getPatterns(): Promise<TauriResponse<AntennaPattern[]>> {
-  return await invoke<TauriResponse<AntennaPattern[]>>('get_patterns');
+export interface SimulationParams {
+  frequency_start: number;
+  frequency_end: number;
+  frequency_steps: number;
+  antenna_type: string;
+  dimensions: Record<string, number>;
 }
 
-export async function getPattern(id: string): Promise<TauriResponse<AntennaPattern>> {
-  return await invoke<TauriResponse<AntennaPattern>>('get_pattern', { id });
+export async function simulateAntenna(params: SimulationParams): Promise<AntennaResult[]> {
+  try {
+    const result = await invoke<AntennaResult[]>('simulate_antenna', { params });
+    return result;
+  } catch (error) {
+    console.error('Simulation error:', error);
+    throw new Error(`Simulation failed: ${error}`);
+  }
 }
 
-export async function updatePattern(id: string, pattern: Partial<AntennaPattern>): Promise<TauriResponse<AntennaPattern>> {
-  return await invoke<TauriResponse<AntennaPattern>>('update_pattern', { id, pattern });
+export async function exportResults(results: AntennaResult[], format: string): Promise<void> {
+  try {
+    await invoke('export_results', { results, format });
+  } catch (error) {
+    console.error('Export error:', error);
+    throw new Error(`Export failed: ${error}`);
+  }
 }
 
-export async function deletePattern(id: string): Promise<TauriResponse<void>> {
-  return await invoke<TauriResponse<void>>('delete_pattern', { id });
-}
-
-export async function runSimulation(patternId: string, config: SimulationConfig): Promise<TauriResponse<SimulationResult>> {
-  return await invoke<TauriResponse<SimulationResult>>('run_simulation', { 
-    pattern_id: patternId, 
-    config 
-  });
-}
-
-export async function getSimulationResults(patternId: string): Promise<TauriResponse<SimulationResult[]>> {
-  return await invoke<TauriResponse<SimulationResult[]>>('get_simulation_results', { 
-    pattern_id: patternId 
-  });
-}
-
-export async function optimizePattern(
-  patternId: string, 
-  targets: OptimizationTarget[]
-): Promise<TauriResponse<OptimizationResult>> {
-  return await invoke<TauriResponse<OptimizationResult>>('optimize_pattern', { 
-    pattern_id: patternId, 
-    targets 
-  });
-}
-
-export async function getOptimizationResults(patternId: string): Promise<TauriResponse<OptimizationResult[]>> {
-  return await invoke<TauriResponse<OptimizationResult[]>>('get_optimization_results', { 
-    pattern_id: patternId 
-  });
-}
-
-export async function exportPattern(patternId: string, format: 'json' | 'csv' | 'touchstone'): Promise<TauriResponse<string>> {
-  return await invoke<TauriResponse<string>>('export_pattern', { 
-    pattern_id: patternId, 
-    format 
-  });
-}
-
-export async function importPattern(filePath: string): Promise<TauriResponse<AntennaPattern>> {
-  return await invoke<TauriResponse<AntennaPattern>>('import_pattern', { 
-    file_path: filePath 
-  });
+export async function loadAntennaModel(path: string): Promise<void> {
+  try {
+    await invoke('load_antenna_model', { path });
+  } catch (error) {
+    console.error('Load model error:', error);
+    throw new Error(`Failed to load model: ${error}`);
+  }
 }
