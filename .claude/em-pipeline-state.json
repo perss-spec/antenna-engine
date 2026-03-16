@@ -1,12 +1,41 @@
 {
   "phases": {
-    "preflight": { "status": "pending", "attempts": 0, "result": null },
-    "cad-import": { "status": "pending", "attempts": 0, "result": null },
-    "mesh-gen": { "status": "pending", "attempts": 0, "result": null },
-    "mom-solver": { "status": "pending", "attempts": 0, "result": null },
-    "fdtd-python": { "status": "pending", "attempts": 0, "result": null },
-    "frontend": { "status": "pending", "attempts": 0, "result": null },
-    "tests": { "status": "pending", "attempts": 0, "result": null }
+    "preflight": {
+      "status": "failed",
+      "attempts": 3,
+      "result": null,
+      "lastError": "{\"checks\":{\"cargo\":\"FAIL:    Compiling antenna-engine v0.1.0 (/mnt/d/NAS-DATA/antenna-engine/src-tauri)\\nerror[E0583]: file not found for module `materials`\\n --> src-tauri/src/core/mod.rs:2:1\\n  |\\n2 | pub mod materials;\\n  | ^^^^\",\"tsc\":\"FAIL: src/lib/stepLoader.ts(1,24): error TS2307: Cannot find module '@tauri-apps/api/tauri' or its corresponding type declarations.\\n\",\"python\":\"OK\",\"git\":\"DIRTY:  M .claude/em-pipeline-state.json\\n\"},\"status\":\"failed\",\"phase\":\"preflight\"}"
+    },
+    "cad-import": {
+      "status": "pending",
+      "attempts": 0,
+      "result": null
+    },
+    "mesh-gen": {
+      "status": "pending",
+      "attempts": 0,
+      "result": null
+    },
+    "mom-solver": {
+      "status": "pending",
+      "attempts": 0,
+      "result": null
+    },
+    "fdtd-python": {
+      "status": "pending",
+      "attempts": 0,
+      "result": null
+    },
+    "frontend": {
+      "status": "pending",
+      "attempts": 0,
+      "result": null
+    },
+    "tests": {
+      "status": "pending",
+      "attempts": 0,
+      "result": null
+    }
   },
   "currentPhase": "preflight",
   "startedAt": null,
