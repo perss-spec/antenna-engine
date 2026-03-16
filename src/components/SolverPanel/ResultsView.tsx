@@ -1,187 +1,173 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { save } from '@tauri-apps/api/dialog';
-import { writeTextFile } from '@tauri-apps/api/fs';
+import { Download, BarChart3, Zap, Radio, Activity } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface SimulationResults {
   summary: {
-    z_input_ohm: { real: number; imag: number };
-    s11_db: number;
+    z_input: { real: number; imag: number }; // Input impedance at center freq
+    s11_db: number; // S11 in dB at center freq
     vswr: number;
-    gain_dbi: number;
-    bandwidth_mhz: number;
+    gain_dbi: number; // Peak gain
+    bandwidth_mhz: number; // -10dB bandwidth
+    efficiency_percent: number;
   };
-  impedance_data: Array<{
+  frequency_data: {
     frequency_mhz: number;
     z_real: number;
     z_imag: number;
-  }>;
-  s_parameters: Array<{
-    frequency_mhz: number;
     s11_magnitude: number;
-    s11_phase_deg: number;
-  }>;
-  current_distribution?: Array<{
-    element_id: number;
-    current_magnitude: number;
-    current_phase: number;
-  }>;
+    s11_phase: number;
+    s11_db: number;
+  }[];
+  pattern_available: boolean;
+  current_distribution_available: boolean;
 }
 
 interface ResultsViewProps {
-  onClose: () => void;
+  isVisible: boolean;
 }
 
-const ResultsView: React.FC<ResultsViewProps> = ({ onClose }) => {
+const ResultsView: React.FC<ResultsViewProps> = ({ isVisible }) => {
   const [results, setResults] = useState<SimulationResults | null>(null);
-  const [activeTab, setActiveTab] = useState<'summary' | 'impedance' | 's-parameters' | 'pattern' | 'currents'>('summary');
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'summary' | 'impedance' | 'sparameters' | 'pattern' | 'currents'>('summary');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadResults = async () => {
-      try {
-        const data = await invoke<SimulationResults>('get_simulation_results');
-        setResults(data);
-      } catch (error) {
-        console.error('Failed to load simulation results:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (isVisible) {
+      loadResults();
+    }
+  }, [isVisible]);
 
-    loadResults();
-  }, []);
-
-  const handleExport = async () => {
-    if (!results) return;
-
+  const loadResults = async () => {
+    setLoading(true);
     try {
-      const filePath = await save({
-        filters: [{
-          name: 'Touchstone',
-          extensions: ['s1p']
-        }]
-      });
-
-      if (filePath) {
-        // Generate S1P content
-        let content = '! Touchstone file exported from PROMIN Antenna Studio\n';
-        content += '# MHz S RI R 50\n';
-        
-        results.s_parameters.forEach(point => {
-          const s11_real = point.s11_magnitude * Math.cos(point.s11_phase_deg * Math.PI / 180);
-          const s11_imag = point.s11_magnitude * Math.sin(point.s11_phase_deg * Math.PI / 180);
-          content += `${point.frequency_mhz} ${s11_real.toExponential(6)} ${s11_imag.toExponential(6)}\n`;
-        });
-
-        await writeTextFile(filePath, content);
-      }
+      const data = await invoke<SimulationResults>('get_simulation_results');
+      setResults(data);
     } catch (error) {
-      console.error('Failed to export results:', error);
+      console.error('Failed to load simulation results:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading results...</span>
-        </div>
-      </div>
-    );
-  }
+  const handleExportTouchstone = async () => {
+    try {
+      await invoke('export_touchstone_s1p');
+      // Could show success toast here
+    } catch (error) {
+      console.error('Failed to export Touchstone file:', error);
+    }
+  };
 
-  if (!results) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center text-red-600">
-          Failed to load simulation results
+  const formatComplex = (real: number, imag: number): string => {
+    const sign = imag >= 0 ? '+' : '-';
+    return `${real.toFixed(1)} ${sign} j${Math.abs(imag).toFixed(1)}`;
+  };
+
+  if (!isVisible || !results) {
+    return isVisible ? (
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <div className="text-center py-8">
+          {loading ? 'Loading results...' : 'No results available'}
         </div>
       </div>
-    );
+    ) : null;
   }
 
   const tabs = [
-    { id: 'summary', label: 'Summary' },
-    { id: 'impedance', label: 'Impedance' },
-    { id: 's-parameters', label: 'S-Parameters' },
-    { id: 'pattern', label: 'Pattern' },
-    { id: 'currents', label: 'Currents' }
-  ];
+    { id: 'summary', label: 'Summary', icon: BarChart3 },
+    { id: 'impedance', label: 'Impedance', icon: Zap },
+    { id: 'sparameters', label: 'S-Parameters', icon: Activity },
+    { id: 'pattern', label: 'Pattern', icon: Radio, disabled: !results.pattern_available },
+    { id: 'currents', label: 'Currents', icon: Activity, disabled: !results.current_distribution_available }
+  ] as const;
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white rounded-lg shadow-md border border-gray-200">
       {/* Header */}
-      <div className="flex justify-between items-center p-6 border-b">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Simulation Results</h3>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            Export S1P
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Close
-          </button>
-        </div>
+        <button
+          onClick={handleExportTouchstone}
+          className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+        >
+          <Download className="w-4 h-4 mr-1" />
+          Export S1P
+        </button>
       </div>
 
       {/* Tabs */}
-      <div className="border-b">
-        <nav className="flex space-x-8 px-6">
-          {tabs.map(tab => (
+      <div className="flex border-b border-gray-200">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              onClick={() => !tab.disabled && setActiveTab(tab.id)}
+              disabled={tab.disabled}
+              className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : tab.disabled
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
+              <Icon className="w-4 h-4 mr-2" />
               {tab.label}
             </button>
-          ))}
-        </nav>
+          );
+        })}
       </div>
 
-      {/* Content */}
+      {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'summary' && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Input Impedance</h4>
-              <div className="text-2xl font-bold text-blue-600">
-                {results.summary.z_input_ohm.real.toFixed(1)} + j{results.summary.z_input_ohm.imag.toFixed(1)} Ω
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-medium text-gray-900 mb-2">Input Impedance</h4>
+                <div className="text-lg font-mono">
+                  {formatComplex(results.summary.z_input.real, results.summary.z_input.imag)} Ω
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-medium text-gray-900 mb-2">Return Loss (S11)</h4>
+                <div className="text-lg font-mono">
+                  {results.summary.s11_db.toFixed(1)} dB
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-medium text-gray-900 mb-2">VSWR</h4>
+                <div className="text-lg font-mono">
+                  {results.summary.vswr.toFixed(2)}:1
+                </div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">S11</h4>
-              <div className="text-2xl font-bold text-blue-600">
-                {results.summary.s11_db.toFixed(2)} dB
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-medium text-gray-900 mb-2">Peak Gain</h4>
+                <div className="text-lg font-mono">
+                  {results.summary.gain_dbi.toFixed(1)} dBi
+                </div>
               </div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">VSWR</h4>
-              <div className="text-2xl font-bold text-blue-600">
-                {results.summary.vswr.toFixed(2)}
+
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-medium text-gray-900 mb-2">-10dB Bandwidth</h4>
+                <div className="text-lg font-mono">
+                  {results.summary.bandwidth_mhz.toFixed(1)} MHz
+                </div>
               </div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Gain</h4>
-              <div className="text-2xl font-bold text-blue-600">
-                {results.summary.gain_dbi.toFixed(1)} dBi
-              </div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Bandwidth</h4>
-              <div className="text-2xl font-bold text-blue-600">
-                {results.summary.bandwidth_mhz.toFixed(1)} MHz
+
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-medium text-gray-900 mb-2">Efficiency</h4>
+                <div className="text-lg font-mono">
+                  {results.summary.efficiency_percent.toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>
@@ -189,138 +175,99 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onClose }) => {
 
         {activeTab === 'impedance' && (
           <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-4">Impedance vs Frequency</h4>
-            <div className="bg-gray-50 rounded-lg p-4 h-64 flex items-center justify-center">
-              <span className="text-gray-600">Impedance plot will be rendered here</span>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Frequency (MHz)
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Real (Ω)
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Imaginary (Ω)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {results.impedance_data.slice(0, 10).map((point, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {point.frequency_mhz.toFixed(1)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {point.z_real.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {point.z_imag.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <h4 className="font-medium text-gray-900 mb-4">Input Impedance vs Frequency</h4>
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={results.frequency_data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="frequency_mhz"
+                    label={{ value: 'Frequency (MHz)', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'Impedance (Ω)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value, name) => [
+                      `${(value as number).toFixed(1)} Ω`,
+                      name === 'z_real' ? 'Resistance' : 'Reactance'
+                    ]}
+                  />
+                  <ReferenceLine y={50} stroke="#888" strokeDasharray="5 5" label="50Ω" />
+                  <Line 
+                    type="monotone" 
+                    dataKey="z_real" 
+                    stroke="#2563eb" 
+                    name="Resistance"
+                    strokeWidth={2}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="z_imag" 
+                    stroke="#dc2626" 
+                    name="Reactance"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
 
-        {activeTab === 's-parameters' && (
+        {activeTab === 'sparameters' && (
           <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-4">S11 Parameters</h4>
-            <div className="bg-gray-50 rounded-lg p-4 h-64 flex items-center justify-center">
-              <span className="text-gray-600">S11 magnitude and phase plot will be rendered here</span>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Frequency (MHz)
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      |S11| (dB)
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phase (°)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {results.s_parameters.slice(0, 10).map((point, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {point.frequency_mhz.toFixed(1)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {(20 * Math.log10(point.s11_magnitude)).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {point.s11_phase_deg.toFixed(1)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <h4 className="font-medium text-gray-900 mb-4">S11 Parameter</h4>
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={results.frequency_data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="frequency_mhz"
+                    label={{ value: 'Frequency (MHz)', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value) => [`${(value as number).toFixed(1)} dB`, 'S11 Magnitude']}
+                  />
+                  <ReferenceLine y={-10} stroke="#888" strokeDasharray="5 5" label="-10dB" />
+                  <Line 
+                    type="monotone" 
+                    dataKey="s11_db" 
+                    stroke="#2563eb" 
+                    name="S11"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
 
         {activeTab === 'pattern' && (
-          <div className="text-center py-8">
-            <div className="text-gray-600 mb-4">
-              Radiation pattern visualization will be available in the Pattern tab
-            </div>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              Open Radiation Pattern
+          <div className="text-center py-12">
+            <Radio className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Radiation Pattern</h4>
+            <p className="text-gray-600 mb-4">
+              3D radiation pattern visualization will be displayed here.
+            </p>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+              Open Pattern Viewer
             </button>
           </div>
         )}
 
         {activeTab === 'currents' && (
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-4">Current Distribution</h4>
-            {results.current_distribution ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Element ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Magnitude (A)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phase (°)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {results.current_distribution.slice(0, 20).map((current, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {current.element_id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {current.current_magnitude.toExponential(3)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {current.current_phase.toFixed(1)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-600">
-                Current distribution data not available
-              </div>
-            )}
+          <div className="text-center py-12">
+            <Activity className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Current Distribution</h4>
+            <p className="text-gray-600 mb-4">
+              Surface current distribution on the antenna mesh.
+            </p>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+              View Current Distribution
+            </button>
           </div>
         )}
       </div>
