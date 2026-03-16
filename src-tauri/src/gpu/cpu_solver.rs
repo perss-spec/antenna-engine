@@ -2,9 +2,7 @@
 
 use crate::core::{
     geometry::Mesh,
-    solver::{SimulationParams, SParameterResult},
-    green::GreenFunction,
-    impedance::ImpedanceMatrix,
+    types::{SimulationParams, SParameterResult},
     AntennaError, Result,
 };
 use crate::gpu::parallel::{ParallelImpedanceComputer, ParallelFrequencySweep, SweepResult};

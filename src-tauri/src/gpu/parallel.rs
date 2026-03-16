@@ -2,9 +2,8 @@
 
 use crate::core::{
     geometry::{Mesh, Point3D},
-    solver::SimulationParams,
     green::GreenFunction,
-    C0, MU0, EPS0,
+    C0,
 };
 use num_complex::Complex64;
 use rayon::prelude::*;

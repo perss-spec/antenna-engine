@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './SolverPanel.css';
 
+declare global {
+  interface Window {
+    bridge?: {
+      sendMessage: (message: unknown) => void;
+    };
+  }
+}
+
 export interface SimulationResult {
   solver: 'MoM Wire' | 'MoM Surface' | 'FDTD';
   frequency: number;
@@ -33,7 +41,7 @@ type FrequencyMode = 'single' | 'sweep' | 'preset';
 type LinearSolver = 'LU' | 'GMRES';
 type SolverType = 'MoM Wire' | 'MoM Surface' | 'FDTD';
 
-const PRESET_FREQUENCIES = {
+const PRESET_FREQUENCIES: Record<string, number[]> = {
   'VHF': [30e6, 300e6],
   'UHF': [300e6, 3e9],
   'S-Band': [2e9, 4e9],

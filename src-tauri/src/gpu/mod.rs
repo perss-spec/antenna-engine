@@ -29,7 +29,7 @@ pub use sweep::{
 
 use crate::core::{
     geometry::Mesh,
-    solver::SimulationParams,
+    SimulationParams,
 };
 use std::sync::Arc;
 

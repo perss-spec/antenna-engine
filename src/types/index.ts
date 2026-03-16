@@ -6,7 +6,7 @@ export interface AntennaPattern {
   directivity: number;
   efficiency: number;
   beamwidth: number;
-  polarization: 'linear' | 'circular' | 'elliptical';
+  polarization: 'horizontal' | 'vertical' | 'circular' | 'linear' | 'elliptical';
   created_at: string;
   updated_at: string;
 }

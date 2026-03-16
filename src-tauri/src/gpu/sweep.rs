@@ -1,6 +1,6 @@
 //! CPU frequency sweep runner with parallel processing
 
-use crate::core::C0;
+use crate::core::constants::C0;
 use crate::gpu::parallel::{ParallelFrequencySweep, SweepResult};
 use std::f64::consts::PI;
 use num_complex::Complex64;

@@ -1,13 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { 
-  CloudArrowUpIcon, 
-  DocumentIcon, 
-  CheckCircleIcon, 
-  ExclamationTriangleIcon,
-  ClockIcon,
-  ChartBarIcon
-} from '@heroicons/react/24/outline';
+import { invoke } from '@tauri-apps/api/core';
+import { Upload, FileText, CheckCircle, Clock, BarChart3 } from 'lucide-react';
 
 interface MeshData {
   vertices: number;
@@ -96,7 +89,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
       }, 200);
 
       const result = await invoke<MeshData>('import_cad_file', {
-        filePath: file.path || file.name,
+        filePath: (file as unknown as { path?: string }).path || file.name,
         fileType: detectFileType(file.name).toLowerCase()
       });
 
@@ -106,7 +99,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
       // Add to history
       const historyItem: FileHistoryItem = {
         name: file.name,
-        path: file.path || file.name,
+        path: (file as unknown as { path?: string }).path || file.name,
         format: detectFileType(file.name),
         size: file.size,
         imported_at: new Date().toISOString(),
@@ -173,7 +166,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Import CAD File</h3>
         <div className="flex items-center text-sm text-gray-500">
-          <DocumentIcon className="w-4 h-4 mr-1" />
+          <FileText className="w-4 h-4 mr-1" />
           Supports: STL, NEC, NASTRAN, STEP
         </div>
       </div>
@@ -204,7 +197,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
         {isImporting ? (
           <div className="space-y-4">
             <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-              <CloudArrowUpIcon className="w-6 h-6 text-green-600 animate-bounce" />
+              <Upload className="w-6 h-6 text-green-600 animate-bounce" />
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-900">
@@ -224,7 +217,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
         ) : (
           <div className="space-y-4">
             <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-              <CloudArrowUpIcon className="w-6 h-6 text-gray-500" />
+              <Upload className="w-6 h-6 text-gray-500" />
             </div>
             <div>
               <p className="text-lg font-medium text-gray-900 mb-2">
@@ -243,7 +236,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
         <div className="bg-green-50 rounded-lg p-4 border border-green-200">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
-              <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
               <h4 className="font-medium text-green-900">Import Successful</h4>
             </div>
             <span className="text-sm text-green-700">{lastImported.format}</span>
@@ -275,11 +268,11 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
       {fileHistory.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center">
-            <ClockIcon className="w-4 h-4 text-gray-500 mr-2" />
+            <Clock className="w-4 h-4 text-gray-500 mr-2" />
             <h4 className="font-medium text-gray-900">Recent Imports</h4>
           </div>
           <div className="space-y-2">
-            {fileHistory.map((item, index) => (
+            {fileHistory.map((item) => (
               <div 
                 key={`${item.path}-${item.imported_at}`}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
@@ -294,7 +287,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
                 })}
               >
                 <div className="flex items-center space-x-3">
-                  <DocumentIcon className="w-4 h-4 text-gray-500" />
+                  <FileText className="w-4 h-4 text-gray-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-900 truncate max-w-48">
                       {item.name}
@@ -306,7 +299,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
                 </div>
                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                   <div className="flex items-center">
-                    <ChartBarIcon className="w-3 h-3 mr-1" />
+                    <BarChart3 className="w-3 h-3 mr-1" />
                     {item.mesh_stats.vertices.toLocaleString()}v
                   </div>
                   <div className="text-right">

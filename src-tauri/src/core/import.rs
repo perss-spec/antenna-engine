@@ -1,9 +1,8 @@
 use std::path::Path;
-use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
-use super::geometry::{Mesh, Vector3};
-use super::parsers::{stl, nec, nastran};
+use super::geometry::{Mesh, Point3D, Triangle};
+use super::types::{AntennaError, Result};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImportFormat {
@@ -43,9 +42,10 @@ pub fn detect_format(path: &Path) -> Result<ImportFormat> {
         Some("stp") | Some("step") => Ok(ImportFormat::Step),
         _ => {
             // Try to detect by file content
-            let content = std::fs::read_to_string(path)?;
+            let content = std::fs::read_to_string(path)
+                .map_err(|e| AntennaError::ImportError(format!("Cannot read file: {}", e)))?;
             let first_line = content.lines().next().unwrap_or("").to_lowercase();
-            
+
             if first_line.contains("solid") {
                 Ok(ImportFormat::Stl)
             } else if first_line.contains("cm") || first_line.contains("ce") {
@@ -55,7 +55,10 @@ pub fn detect_format(path: &Path) -> Result<ImportFormat> {
             } else if first_line.contains("iso-10303") {
                 Ok(ImportFormat::Step)
             } else {
-                Err(anyhow!("Unknown file format for: {}", path.display()))
+                Err(AntennaError::ImportError(format!(
+                    "Unknown file format for: {}",
+                    path.display()
+                )))
             }
         }
     }
@@ -63,34 +66,29 @@ pub fn detect_format(path: &Path) -> Result<ImportFormat> {
 
 pub fn import_file(path: &Path) -> Result<ImportedModel> {
     let format = detect_format(path)?;
-    let filename = path.file_name()
+    let filename = path
+        .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("unknown")
         .to_string();
-    
-    let file_size = std::fs::metadata(path)?.len();
+
+    let file_size = std::fs::metadata(path)
+        .map_err(|e| AntennaError::IoError(format!("Cannot read file metadata: {}", e)))?
+        .len();
 
     let mesh = match format {
-        ImportFormat::Stl => {
-            stl::parse_stl(path)?
-        },
-        ImportFormat::Nec => {
-            nec::parse_nec(path)?
-        },
-        ImportFormat::Nastran => {
-            nastran::parse_nastran(path)?
-        },
-        ImportFormat::Step => {
-            parse_step(path)?
-        },
+        ImportFormat::Stl => parse_stl_simple(path)?,
+        ImportFormat::Nec => parse_nec_simple(path)?,
+        ImportFormat::Nastran => parse_nastran_simple(path)?,
+        ImportFormat::Step => parse_step(path)?,
     };
 
     let metadata = ImportMetadata {
         filename,
         file_size,
         vertex_count: mesh.vertices.len(),
-        face_count: mesh.indices.len() / 3,
-        units: None, // TODO: Extract from format-specific metadata
+        face_count: mesh.triangles.len(),
+        units: None,
         description: None,
     };
 
@@ -101,52 +99,112 @@ pub fn import_file(path: &Path) -> Result<ImportedModel> {
     })
 }
 
-// Basic STEP parser placeholder - would need full STEP library in production
-fn parse_step(path: &Path) -> Result<Mesh> {
-    let content = std::fs::read_to_string(path)?;
-    
-    // This is a simplified STEP parser for demo purposes
-    // In production, use a proper STEP library like opencascade-rs
+/// Simplified STL parser (placeholder — reads vertices from ASCII STL)
+fn parse_stl_simple(path: &Path) -> Result<Mesh> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| AntennaError::ImportError(format!("Failed to read STL file: {}", e)))?;
+
     let mut vertices = Vec::new();
-    let mut indices = Vec::new();
-    
+    let mut triangles = Vec::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("vertex") {
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() == 4 {
+                if let (Ok(x), Ok(y), Ok(z)) = (
+                    parts[1].parse::<f64>(),
+                    parts[2].parse::<f64>(),
+                    parts[3].parse::<f64>(),
+                ) {
+                    vertices.push(Point3D::new(x, y, z));
+                }
+            }
+        }
+    }
+
+    // Group vertices into triangles (every 3 vertices = 1 triangle)
+    for i in (0..vertices.len()).step_by(3) {
+        if i + 2 < vertices.len() {
+            let base = i;
+            triangles.push(Triangle {
+                vertices: [base, base + 1, base + 2],
+            });
+        }
+    }
+
+    Ok(Mesh {
+        vertices,
+        triangles,
+        segments: Vec::new(),
+    })
+}
+
+/// Simplified NEC parser (placeholder)
+fn parse_nec_simple(path: &Path) -> Result<Mesh> {
+    let _content = std::fs::read_to_string(path)
+        .map_err(|e| AntennaError::ImportError(format!("Failed to read NEC file: {}", e)))?;
+
+    // TODO: implement NEC parsing
+    Ok(Mesh::empty())
+}
+
+/// Simplified Nastran parser (placeholder)
+fn parse_nastran_simple(path: &Path) -> Result<Mesh> {
+    let _content = std::fs::read_to_string(path)
+        .map_err(|e| AntennaError::ImportError(format!("Failed to read Nastran file: {}", e)))?;
+
+    // TODO: implement Nastran parsing
+    Ok(Mesh::empty())
+}
+
+/// Basic STEP parser placeholder
+fn parse_step(path: &Path) -> Result<Mesh> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| AntennaError::ImportError(format!("Failed to read STEP file: {}", e)))?;
+
+    let mut vertices = Vec::new();
+    let mut triangles = Vec::new();
+
     // Look for CARTESIAN_POINT entities
     for line in content.lines() {
         if line.contains("CARTESIAN_POINT") {
             if let Some(coords_start) = line.find('(') {
-                if let Some(coords_end) = line.find(')') {
+                if let Some(coords_end) = line.rfind(')') {
                     let coords_str = &line[coords_start + 1..coords_end];
                     let coords: Vec<&str> = coords_str.split(',').collect();
-                    
+
                     if coords.len() >= 3 {
                         if let (Ok(x), Ok(y), Ok(z)) = (
-                            coords[0].trim().parse::<f32>(),
-                            coords[1].trim().parse::<f32>(),
-                            coords[2].trim().parse::<f32>(),
+                            coords[0].trim().parse::<f64>(),
+                            coords[1].trim().parse::<f64>(),
+                            coords[2].trim().parse::<f64>(),
                         ) {
-                            vertices.push(Vector3::new(x, y, z));
+                            vertices.push(Point3D::new(x, y, z));
                         }
                     }
                 }
             }
         }
     }
-    
+
     // Generate basic triangulation for demo
     for i in 0..(vertices.len().saturating_sub(2)) {
-        indices.push(i as u32);
-        indices.push((i + 1) as u32);
-        indices.push((i + 2) as u32);
+        triangles.push(Triangle {
+            vertices: [i, i + 1, i + 2],
+        });
     }
-    
+
     if vertices.is_empty() {
-        return Err(anyhow!("No valid geometry found in STEP file"));
+        return Err(AntennaError::ImportError(
+            "No valid geometry found in STEP file".to_string(),
+        ));
     }
-    
+
     Ok(Mesh {
         vertices,
-        indices,
-        normals: Vec::new(), // TODO: Calculate normals
+        triangles,
+        segments: Vec::new(),
     })
 }
 
@@ -157,9 +215,21 @@ mod tests {
 
     #[test]
     fn test_format_detection() {
-        assert!(matches!(detect_format(&PathBuf::from("test.stl")), Ok(ImportFormat::Stl)));
-        assert!(matches!(detect_format(&PathBuf::from("test.nec")), Ok(ImportFormat::Nec)));
-        assert!(matches!(detect_format(&PathBuf::from("test.nas")), Ok(ImportFormat::Nastran)));
-        assert!(matches!(detect_format(&PathBuf::from("test.stp")), Ok(ImportFormat::Step)));
+        assert!(matches!(
+            detect_format(&PathBuf::from("test.stl")),
+            Ok(ImportFormat::Stl)
+        ));
+        assert!(matches!(
+            detect_format(&PathBuf::from("test.nec")),
+            Ok(ImportFormat::Nec)
+        ));
+        assert!(matches!(
+            detect_format(&PathBuf::from("test.nas")),
+            Ok(ImportFormat::Nastran)
+        ));
+        assert!(matches!(
+            detect_format(&PathBuf::from("test.stp")),
+            Ok(ImportFormat::Step)
+        ));
     }
 }

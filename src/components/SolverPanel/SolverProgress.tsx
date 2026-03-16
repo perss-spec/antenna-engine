@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { Play, Square, Clock, MemoryStick, Zap } from 'lucide-react';
 
 interface SimulationStatus {
@@ -30,7 +30,7 @@ const SolverProgress: React.FC = () => {
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     
     if (isPolling) {
       interval = setInterval(async () => {

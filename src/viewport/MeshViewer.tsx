@@ -1,5 +1,4 @@
 import React, { useMemo, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
 import { Grid, Edges, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -38,14 +37,13 @@ const TriangleMesh: React.FC<{
   mode: 'wireframe' | 'solid' | 'transparent';
   showQuality: boolean;
   currents?: ComplexArray;
-}> = ({ triangles, vertices, mode, showQuality, currents }) => {
+}> = ({ triangles, vertices: _vertices, mode, showQuality, currents }) => {
   const meshRef = useRef<THREE.Mesh>(null);
 
-  const { geometry, qualityColors, currentColors } = useMemo(() => {
+  const { geometry } = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     const positions: number[] = [];
     const indices: number[] = [];
-    const colors: number[] = [];
     const qualityData: number[] = [];
     
     triangles.forEach((triangle, triIndex) => {
@@ -77,20 +75,7 @@ const TriangleMesh: React.FC<{
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    // Quality colors (green = good, red = bad)
-    const qualityColors = qualityData.map(quality => {
-      const normalized = Math.min(quality / 5, 1); // Normalize to 0-1
-      return new THREE.Color().setHSL((1 - normalized) * 0.3, 1, 0.5); // Green to red
-    });
-
-    // Current density colors
-    const currentColors = currents ? currents.real.map((real, i) => {
-      const magnitude = Math.sqrt(real * real + currents.imag[i] * currents.imag[i]);
-      const normalized = Math.min(magnitude / 100, 1); // Adjust scale as needed
-      return new THREE.Color().setHSL(0.7 - normalized * 0.7, 1, 0.5); // Blue to red
-    }) : [];
-
-    return { geometry: geo, qualityColors, currentColors };
+    return { geometry: geo };
   }, [triangles, showQuality, currents]);
 
   const material = useMemo(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { AntennaPattern } from '../types/antenna';
@@ -18,25 +18,29 @@ const PatternMesh: React.FC<PatternMeshProps> = ({ pattern }) => {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   useEffect(() => {
-    if (!pattern.gain || !pattern.theta || !pattern.phi) return;
+    const pd = pattern.pattern_data;
+    if (!pd || !pd.elevation || !pd.azimuth || !pd.gain_values) return;
 
     const vertices: number[] = [];
     const colors: number[] = [];
-    
-    for (let i = 0; i < pattern.gain.length; i++) {
-      const theta = (pattern.theta[i] * Math.PI) / 180;
-      const phi = (pattern.phi[i] * Math.PI) / 180;
-      const r = Math.max(0, pattern.gain[i] / 10); // Normalize gain
-      
-      const x = r * Math.sin(theta) * Math.cos(phi);
-      const y = r * Math.sin(theta) * Math.sin(phi);
-      const z = r * Math.cos(theta);
-      
-      vertices.push(x, y, z);
-      
-      // Color based on gain
-      const normalizedGain = Math.max(0, pattern.gain[i] / 20);
-      colors.push(normalizedGain, 0.5, 1 - normalizedGain);
+
+    for (let i = 0; i < pd.elevation.length; i++) {
+      for (let j = 0; j < pd.azimuth.length; j++) {
+        const theta = (pd.elevation[i] * Math.PI) / 180;
+        const phi = (pd.azimuth[j] * Math.PI) / 180;
+        const gainVal = pd.gain_values[i]?.[j] ?? 0;
+        const r = Math.max(0, gainVal / 10); // Normalize gain
+
+        const x = r * Math.sin(theta) * Math.cos(phi);
+        const y = r * Math.sin(theta) * Math.sin(phi);
+        const z = r * Math.cos(theta);
+
+        vertices.push(x, y, z);
+
+        // Color based on gain
+        const normalizedGain = Math.max(0, gainVal / 20);
+        colors.push(normalizedGain, 0.5, 1 - normalizedGain);
+      }
     }
 
     const geom = new THREE.BufferGeometry();

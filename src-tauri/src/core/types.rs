@@ -20,6 +20,52 @@ pub enum AntennaError {
     InvalidParameter(String),
     #[error("Numerical error: {0}")]
     NumericalError(String),
+    #[error("Import error: {0}")]
+    ImportError(String),
+    #[error("IO error: {0}")]
+    IoError(String),
+}
+
+impl From<std::io::Error> for AntennaError {
+    fn from(e: std::io::Error) -> Self {
+        AntennaError::IoError(e.to_string())
+    }
+}
+
+/// Simple simulation parameters used by MoM/GPU solvers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimulationParams {
+    pub frequency: f64,
+    pub resolution: f64,
+    pub reference_impedance: f64,
+}
+
+/// S-parameter result from a single frequency point
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SParameterResult {
+    pub frequency: f64,
+    pub s11_re: f64,
+    pub s11_im: f64,
+    pub vswr: f64,
+    pub input_impedance_re: f64,
+    pub input_impedance_im: f64,
+}
+
+/// Full simulation result containing field data and S-parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimulationResult {
+    pub s_params: Vec<SParameterResult>,
+    pub field: FieldResultSummary,
+}
+
+/// Summary of field results for coverage/optimization analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FieldResultSummary {
+    pub max_gain_dbi: f64,
+    pub efficiency: f64,
+    pub beamwidth_deg: f64,
+    pub front_to_back_ratio_db: f64,
+    pub cross_pol_discrimination_db: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

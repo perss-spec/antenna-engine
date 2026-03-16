@@ -15,7 +15,7 @@ interface PatternFormData {
   directivity: number;
   efficiency: number;
   beamwidth: number;
-  polarization: 'linear' | 'circular' | 'elliptical';
+  polarization: 'horizontal' | 'vertical' | 'circular' | 'linear' | 'elliptical';
 }
 
 export function PatternEditor({ pattern, onSave, onCancel }: PatternEditorProps) {
