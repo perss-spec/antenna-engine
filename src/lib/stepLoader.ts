@@ -1,22 +1,9 @@
 import { invoke } from '@tauri-apps/api/tauri';
 
 export interface MeshData {
-  vertices: Float32Array;
-  indices: Uint32Array;
-  normals: Float32Array;
-  uvs: Float32Array;
-  materials: Material[];
-  metadata: ImportMetadata;
-}
-
-export interface Material {
-  name: string;
-  diffuse_color: [number, number, number];
-  specular_color: [number, number, number];
-  ambient_color: [number, number, number];
-  shininess: number;
-  opacity: number;
-  texture_path?: string;
+  vertices: number[];
+  indices: number[];
+  normals: number[];
 }
 
 export interface ImportMetadata {
@@ -24,137 +11,113 @@ export interface ImportMetadata {
   file_size: number;
   vertex_count: number;
   face_count: number;
-  material_count: number;
-  import_time_ms: number;
+  units?: string;
+  description?: string;
 }
 
 export interface ImportedModel {
-  mesh: {
-    vertices: Array<{
-      position: [number, number, number];
-      normal: [number, number, number];
-      texture_coords: [number, number];
-    }>;
-    faces: Array<[number, number, number]>;
-    materials: Material[];
-    name: string;
-  };
-  format: string;
+  mesh: MeshData;
+  format: 'Stl' | 'Nec' | 'Nastran' | 'Step';
   metadata: ImportMetadata;
 }
 
-/**
- * Load a STEP file and convert it to Three.js compatible mesh data
- */
-export async function loadStepFile(file: File): Promise<MeshData> {
+export async function loadStepFile(file: File): Promise<ImportedModel> {
   try {
-    // Convert File to array buffer
+    // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
     
     // Send file data to Tauri backend
-    const result: ImportedModel = await invoke('import_step_file', {
+    const result = await invoke<ImportedModel>('import_step_file', {
       filename: file.name,
       fileData: Array.from(uint8Array)
     });
-
-    return convertToMeshData(result);
+    
+    return result;
   } catch (error) {
-    console.error('Failed to load STEP file:', error);
-    throw new Error(`STEP import failed: ${error}`);
+    console.error('Error loading STEP file:', error);
+    throw new Error(`Failed to load STEP file: ${error}`);
   }
 }
 
-/**
- * Load any supported 3D file format
- */
-export async function loadFile(file: File): Promise<MeshData> {
+export async function loadAnyFile(file: File): Promise<ImportedModel> {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
     
-    const result: ImportedModel = await invoke('import_file_data', {
+    const result = await invoke<ImportedModel>('import_any_file', {
       filename: file.name,
       fileData: Array.from(uint8Array)
     });
-
-    return convertToMeshData(result);
+    
+    return result;
   } catch (error) {
-    console.error('Failed to load file:', error);
-    throw new Error(`File import failed: ${error}`);
+    console.error('Error loading file:', error);
+    throw new Error(`Failed to load file: ${error}`);
   }
 }
 
-/**
- * Convert ImportedModel to Three.js compatible MeshData
- */
-function convertToMeshData(imported: ImportedModel): MeshData {
-  const { mesh, metadata } = imported;
-  
-  // Extract vertex positions
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  
-  mesh.vertices.forEach(vertex => {
-    positions.push(...vertex.position);
-    normals.push(...vertex.normal);
-    uvs.push(...vertex.texture_coords);
-  });
-  
-  // Extract face indices
-  const indices: number[] = [];
-  mesh.faces.forEach(face => {
-    indices.push(...face);
-  });
-  
+export function createThreeJSGeometry(meshData: MeshData) {
+  // Helper function to create Three.js geometry from mesh data
+  // This would typically be used with THREE.BufferGeometry
   return {
-    vertices: new Float32Array(positions),
-    indices: new Uint32Array(indices),
-    normals: new Float32Array(normals),
-    uvs: new Float32Array(uvs),
-    materials: mesh.materials,
-    metadata
+    vertices: new Float32Array(meshData.vertices),
+    indices: new Uint32Array(meshData.indices),
+    normals: new Float32Array(meshData.normals),
   };
 }
 
-/**
- * Detect file format from extension
- */
-export function detectFileFormat(filename: string): string | null {
-  const extension = filename.split('.').pop()?.toLowerCase();
-  
-  switch (extension) {
-    case 'stl':
-      return 'STL';
-    case 'nec':
-      return 'NEC';
-    case 'nas':
-    case 'bdf':
-    case 'nastran':
-      return 'NASTRAN';
-    case 'stp':
-    case 'step':
-      return 'STEP';
-    default:
-      return null;
+export async function detectFileFormat(filename: string): Promise<string> {
+  try {
+    const format = await invoke<string>('detect_file_format', {
+      filename
+    });
+    return format;
+  } catch (error) {
+    console.error('Error detecting file format:', error);
+    throw new Error(`Failed to detect file format: ${error}`);
   }
 }
 
-/**
- * Validate file before import
- */
-export function validateFile(file: File): { valid: boolean; error?: string } {
-  const maxSize = 100 * 1024 * 1024; // 100MB limit
-  
-  if (file.size > maxSize) {
-    return { valid: false, error: 'File too large (max 100MB)' };
+// Utility function to validate STEP file before processing
+export function validateStepFile(file: File): boolean {
+  const validExtensions = ['.stp', '.step'];
+  const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+  return validExtensions.includes(extension);
+}
+
+// Progress callback type for large file imports
+export type ImportProgressCallback = (progress: number, message: string) => void;
+
+export async function loadStepFileWithProgress(
+  file: File,
+  onProgress?: ImportProgressCallback
+): Promise<ImportedModel> {
+  try {
+    onProgress?.(10, 'Reading file...');
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    onProgress?.(30, 'Sending to parser...');
+    
+    const result = await invoke<ImportedModel>('import_step_file', {
+      filename: file.name,
+      fileData: Array.from(uint8Array)
+    });
+    
+    onProgress?.(80, 'Processing geometry...');
+    
+    // Validate result
+    if (!result.mesh || !result.mesh.vertices || result.mesh.vertices.length === 0) {
+      throw new Error('Invalid geometry data received');
+    }
+    
+    onProgress?.(100, 'Complete');
+    
+    return result;
+  } catch (error) {
+    onProgress?.(0, `Error: ${error}`);
+    throw error;
   }
-  
-  const format = detectFileFormat(file.name);
-  if (!format) {
-    return { valid: false, error: 'Unsupported file format' };
-  }
-  
-  return { valid: true };
 }
