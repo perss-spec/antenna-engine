@@ -1,163 +1,135 @@
 import React, { useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import AntennaViewer from './components/AntennaViewer';
-import PatternList from './components/PatternList';
-import SimulationPanel from './components/SimulationPanel';
-import { AntennaPattern, SimulationResult, TauriResponse } from './types/antenna';
+import AntennaDesigner from './components/AntennaDesigner';
+import PatternViewer from './components/PatternViewer';
+import ProjectManager from './components/ProjectManager';
 import './App.css';
 
+interface AntennaParams {
+  frequency: number;
+  gain: number;
+  beamwidth: number;
+  impedance: number;
+  polarization: 'vertical' | 'horizontal' | 'circular';
+  antennaType: 'dipole' | 'yagi' | 'patch' | 'horn';
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  created: string;
+  modified: string;
+  antennaType: string;
+  frequency: number;
+}
+
+interface PatternData {
+  theta: number[];
+  phi: number[];
+  gain: number[][];
+  frequency: number;
+  title?: string;
+}
+
 const App: React.FC = () => {
-  const [selectedPattern, setSelectedPattern] = useState<AntennaPattern | null>(null);
-  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'design' | 'pattern' | 'projects'>('design');
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [antennaParams, setAntennaParams] = useState<AntennaParams>({
+    frequency: 2400,
+    gain: 10,
+    beamwidth: 60,
+    impedance: 50,
+    polarization: 'vertical',
+    antennaType: 'dipole'
+  });
+  const [patternData, setPatternData] = useState<PatternData | undefined>();
 
-  const handlePatternSelect = (pattern: AntennaPattern) => {
-    setSelectedPattern(pattern);
-    setSimulationResult(null); // Clear previous simulation when selecting new pattern
+  const handleDesignChange = (params: AntennaParams) => {
+    setAntennaParams(params);
+    // Generate sample pattern data for demonstration
+    const theta = Array.from({ length: 36 }, (_, i) => (i * Math.PI) / 18);
+    const phi = Array.from({ length: 72 }, (_, i) => (i * Math.PI) / 36);
+    const gain = theta.map(t => 
+      phi.map(p => {
+        // Simple pattern calculation for demo
+        const pattern = Math.cos(t) * Math.cos(p);
+        return 20 * Math.log10(Math.max(0.01, Math.abs(pattern)));
+      })
+    );
+
+    setPatternData({
+      theta,
+      phi,
+      gain,
+      frequency: params.frequency,
+      title: `${params.antennaType} Pattern - ${params.frequency} MHz`
+    });
   };
 
-  const handleSimulationComplete = (result: SimulationResult) => {
-    setSimulationResult(result);
+  const handleProjectSelect = (project: Project) => {
+    setCurrentProject(project);
+    // Load project data and update antenna parameters
+    setAntennaParams(prev => ({
+      ...prev,
+      antennaType: project.antennaType as AntennaParams['antennaType'],
+      frequency: project.frequency
+    }));
   };
 
-  const importPattern = async () => {
-    try {
-      setIsImporting(true);
-      setImportError(null);
-
-      const response = await invoke<TauriResponse<string>>('import_antenna_file');
-      
-      if (response.success) {
-        // Pattern imported successfully, refresh the pattern list
-        // The PatternList component will handle the refresh via its own state
-        console.log('Pattern imported successfully');
-      } else {
-        setImportError(response.error || 'Failed to import pattern');
-      }
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const exportResults = async () => {
-    if (!simulationResult) return;
-
-    try {
-      const response = await invoke<TauriResponse<string>>('export_simulation_results', {
-        resultId: simulationResult.id
-      });
-
-      if (response.success) {
-        console.log('Results exported successfully');
-      } else {
-        console.error('Export failed:', response.error);
-      }
-    } catch (err) {
-      console.error('Export failed:', err);
-    }
+  const handleProjectCreate = () => {
+    setActiveTab('design');
   };
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>PROMIN Antenna Studio</h1>
-        <div className="header-actions">
-          <button 
-            onClick={importPattern}
-            disabled={isImporting}
-            className="import-button"
-          >
-            {isImporting ? 'Importing...' : 'Import Pattern'}
-          </button>
-          
-          {simulationResult && (
-            <button 
-              onClick={exportResults}
-              className="export-button"
-            >
-              Export Results
-            </button>
-          )}
+        <div className="header-content">
+          <h1>PROMIN Antenna Studio</h1>
+          <div className="project-info">
+            {currentProject && (
+              <span className="current-project">
+                Project: {currentProject.name}
+              </span>
+            )}
+          </div>
         </div>
+        <nav className="tab-nav">
+          <button
+            className={activeTab === 'design' ? 'active' : ''}
+            onClick={() => setActiveTab('design')}
+          >
+            Design
+          </button>
+          <button
+            className={activeTab === 'pattern' ? 'active' : ''}
+            onClick={() => setActiveTab('pattern')}
+          >
+            Pattern
+          </button>
+          <button
+            className={activeTab === 'projects' ? 'active' : ''}
+            onClick={() => setActiveTab('projects')}
+          >
+            Projects
+          </button>
+        </nav>
       </header>
 
-      {importError && (
-        <div className="import-error">
-          <p>Import Error: {importError}</p>
-          <button onClick={() => setImportError(null)}>×</button>
-        </div>
-      )}
-
       <main className="app-main">
-        <aside className="sidebar">
-          <PatternList
-            onPatternSelect={handlePatternSelect}
-            selectedPatternId={selectedPattern?.id}
-            className="pattern-list-container"
-          />
-          
-          <SimulationPanel
-            pattern={selectedPattern}
-            onSimulationComplete={handleSimulationComplete}
-            className="simulation-panel-container"
-          />
-        </aside>
-
-        <section className="main-content">
-          {selectedPattern ? (
-            <>
-              <div className="pattern-info-header">
-                <h2>{selectedPattern.name}</h2>
-                <div className="pattern-stats">
-                  <span>Frequency: {selectedPattern.frequency} MHz</span>
-                  <span>Polarization: {selectedPattern.polarization}</span>
-                  {simulationResult && (
-                    <>
-                      <span>Directivity: {simulationResult.directivity.toFixed(2)} dB</span>
-                      <span>Efficiency: {(simulationResult.efficiency * 100).toFixed(1)}%</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <AntennaViewer 
-                pattern={selectedPattern} 
-                className="main-viewer"
-              />
-
-              {simulationResult && (
-                <div className="simulation-results">
-                  <h3>Simulation Results</h3>
-                  <div className="results-grid">
-                    <div className="result-item">
-                      <label>Directivity</label>
-                      <span>{simulationResult.directivity.toFixed(2)} dB</span>
-                    </div>
-                    <div className="result-item">
-                      <label>Efficiency</label>
-                      <span>{(simulationResult.efficiency * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="result-item">
-                      <label>Bandwidth</label>
-                      <span>{simulationResult.bandwidth.toFixed(1)} MHz</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="empty-main-content">
-              <div className="welcome-message">
-                <h2>Welcome to PROMIN Antenna Studio</h2>
-                <p>Select an antenna pattern from the sidebar to begin analysis.</p>
-                <p>Import new patterns using the "Import Pattern" button above.</p>
-              </div>
-            </div>
+        <div className="tab-content">
+          {activeTab === 'design' && (
+            <AntennaDesigner onDesignChange={handleDesignChange} />
           )}
-        </section>
+          {activeTab === 'pattern' && (
+            <PatternViewer data={patternData} />
+          )}
+          {activeTab === 'projects' && (
+            <ProjectManager
+              onProjectSelect={handleProjectSelect}
+              onProjectCreate={handleProjectCreate}
+            />
+          )}
+        </div>
       </main>
     </div>
   );
