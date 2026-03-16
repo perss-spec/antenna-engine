@@ -10,3 +10,5 @@ pub mod optimization;
 pub use geometry::*;
 pub use import::*;
 pub use antenna::*;
+#[cfg(test)]
+pub mod benchmark_antennas;
