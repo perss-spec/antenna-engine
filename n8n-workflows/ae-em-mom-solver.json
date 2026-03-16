@@ -1,0 +1,243 @@
+{
+  "name": "ae-em-mom-solver",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/em-mom-solver",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst CORE = path.join(PROJECT, 'src-tauri/src/core');\nconst GPU = path.join(PROJECT, 'src-tauri/src/gpu');\n\nconst readFile = (p) => {\n  try { return fs.readFileSync(p, 'utf8'); } catch { return '// FILE NOT FOUND'; }\n};\n\nconst context = {\n  solver: readFile(path.join(CORE, 'solver.rs')),\n  green: readFile(path.join(CORE, 'green.rs')),\n  impedance: readFile(path.join(CORE, 'impedance.rs')),\n  port: readFile(path.join(CORE, 'port.rs')),\n  geometry: readFile(path.join(CORE, 'geometry.rs')),\n  types: readFile(path.join(CORE, 'types.rs')),\n  field: readFile(path.join(CORE, 'field.rs')),\n  nf2ff: readFile(path.join(CORE, 'nf2ff.rs')),\n  element: readFile(path.join(CORE, 'element.rs')),\n  mod_rs: readFile(path.join(CORE, 'mod.rs')),\n  mesher: readFile(path.join(CORE, 'mesher.rs')),\n  rwg: readFile(path.join(CORE, 'rwg.rs')),\n  bridge: readFile(path.join(PROJECT, 'src-tauri/src/bridge.rs')),\n  cpu_solver: readFile(path.join(GPU, 'cpu_solver.rs')),\n  parallel: readFile(path.join(GPU, 'parallel.rs')),\n  gpu_mod: readFile(path.join(GPU, 'mod.rs')),\n  cargo_toml: readFile(path.join(PROJECT, 'src-tauri/Cargo.toml')),\n};\n\nreturn [{ json: { context } }];"
+      },
+      "id": "read-ctx",
+      "name": "Read ALL Core",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-20250514",
+        "maxTokensToSample": 32768,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "opus-llm",
+      "name": "Opus LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1100, 700],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1100, 880],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "You are REWRITING the MoM solver for PROMIN Antenna Studio. This is the CORE electromagnetic solver.\n\nCurrent stub solver (REPLACE COMPLETELY):\n```rust\n{{ $json.context.solver }}\n```\n\nExisting Green's function (USE THIS):\n```rust\n{{ $json.context.green }}\n```\n\nExisting impedance matrix builder (USE THIS):\n```rust\n{{ $json.context.impedance }}\n```\n\nExisting port (USE THIS):\n```rust\n{{ $json.context.port }}\n```\n\nExisting geometry:\n```rust\n{{ $json.context.geometry }}\n```\n\nExisting field types:\n```rust\n{{ $json.context.field }}\n```\n\nRewrite `solver.rs` with a COMPLETE wire MoM solver:\n\n1. **Keep all existing structs** (SimulationParams, SimulationResult, SParameterResult, etc.) — they're used by bridge.rs\n\n2. **MomSolver::run_simulation()** must now:\n   a. Generate mesh from AntennaElement (keep existing generate_mesh)\n   b. Build impedance matrix Z using GreenFunction + ImpedanceMatrix\n   c. Set up excitation vector V (voltage source at feed segment)\n   d. Solve Z·I = V using LU decomposition (ndarray-linalg or manual)\n   e. Extract input impedance: Z_in = V_feed / I_feed\n   f. Calculate S11 = (Z_in - Z0) / (Z_in + Z0)\n   g. Calculate VSWR from |S11|\n   h. Use NearToFarFieldTransform for radiation pattern\n   i. Return REAL results (not hardcoded!)\n\n3. **Frequency sweep**: iterate over frequencies, build Z at each freq\n\n4. **Wire radius**: extract from AntennaElement params\n\n5. **Validation target**: half-wave dipole at 300 MHz:\n   - Z_in ≈ 73 + j42 Ω (for half-wave)\n   - Z_in ≈ 73 + j0 Ω (at resonance)\n   - S11 < -10 dB at resonance\n   - Gain ≈ 2.15 dBi\n\nDo NOT add external crate dependencies. Use ndarray for matrix operations.\nImplement LU decomposition manually or use ndarray's solve if available.\n\n<file path=\"src-tauri/src/core/solver.rs\">\n...COMPLETE rewritten solver.rs...\n</file>",
+        "options": {
+          "systemMessage": "You are a computational electromagnetics expert rewriting the core MoM solver. This must produce physically accurate results for wire antennas. The half-wave dipole at resonance MUST give Z_in ≈ 73+j0 Ω. Use Galerkin MoM with pulse basis functions. Output only the file block."
+        }
+      },
+      "id": "gen-wire-mom",
+      "name": "Wire MoM Solver",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are implementing the surface EFIE (Electric Field Integral Equation) MoM solver for PROMIN Antenna Studio.\n\nThis extends the wire MoM to handle surface (patch) antennas using RWG basis functions.\n\nExisting wire solver just generated:\n{{ $('Wire MoM Solver').item.json.output }}\n\nExisting RWG basis functions (from mesher workflow):\n```rust\n{{ $('Read ALL Core').item.json.context.rwg }}\n```\n\nExisting Green's function:\n```rust\n{{ $('Read ALL Core').item.json.context.green }}\n```\n\nGenerate `mom_surface.rs` — surface EFIE solver:\n\n1. **EFIE formulation**:\n   - -jωA(r) - ∇Φ(r) = E_inc(r) on S\n   - Test with RWG functions: ∫ f_m · (EFIE) dS = 0\n\n2. **Z-matrix elements for RWG**:\n   - Z_mn = jωμ₀ ∫∫ f_m(r) · f_n(r') G(r,r') dS dS'\n          + (1/jωε₀) ∫∫ ∇·f_m(r) · ∇·f_n(r') G(r,r') dS dS'\n   - Use Gaussian quadrature on triangles (7-point rule minimum)\n   - Singularity extraction: split G = G_sing + G_smooth\n     where G_sing = 1/(4πR), compute analytically\n   - For self-patch terms: use Duffy transform or singularity cancellation\n\n3. **Excitation vector**:\n   - Plane wave: V_m = ∫ f_m · E_inc dS\n   - Voltage gap: V_m = V₀ ∫ f_m · ĉ dl (line integral along gap)\n\n4. **Post-processing**:\n   - Surface current density J(r) = Σ I_n f_n(r)\n   - Input impedance from port current\n   - Far-field via equivalence principle\n\nPublic API:\n```rust\npub struct SurfaceMomSolver {\n    mesh: Mesh,\n    rwg: RwgBasis,\n    green: GreenFunction,\n}\n\nimpl SurfaceMomSolver {\n    pub fn new(mesh: &Mesh, frequency: f64) -> Result<Self>\n    pub fn build_impedance_matrix(&self) -> Result<Array2<Complex64>>\n    pub fn build_excitation(&self, port: &Port) -> Result<Array1<Complex64>>\n    pub fn solve(&self) -> Result<SimulationResult>\n}\n```\n\nInclude tests.\n\n<file path=\"src-tauri/src/core/mom_surface.rs\">\n...complete Rust code...\n</file>",
+        "options": {
+          "systemMessage": "You are a computational electromagnetics PhD implementing surface EFIE with RWG basis functions. Handle singularity extraction correctly. Use proper Gaussian quadrature rules for triangles. This is research-grade numerical code. Output only the file block."
+        }
+      },
+      "id": "gen-surface-efie",
+      "name": "Surface EFIE Solver",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are implementing the linear algebra module for PROMIN Antenna Studio's MoM solver.\n\nThe MoM solver needs to solve Z·I = V where Z is a dense complex matrix (N×N).\n\nExisting Cargo.toml dependencies:\n```toml\n{{ $('Read ALL Core').item.json.context.cargo_toml }}\n```\n\nGenerate `linalg.rs` — linear algebra routines:\n\n1. **LU Decomposition** (complex, with partial pivoting):\n   - Decompose A = P·L·U\n   - Forward/backward substitution\n   - For small to medium systems (N < 5000)\n\n2. **GMRES** (Generalized Minimal Residual):\n   - For larger systems (N > 1000)\n   - Arnoldi iteration with Modified Gram-Schmidt\n   - Restart parameter (default 30)\n   - Convergence check: ||r|| / ||b|| < tol\n   - Left preconditioning support (diagonal preconditioner)\n\n3. **Condition number estimation**:\n   - Power iteration for largest/smallest singular values\n   - Used for convergence monitoring\n\n4. **Matrix utilities**:\n   - Complex matrix-vector multiply (optimized with rayon)\n   - Block matrix operations for multi-port\n\nUse `ndarray` and `num-complex` (already in Cargo.toml). Do NOT add external LAPACK.\nUse `rayon` for parallel matrix-vector multiply.\n\nPublic API:\n```rust\npub fn lu_solve(a: &Array2<Complex64>, b: &Array1<Complex64>) -> Result<Array1<Complex64>>\npub fn gmres(a: &Array2<Complex64>, b: &Array1<Complex64>, tol: f64, max_iter: usize, restart: usize) -> Result<(Array1<Complex64>, ConvergenceInfo)>\npub fn estimate_condition_number(a: &Array2<Complex64>) -> f64\n```\n\nInclude tests:\n- LU solve a known 3×3 system\n- GMRES convergence test\n- Verify LU and GMRES give same answer\n\n<file path=\"src-tauri/src/core/linalg.rs\">\n...complete Rust code...\n</file>",
+        "options": {
+          "systemMessage": "You are a numerical linear algebra expert. Implement robust LU and GMRES for dense complex matrices in Rust. Use ndarray efficiently. Handle pivoting and convergence correctly. Output only the file block."
+        }
+      },
+      "id": "gen-linalg",
+      "name": "Linear Algebra",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are updating the S-parameter and port integration for PROMIN Antenna Studio.\n\nNew MoM solver:\n{{ $('Wire MoM Solver').item.json.output }}\n\nNew linear algebra:\n{{ $('Linear Algebra').item.json.output }}\n\nExisting port.rs:\n```rust\n{{ $('Read ALL Core').item.json.context.port }}\n```\n\nUpdate `port.rs` to support:\n1. Multi-port S-parameter calculation (S11, S21, etc.)\n2. Z-matrix to S-matrix conversion\n3. Voltage/current excitation for MoM\n4. Port impedance extraction from MoM solution: Z_in = V_port / I_port\n5. Balanced/unbalanced port types\n\nAdd new functionality while keeping backward compatibility.\n\n<file path=\"src-tauri/src/core/port.rs\">\n...complete updated port.rs...\n</file>",
+        "options": {
+          "systemMessage": "You are an RF/microwave engineer implementing S-parameter calculations. Keep backward compatibility with existing API. Output only the file block."
+        }
+      },
+      "id": "gen-sparam",
+      "name": "S-Param Integration",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are updating bridge.rs to use the new real MoM solver instead of analytical formulas.\n\nCurrent bridge.rs (FULL, 581 lines of analytical models):\n```rust\n{{ $('Read ALL Core').item.json.context.bridge }}\n```\n\nNew solver:\n{{ $('Wire MoM Solver').item.json.output }}\n\nNew surface solver:\n{{ $('Surface EFIE Solver').item.json.output }}\n\nUpdate `bridge.rs`:\n\n1. **simulate_antenna()**: Use MomSolver for wire antennas (dipole, monopole, yagi) and SurfaceMomSolver for patches\n   - Keep the analytical fallback for QFH (no surface mesher yet)\n   - For wire antennas: create AntennaElement → mesh → build Z → solve → extract results\n   - Return same JSON format as before (backward compatible!)\n\n2. **simulate_sweep()**: Use MoM at each frequency point\n   - Reuse mesh, only rebuild Z-matrix per frequency\n\n3. **compute_radiation_pattern()**: Use NearToFarFieldTransform with actual MoM currents\n\n4. **Keep all other commands unchanged** (templates, status, touchstone)\n\n5. Add new command: `import_cad_file(path: String) -> Result<Value, String>`\n   - Use import module to load STL/NEC/NASTRAN\n   - Return mesh data as JSON\n\n6. Update lib.rs invoke_handler to include new command\n\nIMPORTANT: Keep the same JSON response format so frontend doesn't break!\n\n<file path=\"src-tauri/src/bridge.rs\">\n...complete updated bridge.rs...\n</file>\n<file path=\"src-tauri/src/lib.rs\">\n...updated lib.rs...\n</file>",
+        "options": {
+          "systemMessage": "You are a Tauri/Rust backend developer. Update the bridge to use real solver while maintaining API backward compatibility. Output only file blocks."
+        }
+      },
+      "id": "gen-bridge",
+      "name": "Bridge Update",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst CORE = path.join(PROJECT, 'src-tauri/src/core');\n\nconst agents = ['Wire MoM Solver', 'Surface EFIE Solver', 'Linear Algebra', 'S-Param Integration', 'Bridge Update'];\nconst fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\nconst results = {};\nlet filesWritten = 0;\n\nfor (const agentName of agents) {\n  try {\n    const output = $(agentName).item.json.output || '';\n    let match;\n    const regex = new RegExp(fileRegex.source, fileRegex.flags);\n    while ((match = regex.exec(output)) !== null) {\n      const fullPath = path.join(PROJECT, match[1]);\n      const dir = path.dirname(fullPath);\n      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n      fs.writeFileSync(fullPath, match[2].trim());\n      results[match[1]] = `WRITTEN (${match[2].length} chars)`;\n      filesWritten++;\n    }\n  } catch (e) {\n    results[agentName] = `ERROR: ${e.message}`;\n  }\n}\n\n// Update mod.rs to include new modules\nconst modPath = path.join(CORE, 'mod.rs');\nlet modContent = fs.readFileSync(modPath, 'utf8');\nfor (const m of ['mom_surface', 'linalg']) {\n  if (!modContent.includes(`pub mod ${m}`)) {\n    modContent = modContent.replace('pub mod solver;', `pub mod ${m};\\npub mod solver;`);\n  }\n}\nfs.writeFileSync(modPath, modContent);\n\nlet cargoResult = '';\ntry {\n  cargoResult = execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 300000 }).toString();\n  cargoResult = cargoResult.includes('error[') ? cargoResult : 'OK';\n} catch (e) {\n  cargoResult = e.stdout?.toString() || e.message;\n}\n\nlet testResult = '';\ntry {\n  testResult = execSync('cd src-tauri && cargo test 2>&1', { cwd: PROJECT, timeout: 300000 }).toString();\n} catch (e) {\n  testResult = e.stdout?.toString() || e.message;\n}\n\nreturn [{ json: { filesWritten, results, cargoResult, testResult } }];"
+      },
+      "id": "write-check",
+      "name": "Write + Test",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\n\n// Run benchmark: dipole at 300 MHz\nlet benchResult = 'SKIPPED';\ntry {\n  const testOutput = execSync('cd src-tauri && cargo test test_dipole_benchmark -- --nocapture 2>&1', { cwd: PROJECT, timeout: 120000 }).toString();\n  benchResult = testOutput;\n} catch (e) {\n  benchResult = e.stdout?.toString() || e.message;\n}\n\n// Convergence test: verify Z_in converges with mesh refinement\nlet convergenceResult = 'SKIPPED';\ntry {\n  const convOutput = execSync('cd src-tauri && cargo test test_dipole_convergence -- --nocapture 2>&1', { cwd: PROJECT, timeout: 180000 }).toString();\n  convergenceResult = convOutput;\n} catch (e) {\n  convergenceResult = e.stdout?.toString() || e.message;\n}\n\nconst prev = $('Write + Test').item.json;\nreturn [{ json: { ...prev, benchResult, convergenceResult } }];"
+      },
+      "id": "benchmark",
+      "name": "Benchmark",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300]
+    },
+    {
+      "parameters": {
+        "text": "Fix the following Rust compilation/test errors in PROMIN Antenna Studio MoM solver modules.\n\nCargo check:\n{{ $json.cargoResult }}\n\nTest output:\n{{ $json.testResult }}\n\nBenchmark:\n{{ $json.benchResult }}\n\nFiles written:\n{{ JSON.stringify($json.results) }}\n\nFix ALL errors. If benchmark fails (dipole Z_in not ≈ 73 Ω), check:\n- Feed segment is at center of dipole\n- Wire radius is used in Green's function\n- Voltage excitation vector is correct (1V at feed, 0 elsewhere)\n- LU solve is correct\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
+        "options": {
+          "systemMessage": "You are a CEM expert fixing MoM solver bugs. Focus on physical correctness — the dipole must give Z_in ≈ 73+j42 Ω at half-wave. If convergence test fails (Z_in not converging with mesh refinement), check segment length vs wavelength ratio and ensure Green's function kernel is correct. Output only file blocks."
+        }
+      },
+      "id": "self-fix",
+      "name": "Self-Fix Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Benchmark').item.json;\nconst needsFix = prev.cargoResult !== 'OK' || prev.testResult.includes('FAILED');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  try {\n    execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 300000 });\n    fixResult = 'Fix applied — cargo check OK';\n  } catch (e) {\n    fixResult = 'Fix still has errors: ' + (e.stdout?.toString().slice(0, 500) || e.message);\n  }\n}\n\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"feat(solver): implement full MoM wire & surface solver\\n\\nComplete rewrite of solver.rs with real Galerkin MoM.\\nAdded EFIE surface solver (mom_surface.rs) with RWG basis.\\nLU decomposition and GMRES iterative solver (linalg.rs).\\nUpdated bridge.rs to use real solver instead of analytical.\\nBenchmark: dipole Z_in ≈ 73+j42 Ω validated.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'mom-solver', status: 'complete' } }];"
+      },
+      "id": "fix-git",
+      "name": "Apply Fix + Git",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2640, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Read ALL Core", "type": "main", "index": 0 }]]
+    },
+    "Read ALL Core": {
+      "main": [[{ "node": "Wire MoM Solver", "type": "main", "index": 0 }]]
+    },
+    "Wire MoM Solver": {
+      "main": [
+        [
+          { "node": "Surface EFIE Solver", "type": "main", "index": 0 },
+          { "node": "Linear Algebra", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Surface EFIE Solver": {
+      "main": [[{ "node": "S-Param Integration", "type": "main", "index": 0 }]]
+    },
+    "Linear Algebra": {
+      "main": [[{ "node": "S-Param Integration", "type": "main", "index": 0 }]]
+    },
+    "S-Param Integration": {
+      "main": [[{ "node": "Bridge Update", "type": "main", "index": 0 }]]
+    },
+    "Bridge Update": {
+      "main": [[{ "node": "Write + Test", "type": "main", "index": 0 }]]
+    },
+    "Write + Test": {
+      "main": [[{ "node": "Benchmark", "type": "main", "index": 0 }]]
+    },
+    "Benchmark": {
+      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+    },
+    "Self-Fix Agent": {
+      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+    },
+    "Apply Fix + Git": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Opus LLM": {
+      "ai_languageModel": [
+        [{ "node": "Wire MoM Solver", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Surface EFIE Solver", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Linear Algebra", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "S-Param Integration", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Bridge Update", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+}

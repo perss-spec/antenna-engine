@@ -1,0 +1,197 @@
+{
+  "name": "ae-em-tests",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/em-tests",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst CORE = path.join(PROJECT, 'src-tauri/src/core');\n\nconst readFile = (p) => {\n  try { return fs.readFileSync(p, 'utf8'); } catch { return '// FILE NOT FOUND'; }\n};\n\nconst context = {\n  solver: readFile(path.join(CORE, 'solver.rs')),\n  green: readFile(path.join(CORE, 'green.rs')),\n  impedance: readFile(path.join(CORE, 'impedance.rs')),\n  port: readFile(path.join(CORE, 'port.rs')),\n  linalg: readFile(path.join(CORE, 'linalg.rs')),\n  mom_surface: readFile(path.join(CORE, 'mom_surface.rs')),\n  mesher: readFile(path.join(CORE, 'mesher.rs')),\n  rwg: readFile(path.join(CORE, 'rwg.rs')),\n  nf2ff: readFile(path.join(CORE, 'nf2ff.rs')),\n  import_stl: readFile(path.join(CORE, 'import_stl.rs')),\n  import_nec: readFile(path.join(CORE, 'import_nec.rs')),\n  bridge: readFile(path.join(PROJECT, 'src-tauri/src/bridge.rs')),\n  fdtd_runner: readFile(path.join(PROJECT, 'python/antenna_ml/fdtd/runner.py')),\n  cargo_toml: readFile(path.join(PROJECT, 'src-tauri/Cargo.toml')),\n};\n\nreturn [{ json: { context } }];"
+      },
+      "id": "read-ctx",
+      "name": "Read Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "opus-llm",
+      "name": "Opus LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [900, 600],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [900, 780],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "You are writing comprehensive benchmark tests for PROMIN Antenna Studio's EM solver.\n\nExisting solver code:\n```rust\n{{ $json.context.solver }}\n```\n\nGreen's function:\n```rust\n{{ $json.context.green }}\n```\n\nLinear algebra:\n```rust\n{{ $json.context.linalg }}\n```\n\nGenerate `benchmark_antennas.rs` — Rust benchmark/integration tests:\n\n1. **Half-wave dipole at 300 MHz** (21 segments):\n   - Z_in = 73 ± 5 Ω (real)\n   - Z_in_im = 42.5 ± 10 Ω (imaginary, for half-wave)\n   - S11 < -10 dB at resonance (when length = λ/2 exactly)\n   - Gain = 2.15 ± 0.5 dBi\n   - Verify convergence: 11, 21, 41 segments → Z_in converges monotonically\n\n2. **Quarter-wave monopole at 300 MHz**:\n   - Z_in ≈ 36.5 Ω\n   - Gain ≈ 5.15 dBi\n\n3. **Frequency sweep** (dipole, 250-350 MHz, 11 points):\n   - Resonance near 300 MHz\n   - S11 dip at resonance\n   - Bandwidth > 20 MHz at -10 dB\n\n4. **Mesh convergence study**:\n   - Dipole with 11, 21, 41, 81 segments\n   - Z_in should converge (changes < 2% between 41 and 81)\n\n5. **Matrix properties**:\n   - Z-matrix symmetry: Z_mn = Z_nm (reciprocity)\n   - Condition number < 1e6 for well-conditioned mesh\n\n6. **Import + solve pipeline**:\n   - Parse NEC2 dipole → mesh → solve → verify Z_in\n\nUse `#[test]` and `#[ignore]` for slow tests.\n\n<file path=\"src-tauri/src/core/benchmark_antennas.rs\">\n...complete test module...\n</file>",
+        "options": {
+          "systemMessage": "You are a CEM validation expert. Write rigorous benchmark tests with known analytical results. Every assertion must have a physical justification. Output only the file block."
+        }
+      },
+      "id": "gen-bench-rust",
+      "name": "Gen Rust Benchmarks",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are writing Python benchmark tests for PROMIN Antenna Studio's FDTD solver.\n\nFDTD runner:\n```python\n{{ $('Read Context').item.json.context.fdtd_runner }}\n```\n\nGenerate `test_benchmark.py`:\n\n1. **FDTD dipole at 300 MHz**:\n   - Run FDTD simulation\n   - Extract Z_in from time-domain V/I at port\n   - Verify Z_in = 73 ± 7.3 Ω (10% tolerance vs MoM)\n\n2. **FDTD vs MoM comparison**:\n   - Compare S11 from both solvers\n   - Max deviation < 3 dB across band\n   - Resonant frequency within 2%\n\n3. **PML absorption test**:\n   - Plane wave in empty box\n   - Measure reflected power from PML boundaries\n   - Should be < -40 dB\n\n4. **Grid convergence**:\n   - Coarse (λ/10), medium (λ/15), fine (λ/20)\n   - Results should converge\n\nUse pytest.\n\n<file path=\"python/tests/test_benchmark.py\">\n...complete pytest file...\n</file>",
+        "options": {
+          "systemMessage": "You are a CEM validation expert. Write FDTD benchmark tests. Output only the file block."
+        }
+      },
+      "id": "gen-bench-python",
+      "name": "Gen Python Benchmarks",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "text": "You are writing frontend integration tests for PROMIN Antenna Studio.\n\nGenerate `integration.test.ts` — TypeScript tests:\n\n1. **File import flow**:\n   - Mock Tauri invoke for import_cad_file\n   - Verify FileImport component renders\n   - Verify drag-drop triggers import\n\n2. **Solver flow**:\n   - Mock simulate_antenna and simulate_sweep\n   - Verify SolverPanel triggers solve\n   - Verify results appear in ResultsView\n\n3. **App integration**:\n   - Verify all tabs render\n   - Verify solver engine toggle works\n   - Verify keyboard shortcut (Ctrl+R)\n\nUse vitest and @testing-library/react.\n\n<file path=\"src/tests/integration.test.ts\">\n...complete test file...\n</file>",
+        "options": {
+          "systemMessage": "You are a frontend test engineer. Write comprehensive integration tests with mocked Tauri backend. Output only the file block."
+        }
+      },
+      "id": "gen-integration",
+      "name": "Gen Integration Tests",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst CORE = path.join(PROJECT, 'src-tauri/src/core');\n\nconst agents = ['Gen Rust Benchmarks', 'Gen Python Benchmarks', 'Gen Integration Tests'];\nconst fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\nconst results = {};\nlet filesWritten = 0;\n\nfor (const agentName of agents) {\n  try {\n    const output = $(agentName).item.json.output || '';\n    let match;\n    const regex = new RegExp(fileRegex.source, fileRegex.flags);\n    while ((match = regex.exec(output)) !== null) {\n      const fullPath = path.join(PROJECT, match[1]);\n      const dir = path.dirname(fullPath);\n      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n      fs.writeFileSync(fullPath, match[2].trim());\n      results[match[1]] = `WRITTEN (${match[2].length} chars)`;\n      filesWritten++;\n    }\n  } catch (e) {\n    results[agentName] = `ERROR: ${e.message}`;\n  }\n}\n\n// Update mod.rs\nconst modPath = path.join(CORE, 'mod.rs');\nlet modContent = fs.readFileSync(modPath, 'utf8');\nif (!modContent.includes('benchmark_antennas')) {\n  modContent += '\\n#[cfg(test)]\\npub mod benchmark_antennas;\\n';\n  fs.writeFileSync(modPath, modContent);\n}\n\n// Run Rust tests\nlet rustTests = '';\ntry {\n  rustTests = execSync('cd src-tauri && cargo test 2>&1', { cwd: PROJECT, timeout: 600000 }).toString();\n} catch (e) {\n  rustTests = e.stdout?.toString() || e.message;\n}\n\n// Run Python tests\nlet pythonTests = '';\ntry {\n  pythonTests = execSync('cd python && python -m pytest tests/test_benchmark.py -v 2>&1', { cwd: PROJECT, timeout: 300000 }).toString();\n} catch (e) {\n  pythonTests = e.stdout?.toString() || e.message;\n}\n\nreturn [{ json: { filesWritten, results, rustTests, pythonTests } }];"
+      },
+      "id": "write-run",
+      "name": "Write + Run Tests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "text": "Fix test failures in PROMIN Antenna Studio.\n\nRust test output:\n{{ $json.rustTests }}\n\nPython test output:\n{{ $json.pythonTests }}\n\nFix the test files OR the source code if the tests are correct but the code is buggy.\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
+        "options": {
+          "systemMessage": "Fix test failures. If the test expectation is correct, fix the source. If the test is wrong, fix the test. Output only file blocks."
+        }
+      },
+      "id": "self-fix",
+      "name": "Self-Fix Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Write + Run Tests').item.json;\nconst needsFix = prev.rustTests.includes('FAILED') || prev.pythonTests.includes('FAILED');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  fixResult = 'Fixes applied';\n}\n\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"test: add EM solver benchmarks and integration tests\\n\\nRust: dipole/monopole benchmarks, convergence study, matrix properties.\\nPython: FDTD vs MoM comparison, PML absorption, grid convergence.\\nFrontend: file import, solver flow, app integration tests.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'tests', status: 'complete' } }];"
+      },
+      "id": "fix-git",
+      "name": "Apply Fix + Git",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1760, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Read Context", "type": "main", "index": 0 }]]
+    },
+    "Read Context": {
+      "main": [
+        [
+          { "node": "Gen Rust Benchmarks", "type": "main", "index": 0 },
+          { "node": "Gen Python Benchmarks", "type": "main", "index": 0 },
+          { "node": "Gen Integration Tests", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Gen Rust Benchmarks": {
+      "main": [[{ "node": "Write + Run Tests", "type": "main", "index": 0 }]]
+    },
+    "Gen Python Benchmarks": {
+      "main": [[{ "node": "Write + Run Tests", "type": "main", "index": 0 }]]
+    },
+    "Gen Integration Tests": {
+      "main": [[{ "node": "Write + Run Tests", "type": "main", "index": 0 }]]
+    },
+    "Write + Run Tests": {
+      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+    },
+    "Self-Fix Agent": {
+      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+    },
+    "Apply Fix + Git": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Opus LLM": {
+      "ai_languageModel": [
+        [{ "node": "Gen Rust Benchmarks", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "Gen Python Benchmarks", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Gen Integration Tests", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+}

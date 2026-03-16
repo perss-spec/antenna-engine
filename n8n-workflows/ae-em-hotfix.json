@@ -1,0 +1,193 @@
+{
+  "name": "ae-em-hotfix",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/em-hotfix",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst input = $json;\n\n// Parse error information\nconst phase = input.phase || 'unknown';\nconst error = input.error || {};\n\n// Determine which files to read based on phase\nconst fileMap = {\n  'cad-import': ['src-tauri/src/core/import.rs', 'src-tauri/src/core/import_stl.rs', 'src-tauri/src/core/import_nec.rs', 'src-tauri/src/core/import_nastran.rs', 'src-tauri/src/core/mod.rs'],\n  'mesh-gen': ['src-tauri/src/core/mesher.rs', 'src-tauri/src/core/rwg.rs', 'src-tauri/src/core/mesh_refine.rs', 'src-tauri/src/core/geometry.rs', 'src-tauri/src/core/mod.rs'],\n  'mom-solver': ['src-tauri/src/core/solver.rs', 'src-tauri/src/core/mom_surface.rs', 'src-tauri/src/core/linalg.rs', 'src-tauri/src/core/green.rs', 'src-tauri/src/core/impedance.rs', 'src-tauri/src/core/port.rs', 'src-tauri/src/bridge.rs', 'src-tauri/src/core/mod.rs'],\n  'fdtd-python': ['python/antenna_ml/fdtd/yee_grid.py', 'python/antenna_ml/fdtd/pml.py', 'python/antenna_ml/fdtd/sources.py', 'python/antenna_ml/fdtd/runner.py', 'src-tauri/src/core/fdtd_bridge.rs'],\n  'frontend': ['src/App.tsx', 'src/components/FileImport/FileImport.tsx', 'src/viewport/MeshViewer.tsx', 'src/components/SolverPanel/SolverPanel.tsx', 'src/components/SolverPanel/SolverProgress.tsx', 'src/components/SolverPanel/ResultsView.tsx'],\n  'tests': ['src-tauri/src/core/benchmark_antennas.rs', 'python/tests/test_benchmark.py', 'src/tests/integration.test.ts'],\n};\n\nconst filesToRead = fileMap[phase] || [];\nconst fileContents = {};\n\nfor (const f of filesToRead) {\n  const fullPath = path.join(PROJECT, f);\n  try {\n    fileContents[f] = fs.readFileSync(fullPath, 'utf8');\n  } catch {\n    fileContents[f] = '// FILE NOT FOUND';\n  }\n}\n\n// Also run cargo check / tsc to get fresh errors\nconst { execSync } = require('child_process');\nlet freshErrors = '';\ntry {\n  if (phase === 'frontend') {\n    freshErrors = execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 60000 }).toString();\n  } else if (phase === 'fdtd-python') {\n    freshErrors = execSync('python3 -m py_compile python/antenna_ml/fdtd/runner.py 2>&1', { cwd: PROJECT, timeout: 30000 }).toString();\n  } else {\n    freshErrors = execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 }).toString();\n  }\n} catch (e) {\n  freshErrors = e.stdout?.toString() || e.message;\n}\n\nconst attempt = (input.state?.phases?.[phase]?.attempts || 0) + 1;\nconst useOpus = attempt >= 3;\n\nreturn [{ json: { phase, error, fileContents, freshErrors, attempt, useOpus } }];"
+      },
+      "id": "parse-errors",
+      "name": "Parse Errors + Read Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.2,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [900, 520],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-20250514",
+        "maxTokensToSample": 32768,
+        "temperature": 0.2,
+        "options": {}
+      },
+      "id": "opus-llm",
+      "name": "Opus LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [900, 700],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json.useOpus }}", "value2": true }]
+        }
+      },
+      "id": "model-selector",
+      "name": "Model Selector",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "text": "You are a hotfix agent for PROMIN Antenna Studio. Fix the errors in phase: {{ $json.phase }}\n\nAttempt: {{ $json.attempt }} of 5\n\n## Fresh Compiler/Lint Errors:\n```\n{{ $json.freshErrors }}\n```\n\n## Previous Error Context:\n{{ JSON.stringify($json.error).slice(0, 2000) }}\n\n## Current File Contents:\n{{ Object.entries($json.fileContents).map(([f, c]) => `### ${f}\\n\\`\\`\\`\\n${c.slice(0, 3000)}\\n\\`\\`\\``).join('\\n\\n') }}\n\n## Instructions:\n1. Read EVERY error message carefully\n2. Identify root cause (not symptoms)\n3. Fix ALL errors, not just the first one\n4. Common issues:\n   - Missing `use` imports\n   - Type mismatches (especially Complex64, Array2, etc.)\n   - Missing trait implementations (Clone, Debug, Serialize)\n   - Lifetime issues in struct references\n   - Module not declared in mod.rs\n   - Python: missing imports, indentation, wrong numpy API\n   - TypeScript: missing types, wrong Tauri invoke signature\n5. Generate COMPLETE fixed files (not patches)\n6. Verify your fix mentally before outputting\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
+        "options": {
+          "systemMessage": "You are an expert bug fixer. You analyze compiler errors and fix root causes. You output complete, working files. Never leave TODO comments. Output only file blocks."
+        }
+      },
+      "id": "fix-agent-sonnet",
+      "name": "Fix Agent (Sonnet)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are a hotfix agent for PROMIN Antenna Studio. Fix the errors in phase: {{ $json.phase }}\n\nAttempt: {{ $json.attempt }} of 5 (ESCALATED to Opus — previous Sonnet attempts failed)\n\n## Fresh Compiler/Lint Errors:\n```\n{{ $json.freshErrors }}\n```\n\n## Previous Error Context:\n{{ JSON.stringify($json.error).slice(0, 2000) }}\n\n## Current File Contents:\n{{ Object.entries($json.fileContents).map(([f, c]) => `### ${f}\\n\\`\\`\\`\\n${c.slice(0, 3000)}\\n\\`\\`\\``).join('\\n\\n') }}\n\n## Instructions:\n1. Read EVERY error message carefully\n2. Identify root cause (not symptoms)\n3. Fix ALL errors, not just the first one\n4. Think step-by-step about the architecture before changing code\n5. Common issues:\n   - Missing `use` imports\n   - Type mismatches (especially Complex64, Array2, etc.)\n   - Missing trait implementations (Clone, Debug, Serialize)\n   - Lifetime issues in struct references\n   - Module not declared in mod.rs\n   - Python: missing imports, indentation, wrong numpy API\n   - TypeScript: missing types, wrong Tauri invoke signature\n6. Generate COMPLETE fixed files (not patches)\n7. Verify your fix mentally before outputting\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
+        "options": {
+          "systemMessage": "You are an expert bug fixer with deep systems knowledge. This is an escalated fix — previous attempts with a lighter model failed. Think carefully about root causes, consider cross-file dependencies, and fix ALL errors comprehensively. Output complete, working files. Never leave TODO comments. Output only file blocks."
+        }
+      },
+      "id": "fix-agent-opus",
+      "name": "Fix Agent (Opus)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [880, 450]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst phase = $('Parse Errors + Read Files').item.json.phase;\n\n// Apply fixes — get output from whichever agent ran\nlet output = '';\ntry { output = $('Fix Agent (Sonnet)').item.json.output || ''; } catch {}\ntry { if (!output) output = $('Fix Agent (Opus)').item.json.output || ''; } catch {}\n\nconst fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\nconst applied = {};\nlet match;\n\nwhile ((match = fileRegex.exec(output)) !== null) {\n  const fullPath = path.join(PROJECT, match[1]);\n  const dir = path.dirname(fullPath);\n  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n  fs.writeFileSync(fullPath, match[2].trim());\n  applied[match[1]] = 'FIXED';\n}\n\n// Verify\nlet verifyResult = '';\ntry {\n  if (phase === 'frontend') {\n    verifyResult = execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 120000 }).toString();\n    if (!verifyResult.trim()) verifyResult = 'OK';\n  } else if (phase === 'fdtd-python') {\n    verifyResult = execSync('python3 -c \"import antenna_ml.fdtd\" 2>&1', { cwd: path.join(PROJECT, 'python'), timeout: 30000 }).toString();\n    if (!verifyResult.trim()) verifyResult = 'OK';\n  } else {\n    verifyResult = execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 }).toString();\n    verifyResult = verifyResult.includes('error[') ? verifyResult : 'OK';\n  }\n} catch (e) {\n  verifyResult = e.stdout?.toString() || e.message;\n}\n\nconst fixed = verifyResult === 'OK' || !verifyResult.includes('error');\n\n// Hotfix logging\nconst logPath = path.join(PROJECT, '.claude/hotfix-log.json');\nlet log = [];\ntry { log = JSON.parse(fs.readFileSync(logPath, 'utf8')); } catch {}\nlog.push({\n  timestamp: new Date().toISOString(),\n  phase,\n  attempt: $('Parse Errors + Read Files').item.json.attempt,\n  model: $('Parse Errors + Read Files').item.json.attempt >= 3 ? 'opus' : 'sonnet',\n  fixed: fixed,\n  filesFixed: Object.keys(applied),\n});\nfs.writeFileSync(logPath, JSON.stringify(log, null, 2));\n\n// Git commit if fixed\nlet gitResult = '';\nif (fixed) {\n  try {\n    execSync('git add -A', { cwd: PROJECT });\n    execSync(`git commit -m \"fix(${phase}): hotfix compilation errors\\n\\nAuto-fix applied by ae-em-hotfix pipeline.\"`, { cwd: PROJECT });\n    execSync('git push origin main', { cwd: PROJECT });\n    gitResult = 'Committed and pushed';\n  } catch (e) {\n    gitResult = 'Git: ' + e.message;\n  }\n}\n\nreturn [{ json: { phase, applied, verifyResult, fixed, gitResult, status: fixed ? 'complete' : 'still-broken' } }];"
+      },
+      "id": "apply-verify",
+      "name": "Apply + Verify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json.fixed }}", "value2": true }]
+        }
+      },
+      "id": "check-fixed",
+      "name": "Fixed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt = $('Parse Errors + Read Files').item.json.attempt;\nconst maxAttempts = 5;\n\nif (attempt >= maxAttempts) {\n  return [{ json: { ...$('Apply + Verify').item.json, status: 'max-retries-reached', message: `Failed after ${maxAttempts} attempts` } }];\n}\n\n// Re-trigger: pass data back to Parse Errors node\nreturn [{ json: { ...$('Apply + Verify').item.json, retry: true } }];"
+      },
+      "id": "retry-check",
+      "name": "Retry Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1760, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Parse Errors + Read Files", "type": "main", "index": 0 }]]
+    },
+    "Parse Errors + Read Files": {
+      "main": [[{ "node": "Model Selector", "type": "main", "index": 0 }]]
+    },
+    "Model Selector": {
+      "main": [
+        [{ "node": "Fix Agent (Opus)", "type": "main", "index": 0 }],
+        [{ "node": "Fix Agent (Sonnet)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fix Agent (Sonnet)": {
+      "main": [[{ "node": "Apply + Verify", "type": "main", "index": 0 }]]
+    },
+    "Fix Agent (Opus)": {
+      "main": [[{ "node": "Apply + Verify", "type": "main", "index": 0 }]]
+    },
+    "Apply + Verify": {
+      "main": [[{ "node": "Fixed?", "type": "main", "index": 0 }]]
+    },
+    "Fixed?": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }],
+        [{ "node": "Retry Check", "type": "main", "index": 0 }]
+      ]
+    },
+    "Retry Check": {
+      "main": [[{ "node": "Parse Errors + Read Files", "type": "main", "index": 0 }]]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "Fix Agent (Sonnet)", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Opus LLM": {
+      "ai_languageModel": [
+        [{ "node": "Fix Agent (Opus)", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+}

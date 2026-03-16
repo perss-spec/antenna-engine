@@ -1,0 +1,274 @@
+{
+  "name": "ae-em-orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/em-orchestrator",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst STATE_FILE = path.join(PROJECT, '.claude/em-pipeline-state.json');\n\nconst { execSync } = require('child_process');\nlet initialCommit = '';\ntry {\n  initialCommit = execSync('git rev-parse HEAD', { cwd: PROJECT }).toString().trim();\n} catch {}\n\nlet state;\ntry {\n  state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));\n} catch {\n  state = {\n    phases: {\n      'preflight': { status: 'pending', attempts: 0, result: null },\n      'cad-import': { status: 'pending', attempts: 0, result: null },\n      'mesh-gen': { status: 'pending', attempts: 0, result: null },\n      'mom-solver': { status: 'pending', attempts: 0, result: null },\n      'fdtd-python': { status: 'pending', attempts: 0, result: null },\n      'frontend': { status: 'pending', attempts: 0, result: null },\n      'tests': { status: 'pending', attempts: 0, result: null },\n    },\n    currentPhase: 'preflight',\n    startedAt: new Date().toISOString(),\n    maxRetries: 3,\n    initialCommit,\n  };\n}\n\n// Determine next phase to run\nconst phaseOrder = ['preflight', 'cad-import', 'mesh-gen', 'mom-solver', 'fdtd-python', 'frontend', 'tests'];\nconst parallelPhases = { 'mom-solver': 'fdtd-python' }; // these run in parallel\n\nlet nextPhase = null;\nfor (const phase of phaseOrder) {\n  if (state.phases[phase].status !== 'complete') {\n    nextPhase = phase;\n    break;\n  }\n}\n\nstate.currentPhase = nextPhase;\nfs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));\n\nreturn [{ json: { state, nextPhase } }];"
+      },
+      "id": "init-state",
+      "name": "Init State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ ({'preflight':0,'cad-import':1,'mesh-gen':2,'mom-solver':3,'frontend':4,'tests':5})[$json.nextPhase] ?? 6 }}",
+        "numberOutputs": 7
+      },
+      "id": "router",
+      "name": "Phase Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst checks = {};\n\ntry { execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 }); checks.cargo = 'OK'; }\ncatch (e) { checks.cargo = 'FAIL: ' + (e.stdout?.toString().slice(0, 200) || e.message); }\n\ntry { execSync('npx tsc --noEmit 2>&1', { cwd: PROJECT, timeout: 60000 }); checks.tsc = 'OK'; }\ncatch (e) { checks.tsc = 'FAIL: ' + (e.stdout?.toString().slice(0, 200) || e.message); }\n\ntry { execSync('python3 --version 2>&1', { cwd: PROJECT }); checks.python = 'OK'; }\ncatch (e) { checks.python = 'FAIL'; }\n\ntry {\n  const status = execSync('git status --porcelain', { cwd: PROJECT }).toString();\n  checks.git = status.trim() === '' ? 'CLEAN' : 'DIRTY: ' + status.slice(0, 200);\n} catch (e) { checks.git = 'FAIL'; }\n\nconst allOk = Object.values(checks).every(v => v === 'OK' || v === 'CLEAN');\nreturn [{ json: { checks, status: allOk ? 'complete' : 'failed', phase: 'preflight' } }];"
+      },
+      "id": "run-preflight",
+      "name": "Run Preflight",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-cad-import",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+        },
+        "options": { "timeout": 600000 }
+      },
+      "id": "run-wf1",
+      "name": "Run CAD Import",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 100]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-mesh-gen",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+        },
+        "options": { "timeout": 600000 }
+      },
+      "id": "run-wf2",
+      "name": "Run Mesh Gen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 250]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-mom-solver",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+        },
+        "options": { "timeout": 1200000 }
+      },
+      "id": "run-wf3",
+      "name": "Run MoM Solver",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-fdtd-python",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+        },
+        "options": { "timeout": 600000 }
+      },
+      "id": "run-wf4",
+      "name": "Run FDTD",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 550]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-frontend",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+        },
+        "options": { "timeout": 600000 }
+      },
+      "id": "run-wf5",
+      "name": "Run Frontend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 700]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-tests",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "trigger", "value": "orchestrator" }]
+        },
+        "options": { "timeout": 900000 }
+      },
+      "id": "run-wf6",
+      "name": "Run Tests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 850]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst STATE_FILE = path.join(PROJECT, '.claude/em-pipeline-state.json');\nconst state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));\nconst phase = state.currentPhase;\n\n// Get result from the HTTP request\nconst result = $json;\nconst success = result.status === 'complete' || result.cargoResult === 'OK' || result.gitResult?.includes('pushed');\n\nif (success) {\n  state.phases[phase].status = 'complete';\n  state.phases[phase].result = result;\n  state.phases[phase].completedAt = new Date().toISOString();\n  \n  // If this was mom-solver, also mark fdtd-python as needing run (they're parallel)\n  if (phase === 'mom-solver' && state.phases['fdtd-python'].status === 'pending') {\n    // fdtd will be triggered next\n  }\n} else {\n  state.phases[phase].status = 'failed';\n  state.phases[phase].attempts++;\n  state.phases[phase].lastError = JSON.stringify(result).slice(0, 1000);\n}\n\nfs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));\n\n// Determine if we need hotfix\nconst needsHotfix = !success && state.phases[phase].attempts < state.maxRetries;\n\n// Determine next action\nlet nextAction = 'continue';\nif (!success && needsHotfix) nextAction = 'hotfix';\nif (!success && !needsHotfix) nextAction = 'abort';\n\n// Check if all phases complete\nconst allDone = Object.values(state.phases).every(p => p.status === 'complete');\nif (allDone) nextAction = 'done';\n\nreturn [{ json: { state, phase, success, nextAction, result } }];"
+      },
+      "id": "check-result",
+      "name": "Check Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ ({'continue':0,'hotfix':1,'done':2,'abort':3})[$json.nextAction] ?? 3 }}",
+        "numberOutputs": 4
+      },
+      "id": "action-router",
+      "name": "Action Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/ae/em-hotfix",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phase: $json.phase, error: $json.result, state: $json.state }) }}",
+        "options": { "timeout": 600000 }
+      },
+      "id": "run-hotfix",
+      "name": "Run Hotfix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 450]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst STATE_FILE = path.join(PROJECT, '.claude/em-pipeline-state.json');\nconst state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));\n\nstate.completedAt = new Date().toISOString();\nstate.status = 'COMPLETE';\n\nconst summary = Object.entries(state.phases).map(([phase, info]) => \n  `${phase}: ${info.status} (${info.attempts} attempts)`\n).join('\\n');\n\nfs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));\n\nreturn [{ json: { status: 'PIPELINE COMPLETE', summary, state } }];"
+      },
+      "id": "done",
+      "name": "Pipeline Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $json.state;\nconst phase = $json.phase;\nconst rollbackInfo = state.initialCommit\n  ? `Rollback available: git reset --hard ${state.initialCommit}`\n  : 'No rollback commit saved';\n\nreturn [{ json: {\n  status: 'PIPELINE ABORTED',\n  failedPhase: phase,\n  rollbackInfo,\n  state\n} }];"
+      },
+      "id": "abort-handler",
+      "name": "Abort Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 600]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1760, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Init State", "type": "main", "index": 0 }]]
+    },
+    "Init State": {
+      "main": [[{ "node": "Phase Router", "type": "main", "index": 0 }]]
+    },
+    "Phase Router": {
+      "main": [
+        [{ "node": "Run Preflight", "type": "main", "index": 0 }],
+        [{ "node": "Run CAD Import", "type": "main", "index": 0 }],
+        [{ "node": "Run Mesh Gen", "type": "main", "index": 0 }],
+        [
+          { "node": "Run MoM Solver", "type": "main", "index": 0 },
+          { "node": "Run FDTD", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Run Frontend", "type": "main", "index": 0 }],
+        [{ "node": "Run Tests", "type": "main", "index": 0 }],
+        [{ "node": "Pipeline Complete", "type": "main", "index": 0 }]
+      ]
+    },
+    "Run Preflight": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Run CAD Import": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Run Mesh Gen": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Run MoM Solver": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Run FDTD": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Run Frontend": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Run Tests": {
+      "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]]
+    },
+    "Check Result": {
+      "main": [[{ "node": "Action Router", "type": "main", "index": 0 }]]
+    },
+    "Action Router": {
+      "main": [
+        [{ "node": "Init State", "type": "main", "index": 0 }],
+        [{ "node": "Run Hotfix", "type": "main", "index": 0 }],
+        [{ "node": "Pipeline Complete", "type": "main", "index": 0 }],
+        [{ "node": "Abort Handler", "type": "main", "index": 0 }]
+      ]
+    },
+    "Run Hotfix": {
+      "main": [[{ "node": "Init State", "type": "main", "index": 0 }]]
+    },
+    "Pipeline Complete": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Abort Handler": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+}

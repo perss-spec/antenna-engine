@@ -1,0 +1,174 @@
+{
+  "name": "ae-em-fdtd-python",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/em-fdtd-python",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst PY = path.join(PROJECT, 'python/antenna_ml');\nconst CORE = path.join(PROJECT, 'src-tauri/src/core');\n\nconst readFile = (p) => {\n  try { return fs.readFileSync(p, 'utf8'); } catch { return '# FILE NOT FOUND'; }\n};\n\nconst context = {\n  types_py: readFile(path.join(PY, 'types.py')),\n  api_schema: readFile(path.join(PY, 'api_schema.py')),\n  existing_fdtd: readFile(path.join(PY, 'fdtd/__init__.py')),\n  geometry_rs: readFile(path.join(CORE, 'geometry.rs')),\n  solver_rs: readFile(path.join(CORE, 'solver.rs')),\n  bridge_rs: readFile(path.join(PROJECT, 'src-tauri/src/bridge.rs')),\n  requirements: readFile(path.join(PROJECT, 'python/requirements.txt')),\n};\n\n// Ensure fdtd directory exists\nconst fdtdDir = path.join(PY, 'fdtd');\nif (!fs.existsSync(fdtdDir)) fs.mkdirSync(fdtdDir, { recursive: true });\n\nreturn [{ json: { context } }];"
+      },
+      "id": "read-ctx",
+      "name": "Read Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-opus-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "opus-llm",
+      "name": "Opus LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1100, 600],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "maxTokensToSample": 16384,
+        "temperature": 0.1,
+        "options": {}
+      },
+      "id": "sonnet-llm",
+      "name": "Sonnet LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1100, 780],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "You are implementing a 3D FDTD (Finite-Difference Time-Domain) electromagnetic solver in Python for PROMIN Antenna Studio.\n\nGenerate 4 Python files for the FDTD solver:\n\n### 1. yee_grid.py — Yee Grid Implementation\n- 3D staggered Yee grid: E on edges, H on faces\n- Grid class with nx, ny, nz cells, dx, dy, dz spacing\n- E-field arrays: Ex, Ey, Ez (numpy 3D arrays)\n- H-field arrays: Hx, Hy, Hz\n- Material arrays: epsilon_r, mu_r, sigma (conductivity)\n- Courant stability condition: dt = 1/(c * sqrt(1/dx² + 1/dy² + 1/dz²))\n- Grid auto-sizing from antenna geometry + PML layers\n\n### 2. pml.py — Perfectly Matched Layer\n- Convolutional PML (CPML) absorbing boundaries\n- Thickness: configurable (default 10 cells)\n- Polynomial grading: σ(d) = σ_max * (d/D)^m, m=3\n- σ_max = (m+1)/(150π·dx)\n- Psi arrays for CPML update equations\n- Apply to all 6 faces of the grid\n\n### 3. sources.py — Source Types\n- Gaussian pulse: E(t) = exp(-(t-t0)²/(2τ²))\n- Sinusoidal: E(t) = sin(2πf·t) with optional Gaussian envelope\n- Soft source (additive) and hard source (replacement)\n- Voltage gap source for antenna feed\n- Place source at grid coordinates\n\n### 4. runner.py — FDTD Simulation Runner\n- Time-stepping loop: update E → update H → apply sources → apply PML → record\n- Near-to-far-field transform: record tangential fields on Huygens surface\n- S-parameter extraction: measure V and I at port, FFT, compute Z_in(f)\n- Far-field pattern from NF2FF surface currents\n- Convergence check: steady-state detection\n- Progress callback\n\nUse numpy for all arrays. Use scipy.fft for frequency-domain conversion.\n\nValidation target: half-wave dipole at 300 MHz → Z_in ≈ 73 Ω, within 10% of MoM result.\n\n<file path=\"python/antenna_ml/fdtd/__init__.py\">\nfrom .yee_grid import YeeGrid\nfrom .pml import CPML\nfrom .sources import GaussianSource, SinusoidalSource, VoltageGapSource\nfrom .runner import FDTDRunner\n</file>\n<file path=\"python/antenna_ml/fdtd/yee_grid.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/pml.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/sources.py\">\n...complete code...\n</file>\n<file path=\"python/antenna_ml/fdtd/runner.py\">\n...complete code...\n</file>",
+        "options": {
+          "systemMessage": "You are a computational electromagnetics expert implementing 3D FDTD. Use numpy vectorized operations for performance. Implement correct Yee algorithm with CPML. The physics must be accurate — validate against known dipole results. Output only file blocks."
+        }
+      },
+      "id": "gen-fdtd",
+      "name": "FDTD Core",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "text": "You are creating the Rust bridge to call the Python FDTD solver from PROMIN Antenna Studio.\n\nExisting bridge.rs pattern:\n```rust\n{{ $('Read Context').item.json.context.bridge_rs }}\n```\n\nFDTD solver (Python):\n{{ $('FDTD Core').item.json.output }}\n\nGenerate `fdtd_bridge.rs` — Rust ↔ Python FDTD bridge:\n\n1. Use `std::process::Command` to call Python FDTD\n2. Pass antenna parameters as JSON via stdin/file\n3. Read results (Z_in, S11, pattern) from stdout/file\n4. Parse into existing SimulationResult struct\n5. Handle timeouts and errors\n6. Tauri command: `run_fdtd_simulation(params: Value) -> Result<Value, String>`\n\nAlso create a Python CLI entry point:\n\n<file path=\"src-tauri/src/core/fdtd_bridge.rs\">\n...complete Rust code...\n</file>\n<file path=\"python/antenna_ml/fdtd/cli.py\">\n...Python CLI that reads JSON stdin, runs FDTD, outputs JSON...\n</file>",
+        "options": {
+          "systemMessage": "You are a systems integration developer. Bridge Rust and Python via process spawning with JSON I/O. Output only file blocks."
+        }
+      },
+      "id": "gen-bridge",
+      "name": "FDTD Bridge",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst CORE = path.join(PROJECT, 'src-tauri/src/core');\n\nconst agents = ['FDTD Core', 'FDTD Bridge'];\nconst fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\nconst results = {};\nlet filesWritten = 0;\n\nfor (const agentName of agents) {\n  try {\n    const output = $(agentName).item.json.output || '';\n    let match;\n    const regex = new RegExp(fileRegex.source, fileRegex.flags);\n    while ((match = regex.exec(output)) !== null) {\n      const fullPath = path.join(PROJECT, match[1]);\n      const dir = path.dirname(fullPath);\n      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n      fs.writeFileSync(fullPath, match[2].trim());\n      results[match[1]] = `WRITTEN (${match[2].length} chars)`;\n      filesWritten++;\n    }\n  } catch (e) {\n    results[agentName] = `ERROR: ${e.message}`;\n  }\n}\n\n// Update mod.rs\nconst modPath = path.join(CORE, 'mod.rs');\nlet modContent = fs.readFileSync(modPath, 'utf8');\nif (!modContent.includes('pub mod fdtd_bridge')) {\n  modContent = modContent.replace('pub mod solver;', 'pub mod fdtd_bridge;\\npub mod solver;');\n  fs.writeFileSync(modPath, modContent);\n}\n\n// Cargo check\nlet cargoResult = '';\ntry {\n  cargoResult = execSync('cd src-tauri && cargo check 2>&1', { cwd: PROJECT, timeout: 180000 }).toString();\n  cargoResult = cargoResult.includes('error[') ? cargoResult : 'OK';\n} catch (e) {\n  cargoResult = e.stdout?.toString() || e.message;\n}\n\n// Python syntax check\nlet pythonResult = '';\ntry {\n  pythonResult = execSync('python3 -m py_compile python/antenna_ml/fdtd/yee_grid.py && python3 -m py_compile python/antenna_ml/fdtd/pml.py && python3 -m py_compile python/antenna_ml/fdtd/sources.py && python3 -m py_compile python/antenna_ml/fdtd/runner.py && echo OK', { cwd: PROJECT, timeout: 30000 }).toString();\n} catch (e) {\n  pythonResult = e.stdout?.toString() || e.message;\n}\n\nreturn [{ json: { filesWritten, results, cargoResult, pythonResult } }];"
+      },
+      "id": "write-check",
+      "name": "Write + Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "text": "Fix errors in PROMIN Antenna Studio FDTD module.\n\nCargo check:\n{{ $json.cargoResult }}\n\nPython check:\n{{ $json.pythonResult }}\n\nFiles:\n{{ JSON.stringify($json.results) }}\n\n<file path=\"relative/path\">\n...complete fixed file...\n</file>",
+        "options": {
+          "systemMessage": "Fix Rust and Python errors. Output complete files."
+        }
+      },
+      "id": "self-fix",
+      "name": "Self-Fix Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst PROJECT = '/mnt/d/NAS-DATA/antenna-engine';\nconst prev = $('Write + Check').item.json;\nconst needsFix = prev.cargoResult !== 'OK' || !prev.pythonResult.includes('OK');\nlet fixResult = 'No fix needed';\n\nif (needsFix) {\n  const output = $('Self-Fix Agent').item.json.output || '';\n  const fileRegex = /<file path=\"([^\"]+)\">\\n?([\\s\\S]*?)<\\/file>/g;\n  let match;\n  while ((match = fileRegex.exec(output)) !== null) {\n    const fullPath = path.join(PROJECT, match[1]);\n    const dir = path.dirname(fullPath);\n    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n    fs.writeFileSync(fullPath, match[2].trim());\n  }\n  fixResult = 'Fixes applied';\n}\n\nlet gitResult = '';\ntry {\n  execSync('git add -A', { cwd: PROJECT });\n  execSync('git commit -m \"feat(fdtd): add 3D FDTD solver with CPML\\n\\nYee grid implementation, convolutional PML,\\nGaussian/sinusoidal/gap sources, NF2FF transform,\\nRust bridge for Tauri integration.\"', { cwd: PROJECT });\n  execSync('git push origin main', { cwd: PROJECT });\n  gitResult = 'Committed and pushed';\n} catch (e) {\n  gitResult = 'Git: ' + e.message;\n}\n\nreturn [{ json: { ...prev, fixResult, gitResult, phase: 'fdtd-python', status: 'complete' } }];"
+      },
+      "id": "fix-git",
+      "name": "Apply Fix + Git",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Read Context", "type": "main", "index": 0 }]]
+    },
+    "Read Context": {
+      "main": [[{ "node": "FDTD Core", "type": "main", "index": 0 }]]
+    },
+    "FDTD Core": {
+      "main": [[{ "node": "FDTD Bridge", "type": "main", "index": 0 }]]
+    },
+    "FDTD Bridge": {
+      "main": [[{ "node": "Write + Check", "type": "main", "index": 0 }]]
+    },
+    "Write + Check": {
+      "main": [[{ "node": "Self-Fix Agent", "type": "main", "index": 0 }]]
+    },
+    "Self-Fix Agent": {
+      "main": [[{ "node": "Apply Fix + Git", "type": "main", "index": 0 }]]
+    },
+    "Apply Fix + Git": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Opus LLM": {
+      "ai_languageModel": [
+        [{ "node": "FDTD Core", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Sonnet LLM": {
+      "ai_languageModel": [
+        [{ "node": "FDTD Bridge", "type": "ai_languageModel", "index": 0 }],
+        [{ "node": "Self-Fix Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "promin-antenna-studio" },
+  "tags": [{ "name": "antenna-engine" }, { "name": "em-solver" }]
+}
