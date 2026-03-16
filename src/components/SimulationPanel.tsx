@@ -1,202 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import { runSimulation, getSimulationResults } from '../lib/tauri';
-import type { AntennaPattern, SimulationConfig, SimulationResult } from '../types';
+import React, { useState } from 'react';
+import type { SimulationParams, SimulationResult } from '../types/antenna';
+import { runSimulation } from '../lib/tauri';
 
 interface SimulationPanelProps {
-  pattern: AntennaPattern;
-  onSimulationComplete: (result: SimulationResult) => void;
+  patternId: string | null;
+  onSimulationComplete?: (result: SimulationResult) => void;
+  className?: string;
 }
 
-export function SimulationPanel({ pattern, onSimulationComplete }: SimulationPanelProps) {
-  const [config, setConfig] = useState<SimulationConfig>({
-    frequency: pattern.frequency,
-    power: 1,
+export const SimulationPanel: React.FC<SimulationPanelProps> = ({
+  patternId,
+  onSimulationComplete,
+  className = ''
+}) => {
+  const [params, setParams] = useState<SimulationParams>({
+    frequency: 2400,
+    power: 10,
     impedance: 50,
-    environment: 'free_space',
-    resolution: 1
+    ground_type: 'perfect',
+    height: 10
   });
-  const [loading, setLoading] = useState(false);
+  
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [lastResult, setLastResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<SimulationResult[]>([]);
 
-  useEffect(() => {
-    loadResults();
-  }, [pattern.id]);
-
-  const loadResults = async () => {
-    try {
-      const response = await getSimulationResults(pattern.id);
-      if (response.success && response.data) {
-        setResults(response.data);
-      }
-    } catch (err) {
-      console.error('Failed to load simulation results:', err);
-    }
-  };
-
-  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    setConfig(prev => ({
+  const handleParamChange = (key: keyof SimulationParams, value: any) => {
+    setParams(prev => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value
+      [key]: value
     }));
   };
 
-  const handleSimulate = async () => {
+  const handleRunSimulation = async () => {
+    if (!patternId) {
+      setError('No pattern selected');
+      return;
+    }
+
+    setIsSimulating(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await runSimulation(pattern.id, config);
+      const response = await runSimulation(patternId, params);
       
       if (response.success && response.data) {
-        setResults(prev => [response.data!, ...prev]);
-        onSimulationComplete(response.data);
+        setLastResult(response.data);
+        onSimulationComplete?.(response.data);
       } else {
         setError(response.error || 'Simulation failed');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Simulation failed');
+      setError(`Simulation error: ${err}`);
     } finally {
-      setLoading(false);
+      setIsSimulating(false);
     }
   };
 
   return (
-    <div className="simulation-panel">
-      <div className="panel-header">
-        <h3>Simulation</h3>
-      </div>
-
-      <div className="simulation-config">
-        <h4>Configuration</h4>
-        
-        <div className="config-form">
-          <div className="form-group">
-            <label htmlFor="sim-frequency">Frequency (MHz)</label>
-            <input
-              type="number"
-              id="sim-frequency"
-              name="frequency"
-              value={config.frequency}
-              onChange={handleConfigChange}
-              min="1"
-              max="100000"
-              step="0.1"
-              disabled={loading}
-              className="form-control"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="sim-power">Power (W)</label>
-            <input
-              type="number"
-              id="sim-power"
-              name="power"
-              value={config.power}
-              onChange={handleConfigChange}
-              min="0.001"
-              step="0.1"
-              disabled={loading}
-              className="form-control"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="sim-impedance">Impedance (Ω)</label>
-            <input
-              type="number"
-              id="sim-impedance"
-              name="impedance"
-              value={config.impedance}
-              onChange={handleConfigChange}
-              min="1"
-              step="1"
-              disabled={loading}
-              className="form-control"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="sim-environment">Environment</label>
-            <select
-              id="sim-environment"
-              name="environment"
-              value={config.environment}
-              onChange={handleConfigChange}
-              disabled={loading}
-              className="form-control"
-            >
-              <option value="free_space">Free Space</option>
-              <option value="ground_plane">Ground Plane</option>
-              <option value="urban">Urban</option>
-              <option value="rural">Rural</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="sim-resolution">Resolution (degrees)</label>
-            <input
-              type="number"
-              id="sim-resolution"
-              name="resolution"
-              value={config.resolution}
-              onChange={handleConfigChange}
-              min="0.1"
-              max="10"
-              step="0.1"
-              disabled={loading}
-              className="form-control"
-            />
-          </div>
+    <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+      <h3 className="text-lg font-semibold mb-4">Simulation Parameters</h3>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Frequency (MHz)
+          </label>
+          <input
+            type="number"
+            value={params.frequency}
+            onChange={(e) => handleParamChange('frequency', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1"
+            max="100000"
+            step="0.1"
+          />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Power (W)
+          </label>
+          <input
+            type="number"
+            value={params.power}
+            onChange={(e) => handleParamChange('power', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0.1"
+            max="1000"
+            step="0.1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Impedance (Ω)
+          </label>
+          <input
+            type="number"
+            value={params.impedance}
+            onChange={(e) => handleParamChange('impedance', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1"
+            max="1000"
+            step="0.1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Ground Type
+          </label>
+          <select
+            value={params.ground_type}
+            onChange={(e) => handleParamChange('ground_type', e.target.value as SimulationParams['ground_type'])}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="perfect">Perfect Ground</option>
+            <option value="real">Real Ground</option>
+            <option value="seawater">Seawater</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Height (m)
+          </label>
+          <input
+            type="number"
+            value={params.height}
+            onChange={(e) => handleParamChange('height', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0.1"
+            max="1000"
+            step="0.1"
+          />
+        </div>
+
+        <button
+          onClick={handleRunSimulation}
+          disabled={!patternId || isSimulating}
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {isSimulating ? (
+            <span className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Running Simulation...
+            </span>
+          ) : (
+            'Run Simulation'
+          )}
+        </button>
+
         {error && (
-          <div className="error-message">
-            {error}
+          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
-        <button
-          className="btn btn-primary btn-simulate"
-          onClick={handleSimulate}
-          disabled={loading}
-        >
-          {loading ? 'Running Simulation...' : 'Run Simulation'}
-        </button>
-      </div>
-
-      {results.length > 0 && (
-        <div className="simulation-results">
-          <h4>Recent Results</h4>
-          <div className="results-list">
-            {results.slice(0, 5).map((result) => (
-              <div key={result.id} className="result-item">
-                <div className="result-header">
-                  <span className="result-date">
-                    {new Date(result.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="result-metrics">
-                  <div className="metric">
-                    <span className="metric-label">VSWR:</span>
-                    <span className="metric-value">{result.vswr.toFixed(2)}</span>
-                  </div>
-                  <div className="metric">
-                    <span className="metric-label">Bandwidth:</span>
-                    <span className="metric-value">{result.bandwidth.toFixed(1)} MHz</span>
-                  </div>
-                  <div className="metric">
-                    <span className="metric-label">Efficiency:</span>
-                    <span className="metric-value">{(result.efficiency * 100).toFixed(1)}%</span>
-                  </div>
-                </div>
+        {lastResult && (
+          <div className="mt-6">
+            <h4 className="text-md font-semibold mb-3">Simulation Results</h4>
+            <div className="bg-gray-50 p-4 rounded-md space-y-2">
+              <div className="flex justify-between">
+                <span className="font-medium">SWR:</span>
+                <span>{lastResult.results.swr.toFixed(2)}</span>
               </div>
-            ))}
+              <div className="flex justify-between">
+                <span className="font-medium">Efficiency:</span>
+                <span>{(lastResult.results.efficiency * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Bandwidth:</span>
+                <span>{lastResult.results.bandwidth.toFixed(1)} MHz</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Resonant Frequency:</span>
+                <span>{lastResult.results.resonant_frequency.toFixed(1)} MHz</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                Simulated: {new Date(lastResult.created_at).toLocaleString()}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
-}
+};

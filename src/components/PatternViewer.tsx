@@ -1,140 +1,98 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
-
-interface PatternData {
-  theta: number[];
-  phi: number[];
-  gain: number[][];
-  frequency: number;
-  title?: string;
-}
+import React, { useRef, useEffect, useState } from 'react';
+import type { AntennaPattern } from '../types/antenna';
 
 interface PatternViewerProps {
-  data?: PatternData;
+  pattern: AntennaPattern | null;
+  viewMode: '2d' | '3d';
   className?: string;
 }
 
-const PatternMesh: React.FC<{ data: PatternData }> = ({ data }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
+export const PatternViewer: React.FC<PatternViewerProps> = ({ 
+  pattern, 
+  viewMode, 
+  className = '' 
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!meshRef.current || !data) return;
+    if (!pattern || !canvasRef.current) return;
 
-    const geometry = new THREE.SphereGeometry(1, 32, 32);
-    const vertices = geometry.attributes.position;
-    const colors = new Float32Array(vertices.count * 3);
-
-    // Map gain data to sphere vertices
-    for (let i = 0; i < vertices.count; i++) {
-      const vertex = new THREE.Vector3();
-      vertex.fromBufferAttribute(vertices, i);
-      
-      // Convert to spherical coordinates
-      const spherical = new THREE.Spherical();
-      spherical.setFromVector3(vertex);
-      
-      const thetaIndex = Math.floor((spherical.theta / Math.PI) * (data.theta.length - 1));
-      const phiIndex = Math.floor((spherical.phi / (2 * Math.PI)) * (data.phi.length - 1));
-      
-      const gainValue = data.gain[thetaIndex]?.[phiIndex] || 0;
-      const normalizedGain = Math.max(0, (gainValue + 40) / 40); // Normalize to 0-1
-      
-      // Color mapping: blue (low) to red (high)
-      colors[i * 3] = normalizedGain; // R
-      colors[i * 3 + 1] = 0.5 - Math.abs(normalizedGain - 0.5); // G
-      colors[i * 3 + 2] = 1 - normalizedGain; // B
-      
-      // Scale vertex based on gain
-      vertex.multiplyScalar(0.5 + normalizedGain * 0.5);
-      vertices.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
-
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.attributes.position.needsUpdate = true;
-
-    if (meshRef.current.geometry) {
-      meshRef.current.geometry.dispose();
-    }
-    meshRef.current.geometry = geometry;
-  }, [data]);
-
-  return (
-    <mesh ref={meshRef}>
-      <meshBasicMaterial vertexColors wireframe />
-    </mesh>
-  );
-};
-
-const PatternViewer: React.FC<PatternViewerProps> = ({ data, className }) => {
-  const [view2D, setView2D] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const draw2DPattern = (canvas: HTMLCanvasElement, patternData: PatternData) => {
+    const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = Math.min(centerX, centerY) - 20;
-
+    setIsLoading(true);
+    
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    try {
+      if (viewMode === '2d') {
+        render2DPattern(ctx, pattern, canvas.width, canvas.height);
+      } else {
+        render3DPattern(ctx, pattern, canvas.width, canvas.height);
+      }
+    } catch (error) {
+      console.error('Error rendering pattern:', error);
+      renderErrorState(ctx, canvas.width, canvas.height);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pattern, viewMode]);
 
-    // Draw coordinate system
-    ctx.strokeStyle = '#333333';
+  const render2DPattern = (
+    ctx: CanvasRenderingContext2D, 
+    pattern: AntennaPattern, 
+    width: number, 
+    height: number
+  ) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const maxRadius = Math.min(width, height) / 2 - 20;
+
+    // Draw concentric circles for gain levels
+    ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
     
-    // Draw circles
     for (let i = 1; i <= 4; i++) {
-      const r = (radius * i) / 4;
+      const radius = (maxRadius * i) / 4;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       ctx.stroke();
-      
-      // Label circles
-      ctx.fillStyle = '#666666';
-      ctx.font = '12px Arial';
-      ctx.fillText(`${-10 * (4 - i)} dB`, centerX + r + 5, centerY);
     }
 
-    // Draw radial lines
+    // Draw angle lines
+    ctx.strokeStyle = '#d1d5db';
     for (let angle = 0; angle < 360; angle += 30) {
-      const rad = (angle * Math.PI) / 180;
+      const radians = (angle * Math.PI) / 180;
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
       ctx.lineTo(
-        centerX + radius * Math.cos(rad),
-        centerY + radius * Math.sin(rad)
+        centerX + maxRadius * Math.cos(radians),
+        centerY + maxRadius * Math.sin(radians)
       );
       ctx.stroke();
-      
-      // Label angles
-      ctx.fillText(
-        `${angle}°`,
-        centerX + (radius + 10) * Math.cos(rad),
-        centerY + (radius + 10) * Math.sin(rad)
-      );
     }
 
     // Draw pattern
-    if (patternData.gain.length > 0) {
-      ctx.strokeStyle = '#ff6b6b';
+    if (pattern.pattern_data?.azimuth && pattern.pattern_data?.gain_values) {
+      ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 2;
       ctx.beginPath();
 
-      const phiSlice = Math.floor(patternData.phi.length / 2); // Take elevation cut
-      
-      for (let i = 0; i < patternData.theta.length; i++) {
-        const gain = patternData.gain[i]?.[phiSlice] || 0;
-        const normalizedGain = Math.max(0, (gain + 40) / 40);
-        const r = radius * normalizedGain;
-        const angle = (patternData.theta[i] * 180) / Math.PI;
-        const rad = (angle * Math.PI) / 180;
+      const azimuth = pattern.pattern_data.azimuth;
+      const gainValues = pattern.pattern_data.gain_values[0] || [];
+      const maxGain = pattern.pattern_data.max_gain || 1;
+
+      for (let i = 0; i < azimuth.length; i++) {
+        const angle = (azimuth[i] * Math.PI) / 180;
+        const normalizedGain = Math.max(0, (gainValues[i] || 0) / maxGain);
+        const radius = maxRadius * normalizedGain;
         
-        const x = centerX + r * Math.cos(rad);
-        const y = centerY + r * Math.sin(rad);
-        
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
@@ -144,78 +102,132 @@ const PatternViewer: React.FC<PatternViewerProps> = ({ data, className }) => {
       
       ctx.closePath();
       ctx.stroke();
+      
+      // Fill pattern
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+      ctx.fill();
+    }
+
+    // Draw labels
+    ctx.fillStyle = '#374151';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('0°', centerX, centerY - maxRadius - 10);
+    ctx.fillText('180°', centerX, centerY + maxRadius + 20);
+    ctx.textAlign = 'left';
+    ctx.fillText('90°', centerX + maxRadius + 10, centerY + 5);
+    ctx.textAlign = 'right';
+    ctx.fillText('270°', centerX - maxRadius - 10, centerY + 5);
+  };
+
+  const render3DPattern = (
+    ctx: CanvasRenderingContext2D, 
+    pattern: AntennaPattern, 
+    width: number, 
+    height: number
+  ) => {
+    // Simple 3D representation using isometric projection
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const scale = Math.min(width, height) / 4;
+
+    // Draw 3D axes
+    ctx.strokeStyle = '#6b7280';
+    ctx.lineWidth = 2;
+    
+    // X axis
+    ctx.beginPath();
+    ctx.moveTo(centerX - scale, centerY);
+    ctx.lineTo(centerX + scale, centerY);
+    ctx.stroke();
+    
+    // Y axis (isometric)
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - scale);
+    ctx.lineTo(centerX, centerY + scale);
+    ctx.stroke();
+    
+    // Z axis (isometric)
+    ctx.beginPath();
+    ctx.moveTo(centerX - scale * 0.5, centerY - scale * 0.5);
+    ctx.lineTo(centerX + scale * 0.5, centerY + scale * 0.5);
+    ctx.stroke();
+
+    if (pattern.pattern_data?.gain_values) {
+      // Draw simplified 3D pattern representation
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.6)';
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+
+      const gainData = pattern.pattern_data.gain_values;
+      const maxGain = pattern.pattern_data.max_gain || 1;
+
+      // Draw multiple elevation slices
+      for (let elevIdx = 0; elevIdx < Math.min(gainData.length, 5); elevIdx++) {
+        const elevation = elevIdx * 36; // 0, 36, 72, 108, 144 degrees
+        const yOffset = (elevation - 72) * scale / 180;
+        
+        ctx.beginPath();
+        const slice = gainData[elevIdx] || [];
+        
+        for (let azIdx = 0; azIdx < slice.length; azIdx++) {
+          const azimuth = (azIdx * 360) / slice.length;
+          const normalizedGain = Math.max(0, (slice[azIdx] || 0) / maxGain);
+          const radius = scale * normalizedGain * 0.8;
+          
+          const angle = (azimuth * Math.PI) / 180;
+          const x = centerX + radius * Math.cos(angle);
+          const y = centerY + yOffset + radius * Math.sin(angle) * 0.5; // Flatten for isometric view
+          
+          if (azIdx === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     }
   };
 
-  useEffect(() => {
-    if (view2D && canvasRef.current && data) {
-      draw2DPattern(canvasRef.current, data);
-    }
-  }, [view2D, data]);
+  const renderErrorState = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Error rendering pattern', width / 2, height / 2);
+  };
 
-  if (!data) {
+  if (!pattern) {
     return (
-      <div className={`pattern-viewer ${className || ''}`}>
-        <div className="no-data">
-          <p>No pattern data available</p>
-          <p>Run a simulation to see radiation patterns</p>
-        </div>
+      <div className={`flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg ${className}`}>
+        <p className="text-gray-500">No pattern selected</p>
       </div>
     );
   }
 
   return (
-    <div className={`pattern-viewer ${className || ''}`}>
-      <div className="pattern-header">
-        <h3>{data.title || 'Radiation Pattern'}</h3>
-        <div className="view-controls">
-          <button
-            className={!view2D ? 'active' : ''}
-            onClick={() => setView2D(false)}
-          >
-            3D View
-          </button>
-          <button
-            className={view2D ? 'active' : ''}
-            onClick={() => setView2D(true)}
-          >
-            2D View
-          </button>
+    <div className={`relative ${className}`}>
+      {isLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      </div>
-
-      <div className="pattern-content">
-        {view2D ? (
-          <canvas
-            ref={canvasRef}
-            width={400}
-            height={400}
-            className="pattern-canvas"
-          />
-        ) : (
-          <div className="pattern-3d">
-            <Canvas camera={{ position: [3, 3, 3], fov: 60 }}>
-              <ambientLight intensity={0.6} />
-              <pointLight position={[10, 10, 10]} />
-              <PatternMesh data={data} />
-              <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
-            </Canvas>
-          </div>
-        )}
-      </div>
-
-      <div className="pattern-info">
-        <div className="info-item">
-          <span>Frequency:</span>
-          <span>{data.frequency.toFixed(1)} MHz</span>
-        </div>
-        <div className="info-item">
-          <span>Data Points:</span>
-          <span>{data.theta.length} × {data.phi.length}</span>
-        </div>
+      )}
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={600}
+        className="w-full h-full border border-gray-200 rounded-lg"
+      />
+      <div className="absolute top-2 left-2 bg-white bg-opacity-90 px-2 py-1 rounded text-sm">
+        <strong>{pattern.name}</strong>
+        <br />
+        Frequency: {pattern.frequency.toFixed(1)} MHz
+        <br />
+        Gain: {pattern.gain.toFixed(1)} dBi
       </div>
     </div>
   );
 };
-
-export default PatternViewer;

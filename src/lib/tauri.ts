@@ -1,45 +1,62 @@
 import { invoke } from '@tauri-apps/api/tauri';
+import type { AntennaPattern, SimulationParams, SimulationResult, AntennaGeometry } from '../types/antenna';
 
-export interface AntennaResult {
-  frequency: number;
-  gain: number;
-  vswr: number;
-  impedance: { real: number; imaginary: number };
-  efficiency: number;
+export interface TauriResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
-export interface SimulationParams {
-  frequency_start: number;
-  frequency_end: number;
-  frequency_steps: number;
-  antenna_type: string;
-  dimensions: Record<string, number>;
-}
-
-export async function simulateAntenna(params: SimulationParams): Promise<AntennaResult[]> {
+export async function loadAntennaPattern(id: string): Promise<TauriResponse<AntennaPattern>> {
   try {
-    const result = await invoke<AntennaResult[]>('simulate_antenna', { params });
-    return result;
+    const result = await invoke<AntennaPattern>('load_antenna_pattern', { id });
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Simulation error:', error);
-    throw new Error(`Simulation failed: ${error}`);
+    return { success: false, error: String(error) };
   }
 }
 
-export async function exportResults(results: AntennaResult[], format: string): Promise<void> {
+export async function saveAntennaPattern(pattern: Omit<AntennaPattern, 'id' | 'created_at' | 'updated_at'>): Promise<TauriResponse<AntennaPattern>> {
   try {
-    await invoke('export_results', { results, format });
+    const result = await invoke<AntennaPattern>('save_antenna_pattern', { pattern });
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Export error:', error);
-    throw new Error(`Export failed: ${error}`);
+    return { success: false, error: String(error) };
   }
 }
 
-export async function loadAntennaModel(path: string): Promise<void> {
+export async function runSimulation(patternId: string, params: SimulationParams): Promise<TauriResponse<SimulationResult>> {
   try {
-    await invoke('load_antenna_model', { path });
+    const result = await invoke<SimulationResult>('run_simulation', { patternId, params });
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Load model error:', error);
-    throw new Error(`Failed to load model: ${error}`);
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function generatePattern(geometry: AntennaGeometry, frequency: number): Promise<TauriResponse<AntennaPattern>> {
+  try {
+    const result = await invoke<AntennaPattern>('generate_pattern', { geometry, frequency });
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function listPatterns(): Promise<TauriResponse<AntennaPattern[]>> {
+  try {
+    const result = await invoke<AntennaPattern[]>('list_patterns');
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function deletePattern(id: string): Promise<TauriResponse<void>> {
+  try {
+    await invoke<void>('delete_pattern', { id });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
   }
 }
