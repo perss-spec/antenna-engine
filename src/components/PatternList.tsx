@@ -1,18 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { AntennaPattern, TauriResponse } from '../types/antenna';
+import React, { useEffect, useState } from 'react';
+import { getPatterns, deletePattern } from '../lib/tauri';
+import type { AntennaPattern } from '../types';
 
 interface PatternListProps {
   onPatternSelect: (pattern: AntennaPattern) => void;
+  onPatternEdit: (pattern: AntennaPattern) => void;
+  onPatternDelete: (id: string) => void;
   selectedPatternId?: string;
-  className?: string;
 }
 
-const PatternList: React.FC<PatternListProps> = ({ 
-  onPatternSelect, 
-  selectedPatternId,
-  className = '' 
-}) => {
+export function PatternList({ onPatternSelect, onPatternEdit, onPatternDelete, selectedPatternId }: PatternListProps) {
   const [patterns, setPatterns] = useState<AntennaPattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +22,7 @@ const PatternList: React.FC<PatternListProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await invoke<TauriResponse<AntennaPattern[]>>('get_antenna_patterns');
+      const response = await getPatterns();
       
       if (response.success && response.data) {
         setPatterns(response.data);
@@ -34,26 +30,23 @@ const PatternList: React.FC<PatternListProps> = ({
         setError(response.error || 'Failed to load patterns');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setError(err instanceof Error ? err.message : 'Failed to load patterns');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (patternId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    if (!window.confirm('Are you sure you want to delete this pattern?')) {
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this pattern?')) {
       return;
     }
 
     try {
-      const response = await invoke<TauriResponse<void>>('delete_antenna_pattern', { 
-        patternId 
-      });
+      const response = await deletePattern(id);
       
       if (response.success) {
-        setPatterns(prev => prev.filter(p => p.id !== patternId));
+        setPatterns(patterns.filter(p => p.id !== id));
+        onPatternDelete(id);
       } else {
         setError(response.error || 'Failed to delete pattern');
       }
@@ -64,7 +57,7 @@ const PatternList: React.FC<PatternListProps> = ({
 
   if (loading) {
     return (
-      <div className={`pattern-list loading ${className}`}>
+      <div className="pattern-list loading">
         <div className="loading-spinner">Loading patterns...</div>
       </div>
     );
@@ -72,67 +65,91 @@ const PatternList: React.FC<PatternListProps> = ({
 
   if (error) {
     return (
-      <div className={`pattern-list error ${className}`}>
-        <div className="error-message">
-          <p>Error: {error}</p>
-          <button onClick={loadPatterns} className="retry-button">
-            Retry
-          </button>
-        </div>
+      <div className="pattern-list error">
+        <div className="error-message">{error}</div>
+        <button className="btn btn-secondary" onClick={loadPatterns}>
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
-    <div className={`pattern-list ${className}`}>
+    <div className="pattern-list">
       <div className="pattern-list-header">
         <h3>Antenna Patterns</h3>
-        <button onClick={loadPatterns} className="refresh-button">
+        <button className="btn btn-primary" onClick={loadPatterns}>
           Refresh
         </button>
       </div>
       
-      <div className="pattern-items">
-        {patterns.length === 0 ? (
-          <div className="empty-state">
-            <p>No antenna patterns found.</p>
-            <p>Import or create a new pattern to get started.</p>
-          </div>
-        ) : (
-          patterns.map(pattern => (
+      {patterns.length === 0 ? (
+        <div className="empty-state">
+          <p>No antenna patterns found.</p>
+          <p>Create your first pattern to get started.</p>
+        </div>
+      ) : (
+        <div className="pattern-grid">
+          {patterns.map((pattern) => (
             <div
               key={pattern.id}
-              className={`pattern-item ${selectedPatternId === pattern.id ? 'selected' : ''}`}
+              className={`pattern-card ${selectedPatternId === pattern.id ? 'selected' : ''}`}
               onClick={() => onPatternSelect(pattern)}
             >
-              <div className="pattern-info">
+              <div className="pattern-header">
                 <h4 className="pattern-name">{pattern.name}</h4>
-                <div className="pattern-details">
-                  <span className="frequency">{pattern.frequency.toFixed(2)} MHz</span>
-                  <span className="polarization">{pattern.polarization}</span>
-                </div>
-                <div className="pattern-meta">
-                  <span className="date">
-                    {new Date(pattern.created_at).toLocaleDateString()}
-                  </span>
+                <div className="pattern-actions">
+                  <button
+                    className="btn btn-icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPatternEdit(pattern);
+                    }}
+                    title="Edit pattern"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="btn btn-icon btn-danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(pattern.id);
+                    }}
+                    title="Delete pattern"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
               
-              <div className="pattern-actions">
-                <button
-                  onClick={(e) => handleDelete(pattern.id, e)}
-                  className="delete-button"
-                  title="Delete pattern"
-                >
-                  ×
-                </button>
+              <div className="pattern-details">
+                <div className="detail-row">
+                  <span className="label">Frequency:</span>
+                  <span className="value">{pattern.frequency} MHz</span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Gain:</span>
+                  <span className="value">{pattern.gain.toFixed(2)} dB</span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Efficiency:</span>
+                  <span className="value">{(pattern.efficiency * 100).toFixed(1)}%</span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Polarization:</span>
+                  <span className="value">{pattern.polarization}</span>
+                </div>
+              </div>
+              
+              <div className="pattern-footer">
+                <small className="created-date">
+                  Created: {new Date(pattern.created_at).toLocaleDateString()}
+                </small>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
-};
-
-export default PatternList;
+}

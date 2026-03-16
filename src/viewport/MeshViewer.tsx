@@ -1,18 +1,28 @@
 import React, { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Grid, Edges, Line } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { Grid, Edges, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
+interface Triangle {
+  vertices: [number, number, number][];
+  materialId?: number;
+}
+
+interface WireSegment {
+  start: [number, number, number];
+  end: [number, number, number];
+  radius: number;
+}
+
 interface MeshData {
-  vertices: Float32Array;
-  triangles: Uint32Array;
-  wireSegments: Uint32Array;
-  triangleQuality?: Float32Array; // aspect ratios
+  triangles: Triangle[];
+  wireSegments: WireSegment[];
+  vertices: [number, number, number][];
 }
 
 interface ComplexArray {
-  real: Float32Array;
-  imag: Float32Array;
+  real: number[];
+  imag: number[];
 }
 
 interface MeshViewerProps {
@@ -22,220 +32,220 @@ interface MeshViewerProps {
   showQuality: boolean;
 }
 
-function MeshGeometry({ 
+const TriangleMesh: React.FC<{
+  triangles: Triangle[];
+  vertices: [number, number, number][];
+  mode: 'wireframe' | 'solid' | 'transparent';
+  showQuality: boolean;
+  currents?: ComplexArray;
+}> = ({ triangles, vertices, mode, showQuality, currents }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  const { geometry, qualityColors, currentColors } = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const colors: number[] = [];
+    const qualityData: number[] = [];
+    
+    triangles.forEach((triangle, triIndex) => {
+      triangle.vertices.forEach((vertex, vertIndex) => {
+        positions.push(...vertex);
+        indices.push(triIndex * 3 + vertIndex);
+        
+        // Calculate aspect ratio for quality visualization
+        if (vertIndex === 0) {
+          const [v0, v1, v2] = triangle.vertices;
+          const a = new THREE.Vector3(...v0);
+          const b = new THREE.Vector3(...v1);
+          const c = new THREE.Vector3(...v2);
+          
+          const side1 = a.distanceTo(b);
+          const side2 = b.distanceTo(c);
+          const side3 = c.distanceTo(a);
+          
+          const s = (side1 + side2 + side3) / 2;
+          const area = Math.sqrt(s * (s - side1) * (s - side2) * (s - side3));
+          const aspectRatio = (side1 * side2 * side3) / (8 * area * area);
+          
+          qualityData.push(Math.min(aspectRatio, 10)); // Clamp for visualization
+        }
+      });
+    });
+
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    // Quality colors (green = good, red = bad)
+    const qualityColors = qualityData.map(quality => {
+      const normalized = Math.min(quality / 5, 1); // Normalize to 0-1
+      return new THREE.Color().setHSL((1 - normalized) * 0.3, 1, 0.5); // Green to red
+    });
+
+    // Current density colors
+    const currentColors = currents ? currents.real.map((real, i) => {
+      const magnitude = Math.sqrt(real * real + currents.imag[i] * currents.imag[i]);
+      const normalized = Math.min(magnitude / 100, 1); // Adjust scale as needed
+      return new THREE.Color().setHSL(0.7 - normalized * 0.7, 1, 0.5); // Blue to red
+    }) : [];
+
+    return { geometry: geo, qualityColors, currentColors };
+  }, [triangles, showQuality, currents]);
+
+  const material = useMemo(() => {
+    const baseColor = new THREE.Color(0x4a90e2); // Blue for surfaces
+    
+    if (mode === 'wireframe') {
+      return new THREE.MeshBasicMaterial({ 
+        color: baseColor, 
+        wireframe: true,
+        transparent: false
+      });
+    }
+    
+    if (mode === 'transparent') {
+      return new THREE.MeshLambertMaterial({ 
+        color: baseColor, 
+        transparent: true, 
+        opacity: 0.3 
+      });
+    }
+    
+    return new THREE.MeshLambertMaterial({ color: baseColor });
+  }, [mode]);
+
+  return (
+    <group>
+      <mesh ref={meshRef} geometry={geometry} material={material}>
+        {mode !== 'wireframe' && <Edges color="black" />}
+      </mesh>
+      
+      {/* Quality overlay */}
+      {showQuality && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial vertexColors transparent opacity={0.7} />
+        </mesh>
+      )}
+    </group>
+  );
+};
+
+const WireMesh: React.FC<{
+  wireSegments: WireSegment[];
+  mode: 'wireframe' | 'solid' | 'transparent';
+}> = ({ wireSegments, mode }) => {
+  const wireGeometry = useMemo(() => {
+    const positions: number[] = [];
+    
+    wireSegments.forEach(segment => {
+      positions.push(...segment.start, ...segment.end);
+    });
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    
+    return geo;
+  }, [wireSegments]);
+
+  const wireMaterial = useMemo(() => {
+    const copperColor = new THREE.Color(0xcd7f32);
+    return new THREE.LineBasicMaterial({ 
+      color: copperColor,
+      transparent: mode === 'transparent',
+      opacity: mode === 'transparent' ? 0.6 : 1,
+      linewidth: 2
+    });
+  }, [mode]);
+
+  return (
+    <lineSegments geometry={wireGeometry} material={wireMaterial} />
+  );
+};
+
+const AxisHelper: React.FC = () => {
+  return (
+    <group>
+      {/* X axis - Red */}
+      <arrowHelper args={[new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 2, 0xff0000]} />
+      {/* Y axis - Green */}
+      <arrowHelper args={[new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 2, 0x00ff00]} />
+      {/* Z axis - Blue */}
+      <arrowHelper args={[new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 2, 0x0000ff]} />
+    </group>
+  );
+};
+
+const QualityLegend: React.FC<{ show: boolean }> = ({ show }) => {
+  if (!show) return null;
+
+  return (
+    <Html position={[0, 0, 0]} style={{ pointerEvents: 'none' }}>
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        background: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        padding: '10px',
+        borderRadius: '5px',
+        fontSize: '12px'
+      }}>
+        <div>Mesh Quality</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div style={{ width: '20px', height: '10px', background: 'linear-gradient(to right, #00ff00, #ffff00, #ff0000)' }}></div>
+          <span>Good → Bad</span>
+        </div>
+      </div>
+    </Html>
+  );
+};
+
+const CurrentLegend: React.FC<{ show: boolean }> = ({ show }) => {
+  if (!show) return null;
+
+  return (
+    <Html position={[0, 0, 0]} style={{ pointerEvents: 'none' }}>
+      <div style={{
+        position: 'absolute',
+        top: '80px',
+        right: '20px',
+        background: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        padding: '10px',
+        borderRadius: '5px',
+        fontSize: '12px'
+      }}>
+        <div>Current Density</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div style={{ width: '20px', height: '10px', background: 'linear-gradient(to right, #0000ff, #00ffff, #ffff00, #ff0000)' }}></div>
+          <span>Low → High</span>
+        </div>
+      </div>
+    </Html>
+  );
+};
+
+export const MeshViewer: React.FC<MeshViewerProps> = ({ 
   mesh, 
   currents, 
   mode, 
   showQuality 
-}: MeshViewerProps) {
-  const triangleMeshRef = useRef<THREE.Mesh>(null);
-  const wireSegmentsRef = useRef<THREE.LineSegments>(null);
-
-  // Create triangle geometry
-  const triangleGeometry = useMemo(() => {
-    if (!mesh) return null;
-    
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(mesh.vertices, 3));
-    geometry.setIndex(new THREE.BufferAttribute(mesh.triangles, 1));
-    geometry.computeVertexNormals();
-    
-    return geometry;
-  }, [mesh]);
-
-  // Create wire segments geometry
-  const wireGeometry = useMemo(() => {
-    if (!mesh) return null;
-    
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(mesh.vertices, 3));
-    geometry.setIndex(new THREE.BufferAttribute(mesh.wireSegments, 1));
-    
-    return geometry;
-  }, [mesh]);
-
-  // Create color attributes for triangles
-  const triangleColors = useMemo(() => {
-    if (!mesh) return null;
-    
-    const vertexCount = mesh.vertices.length / 3;
-    const colors = new Float32Array(vertexCount * 3);
-    
-    if (showQuality && mesh.triangleQuality) {
-      // Quality heatmap (red = poor, green = good)
-      const triangleCount = mesh.triangles.length / 3;
-      
-      for (let i = 0; i < triangleCount; i++) {
-        const quality = mesh.triangleQuality[i];
-        const normalizedQuality = Math.min(Math.max(quality, 0), 1);
-        
-        // Get triangle vertex indices
-        const v1 = mesh.triangles[i * 3];
-        const v2 = mesh.triangles[i * 3 + 1];
-        const v3 = mesh.triangles[i * 3 + 2];
-        
-        // Color interpolation: red (0) to yellow (0.5) to green (1)
-        const r = normalizedQuality < 0.5 ? 1 : 1 - (normalizedQuality - 0.5) * 2;
-        const g = normalizedQuality < 0.5 ? normalizedQuality * 2 : 1;
-        const b = 0;
-        
-        // Apply color to triangle vertices
-        [v1, v2, v3].forEach(vertexIndex => {
-          colors[vertexIndex * 3] = r;
-          colors[vertexIndex * 3 + 1] = g;
-          colors[vertexIndex * 3 + 2] = b;
-        });
-      }
-    } else if (currents) {
-      // Current density magnitude colormap
-      const vertexCount = mesh.vertices.length / 3;
-      const magnitudes = new Float32Array(vertexCount);
-      
-      // Calculate current magnitudes
-      for (let i = 0; i < vertexCount; i++) {
-        const real = currents.real[i] || 0;
-        const imag = currents.imag[i] || 0;
-        magnitudes[i] = Math.sqrt(real * real + imag * imag);
-      }
-      
-      // Find min/max for normalization
-      const maxMag = Math.max(...magnitudes);
-      const minMag = Math.min(...magnitudes);
-      const range = maxMag - minMag;
-      
-      // Apply jet colormap
-      for (let i = 0; i < vertexCount; i++) {
-        const normalized = range > 0 ? (magnitudes[i] - minMag) / range : 0;
-        const { r, g, b } = jetColormap(normalized);
-        
-        colors[i * 3] = r;
-        colors[i * 3 + 1] = g;
-        colors[i * 3 + 2] = b;
-      }
-    } else {
-      // Default surface color (blue)
-      for (let i = 0; i < vertexCount; i++) {
-        colors[i * 3] = 0.2;     // R
-        colors[i * 3 + 1] = 0.4; // G  
-        colors[i * 3 + 2] = 0.8; // B
-      }
-    }
-    
-    return new THREE.BufferAttribute(colors, 3);
-  }, [mesh, currents, showQuality]);
-
-  // Wire segment colors (copper)
-  const wireColors = useMemo(() => {
-    if (!mesh) return null;
-    
-    const vertexCount = mesh.vertices.length / 3;
-    const colors = new Float32Array(vertexCount * 3);
-    
-    // Copper color
-    for (let i = 0; i < vertexCount; i++) {
-      colors[i * 3] = 0.72;     // R
-      colors[i * 3 + 1] = 0.45; // G
-      colors[i * 3 + 2] = 0.20; // B
-    }
-    
-    return new THREE.BufferAttribute(colors, 3);
-  }, [mesh]);
-
-  // Material based on mode
-  const triangleMaterial = useMemo(() => {
-    const baseProps = {
-      vertexColors: true,
-      side: THREE.DoubleSide,
-    };
-    
-    switch (mode) {
-      case 'wireframe':
-        return new THREE.MeshBasicMaterial({
-          ...baseProps,
-          wireframe: true,
-        });
-      case 'transparent':
-        return new THREE.MeshLambertMaterial({
-          ...baseProps,
-          transparent: true,
-          opacity: 0.7,
-        });
-      default: // solid
-        return new THREE.MeshLambertMaterial(baseProps);
-    }
-  }, [mode]);
-
-  // Update geometries with colors
-  React.useEffect(() => {
-    if (triangleGeometry && triangleColors) {
-      triangleGeometry.setAttribute('color', triangleColors);
-    }
-  }, [triangleGeometry, triangleColors]);
-
-  React.useEffect(() => {
-    if (wireGeometry && wireColors) {
-      wireGeometry.setAttribute('color', wireColors);
-    }
-  }, [wireGeometry, wireColors]);
-
-  if (!mesh) return null;
-
-  return (
-    <group>
-      {/* Triangle mesh */}
-      {triangleGeometry && (
-        <mesh
-          ref={triangleMeshRef}
-          geometry={triangleGeometry}
-          material={triangleMaterial}
-        />
-      )}
-      
-      {/* Wire segments */}
-      {wireGeometry && (
-        <lineSegments
-          ref={wireSegmentsRef}
-          geometry={wireGeometry}
-        >
-          <lineBasicMaterial vertexColors />
-        </lineSegments>
-      )}
-    </group>
-  );
-}
-
-// Jet colormap implementation
-function jetColormap(value: number): { r: number; g: number; b: number } {
-  const v = Math.min(Math.max(value, 0), 1);
-  
-  let r, g, b;
-  
-  if (v < 0.125) {
-    r = 0;
-    g = 0;
-    b = 0.5 + v * 4;
-  } else if (v < 0.375) {
-    r = 0;
-    g = (v - 0.125) * 4;
-    b = 1;
-  } else if (v < 0.625) {
-    r = (v - 0.375) * 4;
-    g = 1;
-    b = 1 - (v - 0.375) * 4;
-  } else if (v < 0.875) {
-    r = 1;
-    g = 1 - (v - 0.625) * 4;
-    b = 0;
-  } else {
-    r = 1 - (v - 0.875) * 4;
-    g = 0;
-    b = 0;
+}) => {
+  if (!mesh) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100%',
+        color: '#666'
+      }}>
+        No mesh data loaded
+      </div>
+    );
   }
-  
-  return { r, g, b };
-}
 
-export default function MeshViewer(props: MeshViewerProps) {
   return (
     <group>
       {/* Grid helper */}
@@ -243,32 +253,44 @@ export default function MeshViewer(props: MeshViewerProps) {
         args={[20, 20]} 
         cellSize={1} 
         cellThickness={0.5} 
-        cellColor="#6f6f6f" 
+        cellColor={'#6f6f6f'} 
         sectionSize={5} 
         sectionThickness={1} 
-        sectionColor="#9d4b4b" 
-        fadeDistance={50} 
-        fadeStrength={1} 
-        infiniteGrid 
+        sectionColor={'#9d4b4b'} 
+        fadeDistance={50}
+        fadeStrength={1}
+        followCamera={false}
+        infiniteGrid={true}
       />
       
       {/* Axis helper */}
-      <axesHelper args={[5]} />
+      <AxisHelper />
+      
+      {/* Triangle mesh */}
+      <TriangleMesh
+        triangles={mesh.triangles}
+        vertices={mesh.vertices}
+        mode={mode}
+        showQuality={showQuality}
+        currents={currents}
+      />
+      
+      {/* Wire segments */}
+      <WireMesh
+        wireSegments={mesh.wireSegments}
+        mode={mode}
+      />
+      
+      {/* Legends */}
+      <QualityLegend show={showQuality} />
+      <CurrentLegend show={!!currents} />
       
       {/* Lighting */}
       <ambientLight intensity={0.4} />
-      <directionalLight 
-        position={[10, 10, 5]} 
-        intensity={0.8}
-        castShadow
-      />
-      <directionalLight 
-        position={[-10, -10, -5]} 
-        intensity={0.4}
-      />
-      
-      {/* Mesh geometry */}
-      <MeshGeometry {...props} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} />
+      <directionalLight position={[-10, -10, -5]} intensity={0.3} />
     </group>
   );
-}
+};
+
+export default MeshViewer;
