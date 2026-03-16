@@ -1,9 +1,9 @@
-use ndarray::{Array1, Array2, Axis, Zip};
+use ndarray::{Array1, Array2, Zip};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use std::f64::EPSILON;
 
-use crate::core::error::{CoreError, Result};
+use super::types::{AntennaError, Result};
 
 /// Information about GMRES convergence
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ impl LUDecomposition {
     fn new(mut a: Array2<Complex64>) -> Result<Self> {
         let n = a.nrows();
         if n != a.ncols() {
-            return Err(CoreError::Validation("Matrix must be square".to_string()));
+            return Err(AntennaError::InvalidParameter("Matrix must be square".to_string()));
         }
 
         let mut pivots = vec![0; n];
@@ -42,7 +42,7 @@ impl LUDecomposition {
             }
 
             if max_val < EPSILON {
-                return Err(CoreError::Validation("Matrix is singular".to_string()));
+                return Err(AntennaError::InvalidParameter("Matrix is singular".to_string()));
             }
 
             pivots[k] = max_row;
@@ -58,9 +58,12 @@ impl LUDecomposition {
 
             // Compute multipliers and eliminate
             for i in (k + 1)..n {
-                a[[i, k]] /= a[[k, k]];
+                let pivot = a[[k, k]];
+                a[[i, k]] = a[[i, k]] / pivot;
+                let factor = a[[i, k]];
                 for j in (k + 1)..n {
-                    a[[i, j]] -= a[[i, k]] * a[[k, j]];
+                    let akj = a[[k, j]];
+                    a[[i, j]] = a[[i, j]] - factor * akj;
                 }
             }
         }
@@ -72,7 +75,7 @@ impl LUDecomposition {
     fn solve(&self, b: &Array1<Complex64>) -> Result<Array1<Complex64>> {
         let n = self.lu.nrows();
         if b.len() != n {
-            return Err(CoreError::Validation("Vector size mismatch".to_string()));
+            return Err(AntennaError::InvalidParameter("Vector size mismatch".to_string()));
         }
 
         // Apply permutation
@@ -87,17 +90,20 @@ impl LUDecomposition {
 
         // Forward substitution (solve Ly = Pb)
         for i in 1..n {
+            let mut sum = Complex64::new(0.0, 0.0);
             for j in 0..i {
-                x[i] -= self.lu[[i, j]] * x[j];
+                sum += self.lu[[i, j]] * x[j];
             }
+            x[i] = x[i] - sum;
         }
 
         // Backward substitution (solve Ux = y)
         for i in (0..n).rev() {
+            let mut sum = Complex64::new(0.0, 0.0);
             for j in (i + 1)..n {
-                x[i] -= self.lu[[i, j]] * x[j];
+                sum += self.lu[[i, j]] * x[j];
             }
-            x[i] /= self.lu[[i, i]];
+            x[i] = (x[i] - sum) / self.lu[[i, i]];
         }
 
         Ok(x)
@@ -146,7 +152,7 @@ pub fn gmres(
 ) -> Result<(Array1<Complex64>, ConvergenceInfo)> {
     let n = a.nrows();
     if n != a.ncols() || b.len() != n {
-        return Err(CoreError::Validation("Matrix/vector dimension mismatch".to_string()));
+        return Err(AntennaError::InvalidParameter("Matrix/vector dimension mismatch".to_string()));
     }
 
     let b_norm = b.mapv(|x| x.norm_sqr()).sum().sqrt();
@@ -219,7 +225,7 @@ pub fn gmres(
             }
 
             for i in 0..=j {
-                h[[i, j]] = v[i].dot(&w);
+                h[[i, j]] = v[i].mapv(|c| c.conj()).dot(&w);
                 w = w - h[[i, j]] * &v[i];
             }
 
@@ -239,20 +245,26 @@ pub fn gmres(
                 h[[i, j]] = temp;
             }
 
-            // Compute new Givens rotation
+            // Compute new Givens rotation (complex case)
             let h_jj = h[[j, j]];
             let h_j1j = h[[j + 1, j]];
-            let rho = (h_jj.norm_sqr() + h_j1j.norm_sqr()).sqrt();
-            
-            c[j] = h_jj.norm() / rho;
-            sn[j] = h_jj / h_jj.norm() * h_j1j.conj() / rho;
+            let denom = (h_jj.norm_sqr() + h_j1j.norm_sqr()).sqrt();
 
-            h[[j, j]] = Complex64::new(rho, 0.0);
+            c[j] = h_jj.norm() / denom;
+            if h_jj.norm() > EPSILON {
+                sn[j] = (h_jj / h_jj.norm()) * h_j1j.conj() / denom;
+            } else {
+                sn[j] = Complex64::new(1.0, 0.0);
+            }
+
+            // Apply rotation to H and RHS
+            let new_h_jj = c[j] * h_jj + sn[j] * h_j1j;
+            h[[j, j]] = new_h_jj;
             h[[j + 1, j]] = Complex64::new(0.0, 0.0);
 
-            // Update RHS
-            s[j + 1] = -sn[j].conj() * s[j];
-            s[j] = c[j] * s[j];
+            let old_sj = s[j];
+            s[j] = c[j] * old_sj + sn[j] * s[j + 1];
+            s[j + 1] = -sn[j].conj() * old_sj + c[j] * s[j + 1];
 
             let residual = s[j + 1].norm() / b_norm;
             if residual < tol {
@@ -266,11 +278,11 @@ pub fn gmres(
         // Solve upper triangular system
         let mut y = Array1::zeros(j);
         for i in (0..j).rev() {
-            y[i] = s[i];
+            let mut sum = Complex64::new(0.0, 0.0);
             for k in (i + 1)..j {
-                y[i] -= h[[i, k]] * y[k];
+                sum += h[[i, k]] * y[k];
             }
-            y[i] /= h[[i, i]];
+            y[i] = (s[i] - sum) / h[[i, i]];
         }
 
         // Update solution
@@ -362,12 +374,13 @@ pub fn estimate_condition_number(a: &Array2<Complex64>) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_abs_diff_eq;
+
+    fn assert_close(a: f64, b: f64, eps: f64) {
+        assert!((a - b).abs() < eps, "expected {a} ≈ {b} (eps={eps})");
+    }
 
     #[test]
     fn test_lu_solve_3x3() {
-        // Test system: [1+i, 2, 0; 3, 4-i, 5; 1, 0, 2+i] * [x; y; z] = [3+i; 12-i; 3+2i]
-        // Solution should be [1; 0+i; 1]
         let a = Array2::from_shape_vec(
             (3, 3),
             vec![
@@ -376,26 +389,25 @@ mod tests {
                 Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(2.0, 1.0),
             ],
         ).unwrap();
-        
+
         let b = Array1::from_vec(vec![
+            Complex64::new(1.0, 3.0),
+            Complex64::new(9.0, 4.0),
             Complex64::new(3.0, 1.0),
-            Complex64::new(12.0, -1.0),
-            Complex64::new(3.0, 2.0),
         ]);
 
         let x = lu_solve(&a, &b).unwrap();
-        
-        assert_abs_diff_eq!(x[0].re, 1.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(x[0].im, 0.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(x[1].re, 0.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(x[1].im, 1.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(x[2].re, 1.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(x[2].im, 0.0, epsilon = 1e-10);
+
+        assert_close(x[0].re, 1.0, 1e-10);
+        assert_close(x[0].im, 0.0, 1e-10);
+        assert_close(x[1].re, 0.0, 1e-10);
+        assert_close(x[1].im, 1.0, 1e-10);
+        assert_close(x[2].re, 1.0, 1e-10);
+        assert_close(x[2].im, 0.0, 1e-10);
     }
 
     #[test]
     fn test_gmres_convergence() {
-        // Well-conditioned diagonal-dominant matrix
         let n = 10;
         let mut a = Array2::zeros((n, n));
         for i in 0..n {
@@ -409,13 +421,12 @@ mod tests {
         }
 
         let b = Array1::from_elem(n, Complex64::new(1.0, 0.0));
-        
+
         let (x, info) = gmres(&a, &b, 1e-8, 100, 30).unwrap();
-        
+
         assert!(info.converged);
         assert!(info.residual_norm < 1e-8);
-        
-        // Verify solution
+
         let r = &b - &matvec(&a, &x);
         let r_norm = r.mapv(|x| x.norm_sqr()).sum().sqrt();
         assert!(r_norm < 1e-7);
@@ -423,7 +434,6 @@ mod tests {
 
     #[test]
     fn test_lu_gmres_agreement() {
-        // Small system where both methods should work
         let n = 5;
         let mut a = Array2::zeros((n, n));
         for i in 0..n {
@@ -437,24 +447,22 @@ mod tests {
         }
 
         let b = Array1::from_elem(n, Complex64::new(1.0, -0.5));
-        
+
         let x_lu = lu_solve(&a, &b).unwrap();
         let (x_gmres, _) = gmres(&a, &b, 1e-10, 100, 30).unwrap();
-        
+
         for i in 0..n {
-            assert_abs_diff_eq!(x_lu[i].re, x_gmres[i].re, epsilon = 1e-8);
-            assert_abs_diff_eq!(x_lu[i].im, x_gmres[i].im, epsilon = 1e-8);
+            assert_close(x_lu[i].re, x_gmres[i].re, 1e-8);
+            assert_close(x_lu[i].im, x_gmres[i].im, 1e-8);
         }
     }
 
     #[test]
     fn test_condition_number() {
-        // Well-conditioned identity matrix
         let a = Array2::eye(5);
         let cond = estimate_condition_number(&a.mapv(|x| Complex64::new(x, 0.0)));
-        assert_abs_diff_eq!(cond, 1.0, epsilon = 0.1);
+        assert_close(cond, 1.0, 0.1);
 
-        // Poorly conditioned matrix
         let mut a = Array2::zeros((3, 3));
         a[[0, 0]] = Complex64::new(1.0, 0.0);
         a[[1, 1]] = Complex64::new(0.1, 0.0);

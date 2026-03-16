@@ -1,8 +1,7 @@
 //! Dataset export functionality for simulation results
 
-use crate::core::types::{Result, AntennaError};
-use crate::core::batch::{BatchResult, SimulationPoint};
-use crate::core::solver::SimulationResult;
+use super::types::{Result, AntennaError, SimulationResult};
+use super::batch::{BatchResult, SimulationPoint};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
@@ -64,29 +63,30 @@ impl DatasetExporter {
         config: &ExportConfig,
         output_path: P,
     ) -> Result<()> {
-        // Create a minimal batch result with single point
         let point = SimulationPoint {
             parameters: HashMap::new(),
             result: Some(result.clone()),
             error: None,
         };
-        
-        let batch_config = crate::core::batch::BatchConfig {
-            base_element: crate::core::element::AntennaElement::Dipole(crate::core::element::DipoleParams {
-                length: 0.15,
-                radius: 0.001,
-                center: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
-                orientation: crate::core::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
-            }),
-            base_params: crate::core::solver::SimulationParams {
+
+        let batch_config = super::batch::BatchConfig {
+            base_element: super::element::AntennaElement::Dipole(
+                super::element::DipoleParams {
+                    length: 0.15,
+                    radius: 0.001,
+                    center: super::types::Point3D { x: 0.0, y: 0.0, z: 0.0 },
+                    orientation: super::types::Point3D { x: 0.0, y: 0.0, z: 1.0 },
+                },
+            ),
+            base_params: super::types::SimulationParams {
                 frequency: 1e9,
-                resolution: 10,
+                resolution: 10.0,
                 reference_impedance: 50.0,
             },
             sweeps: vec![],
             parallel: false,
         };
-        
+
         let batch_result = BatchResult {
             config: batch_config,
             points: vec![point],
@@ -95,7 +95,7 @@ impl DatasetExporter {
             failed_points: 0,
             execution_time_ms: 0,
         };
-        
+
         Self::export_batch_results(&batch_result, config, output_path)
     }
 

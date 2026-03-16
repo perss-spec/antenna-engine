@@ -1,0 +1,229 @@
+.solver-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.solver-panel .panel-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-dim, #999);
+}
+
+.solver-panel .config-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.solver-panel .config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.solver-panel .config-section h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.solver-panel .radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.solver-panel .radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-primary, #eee);
+  cursor: pointer;
+}
+
+.solver-panel .slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.solver-panel .slider-container label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #aaa);
+}
+
+.solver-panel .slider {
+  width: 100%;
+  accent-color: var(--color-accent, #0ea5e9);
+}
+
+.solver-panel .slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: var(--color-text-dim, #666);
+}
+
+.solver-panel .freq-input label,
+.solver-panel .freq-sweep label,
+.solver-panel .freq-preset label,
+.solver-panel .solver-options label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #aaa);
+}
+
+.solver-panel input[type="number"],
+.solver-panel select {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border, #333);
+  background: var(--color-elevated, #1a1a1a);
+  color: var(--color-text-primary, #eee);
+  font-size: 0.8125rem;
+  font-family: ui-monospace, monospace;
+}
+
+.solver-panel .freq-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.solver-panel .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-primary, #eee);
+  cursor: pointer;
+}
+
+.solver-panel .control-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.solver-panel .run-button {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--color-accent, #0ea5e9);
+  color: white;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.solver-panel .run-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.solver-panel .cancel-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-error, #ef4444);
+  background: transparent;
+  color: var(--color-error, #ef4444);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.solver-panel .progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.solver-panel .progress-bar {
+  flex: 1;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--color-elevated, #1a1a1a);
+  overflow: hidden;
+}
+
+.solver-panel .progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--color-accent, #0ea5e9);
+  transition: width 0.3s;
+}
+
+.solver-panel .progress-text {
+  font-size: 0.75rem;
+  color: var(--color-text-dim, #666);
+  font-family: ui-monospace, monospace;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.solver-panel .results-section h3 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #aaa);
+  margin-bottom: 0.5rem;
+}
+
+.solver-panel .result-card {
+  border: 1px solid var(--color-border, #333);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-surface, #111);
+}
+
+.solver-panel .result-card h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent, #0ea5e9);
+  margin-bottom: 0.5rem;
+}
+
+.solver-panel .result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
+}
+
+.solver-panel .result-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.solver-panel .result-item .label {
+  color: var(--color-text-dim, #666);
+}
+
+.solver-panel .result-item .value {
+  color: var(--color-text-primary, #eee);
+  font-family: ui-monospace, monospace;
+}
+
+.solver-panel .comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.solver-panel .sweep-summary {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #aaa);
+}
+
+.solver-panel .sweep-summary p {
+  margin: 0.25rem 0;
+}

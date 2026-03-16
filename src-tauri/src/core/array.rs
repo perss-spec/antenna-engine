@@ -1,8 +1,8 @@
 //! Antenna array analysis and array factor computation
 
-use crate::core::element::AntennaElement;
-use crate::core::types::{AntennaError, Result};
-use crate::core::C0;
+use super::element::AntennaElement;
+use super::types::{AntennaError, Result};
+use super::constants::C0;
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;

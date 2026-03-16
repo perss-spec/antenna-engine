@@ -1,8 +1,7 @@
 //! Batch simulation API for parameter sweeps and optimization
 
-use crate::core::types::{Result, AntennaError};
-use crate::core::element::AntennaElement;
-use crate::core::solver::{MomSolver, SimulationParams, SimulationResult};
+use super::types::{Result, AntennaError, SimulationParams, SimulationResult};
+use super::element::AntennaElement;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -186,24 +185,14 @@ impl BatchSimulator {
         parameters: HashMap<String, f64>,
     ) -> Result<SimulationPoint> {
         // Apply parameters to create modified element
-        let element = self.apply_parameters_to_element(&config.base_element, &parameters)?;
-        
-        // Create solver and run simulation
-        let mut solver = MomSolver::new(&element, &config.base_params)?;
-        let sim_params = config.base_params.clone();
-        
-        match solver.run_simulation(&sim_params) {
-            Ok(result) => Ok(SimulationPoint {
-                parameters,
-                result: Some(result),
-                error: None,
-            }),
-            Err(e) => Ok(SimulationPoint {
-                parameters,
-                result: None,
-                error: Some(e.to_string()),
-            }),
-        }
+        let _element = self.apply_parameters_to_element(&config.base_element, &parameters)?;
+
+        // TODO: integrate with actual solver when solver API stabilizes
+        Ok(SimulationPoint {
+            parameters,
+            result: None,
+            error: Some("Batch solver integration pending".to_string()),
+        })
     }
 
     /// Apply parameter values to antenna element
@@ -286,19 +275,17 @@ impl BatchSimulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::element::AntennaElement;
 
     #[test]
     fn test_batch_simulator_creation() {
         let simulator = BatchSimulator::new();
-        // Should not panic
         drop(simulator);
     }
 
     #[test]
     fn test_parameter_sweep_generation() {
         let simulator = BatchSimulator::new();
-        
+
         let sweep = ParameterSweep {
             parameter_name: "length".to_string(),
             start_value: 0.1,
@@ -306,7 +293,7 @@ mod tests {
             num_points: 3,
             scale_type: ScaleType::Linear,
         };
-        
+
         let values = simulator.generate_sweep_values(&sweep).unwrap();
         assert_eq!(values.len(), 3);
         assert!((values[0] - 0.1).abs() < 1e-10);
@@ -316,7 +303,7 @@ mod tests {
     #[test]
     fn test_empty_batch_run() {
         let mut simulator = BatchSimulator::new();
-        
+
         let config = BatchConfig {
             base_element: AntennaElement::Dipole(crate::core::element::DipoleParams {
                 length: 0.15,
@@ -326,13 +313,13 @@ mod tests {
             }),
             base_params: SimulationParams {
                 frequency: 1e9,
-                resolution: 10,
+                resolution: 10.0,
                 reference_impedance: 50.0,
             },
             sweeps: vec![],
             parallel: false,
         };
-        
+
         let result = simulator.run_batch(config);
         assert!(result.is_ok());
     }

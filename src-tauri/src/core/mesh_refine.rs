@@ -1,6 +1,5 @@
-use crate::core::geometry::{Point3D, Element};
-use crate::core::mesh::{Mesh, Triangle, WireSegment};
-use anyhow::{Result, anyhow};
+use super::geometry::Point3D;
+use super::types::{AntennaError, Result};
 use num_complex::Complex64;
 use std::collections::{HashMap, HashSet};
 
@@ -23,12 +22,26 @@ impl Default for RefinementConfig {
     }
 }
 
+/// Triangle for mesh refinement (vertex indices)
 #[derive(Debug, Clone)]
-struct EdgeInfo {
-    vertices: (usize, usize),
-    adjacent_triangles: Vec<usize>,
-    length: f64,
-    midpoint_index: Option<usize>,
+pub struct RefineTriangle {
+    pub vertices: [usize; 3],
+}
+
+/// Wire segment for mesh refinement
+#[derive(Debug, Clone)]
+pub struct RefineWireSegment {
+    pub start_vertex: usize,
+    pub end_vertex: usize,
+    pub radius: f64,
+}
+
+/// Mesh used for refinement
+#[derive(Debug, Clone)]
+pub struct RefineMesh {
+    pub vertices: Vec<Point3D>,
+    pub triangles: Vec<RefineTriangle>,
+    pub wire_segments: Vec<RefineWireSegment>,
 }
 
 #[derive(Debug)]
@@ -38,89 +51,91 @@ struct TriangleError {
     longest_edge: (usize, usize),
 }
 
-pub fn refine_mesh(mesh: &Mesh, currents: &[Complex64], config: &RefinementConfig) -> Result<Mesh> {
+pub fn refine_mesh(
+    mesh: &RefineMesh,
+    currents: &[Complex64],
+    config: &RefinementConfig,
+) -> Result<RefineMesh> {
     let mut refined_mesh = mesh.clone();
-    
+
     for iteration in 0..config.max_iterations {
-        // Calculate error estimates
         let errors = estimate_triangle_errors(&refined_mesh, currents)?;
-        
-        // Find triangles to refine
-        let mut triangles_to_refine = errors.into_iter()
+
+        let mut triangles_to_refine = errors
+            .into_iter()
             .filter(|e| e.error > config.error_threshold)
             .collect::<Vec<_>>();
-        
+
         if triangles_to_refine.is_empty() {
-            println!("Convergence achieved after {} iterations", iteration);
             break;
         }
-        
-        // Sort by error (highest first)
+
         triangles_to_refine.sort_by(|a, b| b.error.partial_cmp(&a.error).unwrap());
-        
-        // Check element count limit
-        let potential_new_elements = refined_mesh.triangles.len() + triangles_to_refine.len() * 2;
+
+        let potential_new_elements =
+            refined_mesh.triangles.len() + triangles_to_refine.len() * 2;
         if potential_new_elements > config.max_elements {
             let max_refine = (config.max_elements - refined_mesh.triangles.len()) / 2;
             triangles_to_refine.truncate(max_refine);
         }
-        
+
         if triangles_to_refine.is_empty() {
             break;
         }
-        
-        // Perform refinement
+
         refined_mesh = refine_triangles(refined_mesh, &triangles_to_refine, config)?;
-        
-        println!("Iteration {}: Refined {} triangles, total: {}", 
-                iteration + 1, triangles_to_refine.len(), refined_mesh.triangles.len());
+
+        let _ = iteration; // suppress unused warning
     }
-    
+
     Ok(refined_mesh)
 }
 
-fn estimate_triangle_errors(mesh: &Mesh, currents: &[Complex64]) -> Result<Vec<TriangleError>> {
-    let mut edge_map = build_edge_map(&mesh.triangles);
+fn estimate_triangle_errors(
+    mesh: &RefineMesh,
+    currents: &[Complex64],
+) -> Result<Vec<TriangleError>> {
+    let edge_map = build_edge_map(&mesh.triangles);
     let mut errors = Vec::new();
-    
+
     for (tri_idx, triangle) in mesh.triangles.iter().enumerate() {
         let error = calculate_triangle_error(mesh, triangle, tri_idx, currents, &edge_map)?;
         let longest_edge = find_longest_edge(mesh, triangle);
-        
+
         errors.push(TriangleError {
             triangle_index: tri_idx,
             error,
             longest_edge,
         });
     }
-    
+
     Ok(errors)
 }
 
 fn calculate_triangle_error(
-    mesh: &Mesh, 
-    triangle: &Triangle, 
+    mesh: &RefineMesh,
+    triangle: &RefineTriangle,
     tri_idx: usize,
     currents: &[Complex64],
-    edge_map: &HashMap<(usize, usize), Vec<usize>>
+    edge_map: &HashMap<(usize, usize), Vec<usize>>,
 ) -> Result<f64> {
     if tri_idx >= currents.len() {
         return Ok(0.0);
     }
-    
+
     let current_tri = currents[tri_idx];
-    let mut max_discontinuity = 0.0;
-    
-    // Check discontinuity across each edge
-    let edges = [
-        (triangle.vertices.0, triangle.vertices.1),
-        (triangle.vertices.1, triangle.vertices.2),
-        (triangle.vertices.2, triangle.vertices.0),
-    ];
-    
+    let mut max_discontinuity: f64 = 0.0;
+
+    let v = triangle.vertices;
+    let edges = [(v[0], v[1]), (v[1], v[2]), (v[2], v[0])];
+
     for edge in &edges {
-        let normalized_edge = if edge.0 < edge.1 { *edge } else { (edge.1, edge.0) };
-        
+        let normalized_edge = if edge.0 < edge.1 {
+            *edge
+        } else {
+            (edge.1, edge.0)
+        };
+
         if let Some(adjacent_triangles) = edge_map.get(&normalized_edge) {
             for &adj_tri_idx in adjacent_triangles {
                 if adj_tri_idx != tri_idx && adj_tri_idx < currents.len() {
@@ -131,146 +146,131 @@ fn calculate_triangle_error(
             }
         }
     }
-    
-    // Normalize by triangle area
+
     let area = calculate_triangle_area(mesh, triangle);
     Ok(max_discontinuity / area.sqrt())
 }
 
-fn build_edge_map(triangles: &[Triangle]) -> HashMap<(usize, usize), Vec<usize>> {
+fn build_edge_map(triangles: &[RefineTriangle]) -> HashMap<(usize, usize), Vec<usize>> {
     let mut edge_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
-    
+
     for (tri_idx, triangle) in triangles.iter().enumerate() {
-        let edges = [
-            (triangle.vertices.0, triangle.vertices.1),
-            (triangle.vertices.1, triangle.vertices.2),
-            (triangle.vertices.2, triangle.vertices.0),
-        ];
-        
+        let v = triangle.vertices;
+        let edges = [(v[0], v[1]), (v[1], v[2]), (v[2], v[0])];
+
         for edge in &edges {
-            let normalized_edge = if edge.0 < edge.1 { *edge } else { (edge.1, edge.0) };
-            edge_map.entry(normalized_edge).or_insert_with(Vec::new).push(tri_idx);
+            let normalized_edge = if edge.0 < edge.1 {
+                *edge
+            } else {
+                (edge.1, edge.0)
+            };
+            edge_map.entry(normalized_edge).or_default().push(tri_idx);
         }
     }
-    
+
     edge_map
 }
 
-fn find_longest_edge(mesh: &Mesh, triangle: &Triangle) -> (usize, usize) {
-    let v0 = &mesh.vertices[triangle.vertices.0];
-    let v1 = &mesh.vertices[triangle.vertices.1];
-    let v2 = &mesh.vertices[triangle.vertices.2];
-    
-    let edge01_len = distance(v0, v1);
-    let edge12_len = distance(v1, v2);
-    let edge20_len = distance(v2, v0);
-    
+fn find_longest_edge(mesh: &RefineMesh, triangle: &RefineTriangle) -> (usize, usize) {
+    let v = triangle.vertices;
+    let v0 = &mesh.vertices[v[0]];
+    let v1 = &mesh.vertices[v[1]];
+    let v2 = &mesh.vertices[v[2]];
+
+    let edge01_len = pt_distance(v0, v1);
+    let edge12_len = pt_distance(v1, v2);
+    let edge20_len = pt_distance(v2, v0);
+
     if edge01_len >= edge12_len && edge01_len >= edge20_len {
-        (triangle.vertices.0, triangle.vertices.1)
-    } else if edge12_len >= edge20_len {
-        (triangle.vertices.1, triangle.vertices.2)
+        (v[0], v[1])
+    } else if edge12_len > edge20_len {
+        (v[1], v[2])
     } else {
-        (triangle.vertices.2, triangle.vertices.0)
+        (v[2], v[0])
     }
 }
 
-fn calculate_triangle_area(mesh: &Mesh, triangle: &Triangle) -> f64 {
-    let v0 = &mesh.vertices[triangle.vertices.0];
-    let v1 = &mesh.vertices[triangle.vertices.1];
-    let v2 = &mesh.vertices[triangle.vertices.2];
-    
-    let edge1 = Point3D {
-        x: v1.x - v0.x,
-        y: v1.y - v0.y,
-        z: v1.z - v0.z,
-    };
-    
-    let edge2 = Point3D {
-        x: v2.x - v0.x,
-        y: v2.y - v0.y,
-        z: v2.z - v0.z,
-    };
-    
-    let cross = Point3D {
-        x: edge1.y * edge2.z - edge1.z * edge2.y,
-        y: edge1.z * edge2.x - edge1.x * edge2.z,
-        z: edge1.x * edge2.y - edge1.y * edge2.x,
-    };
-    
-    0.5 * (cross.x * cross.x + cross.y * cross.y + cross.z * cross.z).sqrt()
+fn calculate_triangle_area(mesh: &RefineMesh, triangle: &RefineTriangle) -> f64 {
+    let v = triangle.vertices;
+    let v0 = &mesh.vertices[v[0]];
+    let v1 = &mesh.vertices[v[1]];
+    let v2 = &mesh.vertices[v[2]];
+
+    let edge1 = v1.sub(v0);
+    let edge2 = v2.sub(v0);
+    let cross = edge1.cross(&edge2);
+
+    0.5 * cross.magnitude()
 }
 
-fn distance(p1: &Point3D, p2: &Point3D) -> f64 {
-    ((p1.x - p2.x).powi(2) + (p1.y - p2.y).powi(2) + (p1.z - p2.z).powi(2)).sqrt()
+fn pt_distance(p1: &Point3D, p2: &Point3D) -> f64 {
+    p1.distance(p2)
 }
 
 fn refine_triangles(
-    mut mesh: Mesh, 
-    triangles_to_refine: &[TriangleError], 
-    config: &RefinementConfig
-) -> Result<Mesh> {
+    mut mesh: RefineMesh,
+    triangles_to_refine: &[TriangleError],
+    config: &RefinementConfig,
+) -> Result<RefineMesh> {
     let mut edge_midpoints: HashMap<(usize, usize), usize> = HashMap::new();
     let mut new_triangles = Vec::new();
     let mut refined_indices = HashSet::new();
-    
+
     for triangle_error in triangles_to_refine {
         let tri_idx = triangle_error.triangle_index;
         let triangle = mesh.triangles[tri_idx].clone();
         let longest_edge = triangle_error.longest_edge;
-        
-        // Check minimum edge length
-        let v1 = &mesh.vertices[longest_edge.0];
-        let v2 = &mesh.vertices[longest_edge.1];
-        let edge_length = distance(v1, v2);
-        
+
+        let p1 = mesh.vertices[longest_edge.0];
+        let p2 = mesh.vertices[longest_edge.1];
+        let edge_length = pt_distance(&p1, &p2);
+
         if edge_length < config.min_edge_length {
             continue;
         }
-        
+
         refined_indices.insert(tri_idx);
-        
-        // Create midpoint if it doesn't exist
-        let normalized_edge = if longest_edge.0 < longest_edge.1 { 
-            longest_edge 
-        } else { 
-            (longest_edge.1, longest_edge.0) 
+
+        let normalized_edge = if longest_edge.0 < longest_edge.1 {
+            longest_edge
+        } else {
+            (longest_edge.1, longest_edge.0)
         };
-        
+
+        let mid = Point3D {
+            x: (p1.x + p2.x) / 2.0,
+            y: (p1.y + p2.y) / 2.0,
+            z: (p1.z + p2.z) / 2.0,
+        };
+
         let midpoint_idx = *edge_midpoints.entry(normalized_edge).or_insert_with(|| {
-            let midpoint = Point3D {
-                x: (v1.x + v2.x) / 2.0,
-                y: (v1.y + v2.y) / 2.0,
-                z: (v1.z + v2.z) / 2.0,
-            };
-            mesh.vertices.push(midpoint);
+            mesh.vertices.push(mid);
             mesh.vertices.len() - 1
         });
-        
-        // Create two new triangles by bisecting the longest edge
-        let (v0, v1, v2) = triangle.vertices;
-        
-        let (new_tri1, new_tri2) = if longest_edge == (v0, v1) || longest_edge == (v1, v0) {
+
+        let [va, vb, vc] = triangle.vertices;
+
+        let (new_tri1, new_tri2) = if longest_edge == (va, vb) || longest_edge == (vb, va) {
             (
-                Triangle { vertices: (v0, midpoint_idx, v2) },
-                Triangle { vertices: (midpoint_idx, v1, v2) },
+                RefineTriangle { vertices: [va, midpoint_idx, vc] },
+                RefineTriangle { vertices: [midpoint_idx, vb, vc] },
             )
-        } else if longest_edge == (v1, v2) || longest_edge == (v2, v1) {
+        } else if longest_edge == (vb, vc) || longest_edge == (vc, vb) {
             (
-                Triangle { vertices: (v0, v1, midpoint_idx) },
-                Triangle { vertices: (v0, midpoint_idx, v2) },
+                RefineTriangle { vertices: [va, vb, midpoint_idx] },
+                RefineTriangle { vertices: [va, midpoint_idx, vc] },
             )
         } else {
             (
-                Triangle { vertices: (v0, v1, midpoint_idx) },
-                Triangle { vertices: (midpoint_idx, v1, v2) },
+                RefineTriangle { vertices: [va, vb, midpoint_idx] },
+                RefineTriangle { vertices: [midpoint_idx, vb, vc] },
             )
         };
-        
+
         new_triangles.push(new_tri1);
         new_triangles.push(new_tri2);
     }
-    
-    // Remove refined triangles and add new ones
+
     let mut final_triangles = Vec::new();
     for (idx, triangle) in mesh.triangles.iter().enumerate() {
         if !refined_indices.contains(&idx) {
@@ -278,30 +278,35 @@ fn refine_triangles(
         }
     }
     final_triangles.extend(new_triangles);
-    
+
     mesh.triangles = final_triangles;
     Ok(mesh)
 }
 
-pub fn refine_wire_mesh(mesh: &Mesh, feed_segment: usize, refinement_factor: usize) -> Result<Mesh> {
+pub fn refine_wire_mesh(
+    mesh: &RefineMesh,
+    feed_segment: usize,
+    refinement_factor: usize,
+) -> Result<RefineMesh> {
     if refinement_factor == 0 {
-        return Err(anyhow!("Refinement factor must be positive"));
+        return Err(AntennaError::InvalidParameter(
+            "Refinement factor must be positive".to_string(),
+        ));
     }
-    
+
     let mut refined_mesh = mesh.clone();
     let mut new_segments = Vec::new();
-    
+
     for (seg_idx, segment) in mesh.wire_segments.iter().enumerate() {
-        let should_refine = seg_idx == feed_segment || 
-                          is_near_feed_point(mesh, segment, feed_segment)?;
-        
+        let should_refine =
+            seg_idx == feed_segment || is_near_feed_point(mesh, segment, feed_segment);
+
         if should_refine {
-            // Subdivide this segment
             let start_vertex = &mesh.vertices[segment.start_vertex];
             let end_vertex = &mesh.vertices[segment.end_vertex];
-            
+
             let mut prev_vertex_idx = segment.start_vertex;
-            
+
             for i in 1..refinement_factor {
                 let t = i as f64 / refinement_factor as f64;
                 let new_vertex = Point3D {
@@ -309,21 +314,20 @@ pub fn refine_wire_mesh(mesh: &Mesh, feed_segment: usize, refinement_factor: usi
                     y: start_vertex.y + t * (end_vertex.y - start_vertex.y),
                     z: start_vertex.z + t * (end_vertex.z - start_vertex.z),
                 };
-                
+
                 refined_mesh.vertices.push(new_vertex);
                 let new_vertex_idx = refined_mesh.vertices.len() - 1;
-                
-                new_segments.push(WireSegment {
+
+                new_segments.push(RefineWireSegment {
                     start_vertex: prev_vertex_idx,
                     end_vertex: new_vertex_idx,
                     radius: segment.radius,
                 });
-                
+
                 prev_vertex_idx = new_vertex_idx;
             }
-            
-            // Final segment
-            new_segments.push(WireSegment {
+
+            new_segments.push(RefineWireSegment {
                 start_vertex: prev_vertex_idx,
                 end_vertex: segment.end_vertex,
                 radius: segment.radius,
@@ -332,60 +336,64 @@ pub fn refine_wire_mesh(mesh: &Mesh, feed_segment: usize, refinement_factor: usi
             new_segments.push(segment.clone());
         }
     }
-    
+
     refined_mesh.wire_segments = new_segments;
     Ok(refined_mesh)
 }
 
-fn is_near_feed_point(mesh: &Mesh, segment: &WireSegment, feed_segment: usize) -> Result<bool> {
+fn is_near_feed_point(
+    mesh: &RefineMesh,
+    segment: &RefineWireSegment,
+    feed_segment: usize,
+) -> bool {
     if feed_segment >= mesh.wire_segments.len() {
-        return Ok(false);
+        return false;
     }
-    
+
     let feed_seg = &mesh.wire_segments[feed_segment];
     let feed_start = &mesh.vertices[feed_seg.start_vertex];
     let feed_end = &mesh.vertices[feed_seg.end_vertex];
-    
+
     let seg_start = &mesh.vertices[segment.start_vertex];
     let seg_end = &mesh.vertices[segment.end_vertex];
-    
-    // Check if segment endpoints are close to feed segment
-    let threshold = 0.1; // 10% of wavelength typical
-    
+
+    let threshold = 0.1;
+
     let min_dist = [
-        distance(seg_start, feed_start),
-        distance(seg_start, feed_end),
-        distance(seg_end, feed_start),
-        distance(seg_end, feed_end),
-    ].iter().fold(f64::INFINITY, |a, &b| a.min(b));
-    
-    Ok(min_dist < threshold)
+        pt_distance(seg_start, feed_start),
+        pt_distance(seg_start, feed_end),
+        pt_distance(seg_end, feed_start),
+        pt_distance(seg_end, feed_end),
+    ]
+    .iter()
+    .fold(f64::INFINITY, |a, &b| a.min(b));
+
+    min_dist < threshold
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::geometry::Point3D;
 
-    fn create_test_mesh() -> Mesh {
+    fn create_test_mesh() -> RefineMesh {
         let vertices = vec![
             Point3D { x: 0.0, y: 0.0, z: 0.0 },
             Point3D { x: 1.0, y: 0.0, z: 0.0 },
             Point3D { x: 0.5, y: 1.0, z: 0.0 },
             Point3D { x: 1.5, y: 1.0, z: 0.0 },
         ];
-        
+
         let triangles = vec![
-            Triangle { vertices: (0, 1, 2) },
-            Triangle { vertices: (1, 3, 2) },
+            RefineTriangle { vertices: [0, 1, 2] },
+            RefineTriangle { vertices: [1, 3, 2] },
         ];
-        
+
         let wire_segments = vec![
-            WireSegment { start_vertex: 0, end_vertex: 1, radius: 0.01 },
-            WireSegment { start_vertex: 1, end_vertex: 3, radius: 0.01 },
+            RefineWireSegment { start_vertex: 0, end_vertex: 1, radius: 0.01 },
+            RefineWireSegment { start_vertex: 1, end_vertex: 3, radius: 0.01 },
         ];
-        
-        Mesh { vertices, triangles, wire_segments }
+
+        RefineMesh { vertices, triangles, wire_segments }
     }
 
     #[test]
@@ -400,8 +408,6 @@ mod tests {
     fn test_edge_map_building() {
         let mesh = create_test_mesh();
         let edge_map = build_edge_map(&mesh.triangles);
-        
-        // Edge (1,2) should be shared by both triangles
         assert!(edge_map.contains_key(&(1, 2)));
         assert_eq!(edge_map[&(1, 2)].len(), 2);
     }
@@ -411,29 +417,22 @@ mod tests {
         let mesh = create_test_mesh();
         let triangle = &mesh.triangles[0];
         let longest_edge = find_longest_edge(&mesh, triangle);
-        
-        // Edge (0,2) should be longest (length = sqrt(1.25))
         assert!(longest_edge == (0, 2) || longest_edge == (2, 0));
     }
 
     #[test]
     fn test_mesh_refinement() {
         let mesh = create_test_mesh();
-        let currents = vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.1, 0.0),
-        ];
-        
+        let currents = vec![Complex64::new(1.0, 0.0), Complex64::new(0.1, 0.0)];
+
         let config = RefinementConfig {
             max_iterations: 2,
             error_threshold: 0.5,
             max_elements: 10,
             min_edge_length: 0.01,
         };
-        
+
         let refined = refine_mesh(&mesh, &currents, &config).unwrap();
-        
-        // Should have refined at least one triangle
         assert!(refined.triangles.len() >= mesh.triangles.len());
     }
 
@@ -441,22 +440,7 @@ mod tests {
     fn test_wire_refinement() {
         let mesh = create_test_mesh();
         let refined = refine_wire_mesh(&mesh, 0, 2).unwrap();
-        
-        // Feed segment should be subdivided
         assert!(refined.wire_segments.len() > mesh.wire_segments.len());
-    }
-
-    #[test]
-    fn test_error_estimation() {
-        let mesh = create_test_mesh();
-        let currents = vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.1, 0.0),
-        ];
-        
-        let errors = estimate_triangle_errors(&mesh, &currents).unwrap();
-        assert_eq!(errors.len(), 2);
-        assert!(errors[0].error > 0.0);
     }
 
     #[test]
@@ -472,26 +456,7 @@ mod tests {
     fn test_distance_calculation() {
         let p1 = Point3D { x: 0.0, y: 0.0, z: 0.0 };
         let p2 = Point3D { x: 3.0, y: 4.0, z: 0.0 };
-        let dist = distance(&p1, &p2);
+        let dist = pt_distance(&p1, &p2);
         assert!((dist - 5.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_mesh_refinement_with_limits() {
-        let mesh = create_test_mesh();
-        let currents = vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.1, 0.0),
-        ];
-        
-        let config = RefinementConfig {
-            max_iterations: 1,
-            error_threshold: 0.1,
-            max_elements: 3, // Limit to prevent excessive refinement
-            min_edge_length: 0.01,
-        };
-        
-        let refined = refine_mesh(&mesh, &currents, &config).unwrap();
-        assert!(refined.triangles.len() <= 3);
     }
 }

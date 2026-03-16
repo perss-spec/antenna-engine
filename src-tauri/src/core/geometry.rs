@@ -55,6 +55,18 @@ impl Point3D {
     pub fn normalize(&self) -> Self {
         self.normalized()
     }
+
+    pub fn magnitude(&self) -> f64 {
+        self.norm()
+    }
+
+    pub fn cross(&self, other: &Point3D) -> Point3D {
+        Point3D::new(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
+    }
 }
 
 impl std::ops::Sub for Point3D {
@@ -68,6 +80,34 @@ impl std::ops::Sub for &Point3D {
     type Output = Point3D;
     fn sub(self, rhs: &Point3D) -> Point3D {
         Point3D::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl std::ops::Add for Point3D {
+    type Output = Point3D;
+    fn add(self, rhs: Point3D) -> Point3D {
+        Point3D::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl std::ops::Add for &Point3D {
+    type Output = Point3D;
+    fn add(self, rhs: &Point3D) -> Point3D {
+        Point3D::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl std::ops::Mul<f64> for Point3D {
+    type Output = Point3D;
+    fn mul(self, rhs: f64) -> Point3D {
+        Point3D::new(self.x * rhs, self.y * rhs, self.z * rhs)
+    }
+}
+
+impl std::ops::Mul<f64> for &Point3D {
+    type Output = Point3D;
+    fn mul(self, rhs: f64) -> Point3D {
+        Point3D::new(self.x * rhs, self.y * rhs, self.z * rhs)
     }
 }
 

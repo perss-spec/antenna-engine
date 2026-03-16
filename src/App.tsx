@@ -17,6 +17,12 @@ import ExportPanel from './components/ExportPanel/ExportPanel';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LandingPage } from '@/components/landing/LandingPage';
+import FileImport from './components/FileImport/FileImport';
+import { SolverPanel } from './components/SolverPanel/SolverPanel';
+import type { SimulationResult as EMSimResult, SweepResult } from './components/SolverPanel/SolverPanel';
+import { MeshViewer } from './viewport/MeshViewer';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 
 // Category-based impedance solver
 function solveByCategory(
@@ -267,6 +273,15 @@ function App() {
   const [impedanceData, setImpedanceData] = useState<{ real: number[]; imag: number[]; freq: number[] }>({ real: [], imag: [], freq: [] });
   const [s11Data, setS11Data] = useState<{ real: number[]; imag: number[] }>({ real: [], imag: [] });
   const [activeTab, setActiveTab] = useState('s-parameters');
+
+  // EM Solver state
+  const [importedMesh, setImportedMesh] = useState<{
+    vertices: number; triangles: number; segments: number;
+    file_path: string; file_name: string; file_size: number; format: string;
+  } | null>(null);
+  const [meshViewMode, setMeshViewMode] = useState<'wireframe' | 'solid' | 'transparent'>('solid');
+  const [_emResult, setEmResult] = useState<EMSimResult | null>(null);
+  const [_emSweepResult, setEmSweepResult] = useState<SweepResult | null>(null);
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
@@ -626,6 +641,29 @@ function App() {
                   results={optimizationResults}
                 />
               </SidebarSection>
+
+              <SidebarSection title="Import CAD">
+                <div className="px-2">
+                  <FileImport
+                    onMeshImported={(mesh) => {
+                      setImportedMesh(mesh);
+                      setActiveTab('mesh');
+                    }}
+                    onError={(err) => setError(err)}
+                  />
+                </div>
+              </SidebarSection>
+
+              <SidebarSection title="EM Solver">
+                <div className="px-2">
+                  <SolverPanel
+                    antennaType={params.antennaType}
+                    antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
+                    onSolveComplete={(r) => setEmResult(r)}
+                    onSweepComplete={(r) => setEmSweepResult(r)}
+                  />
+                </div>
+              </SidebarSection>
             </div>
           </div>
         </Panel>
@@ -652,6 +690,7 @@ function App() {
                     <TabsTrigger value="3d-view">3D View</TabsTrigger>
                     <TabsTrigger value="radiation">Radiation</TabsTrigger>
                     <TabsTrigger value="history">History</TabsTrigger>
+                    {importedMesh && <TabsTrigger value="mesh">Mesh</TabsTrigger>}
                   </TabsList>
 
                   <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4">
@@ -725,6 +764,35 @@ function App() {
                       className="flex-1"
                     />
                   </TabsContent>
+
+                  {importedMesh && (
+                    <TabsContent value="mesh" className="flex-1 flex flex-col">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-[13px] text-text-muted">{importedMesh.file_name}</span>
+                        <Badge variant="default">{importedMesh.format}</Badge>
+                        <span className="text-[12px] text-text-dim tabular-nums">
+                          {importedMesh.vertices.toLocaleString()} verts, {importedMesh.triangles.toLocaleString()} tris
+                        </span>
+                        <div className="ml-auto flex gap-1">
+                          {(['wireframe', 'solid', 'transparent'] as const).map(m => (
+                            <button
+                              key={m}
+                              onClick={() => setMeshViewMode(m)}
+                              className={`px-2 py-1 text-[11px] rounded ${meshViewMode === m ? 'bg-accent text-white' : 'bg-elevated text-text-dim hover:text-text-muted'}`}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-surface border border-border rounded-xl flex-1 min-h-[400px] overflow-hidden">
+                        <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
+                          <MeshViewer mesh={null} mode={meshViewMode} showQuality={false} />
+                          <OrbitControls />
+                        </Canvas>
+                      </div>
+                    </TabsContent>
+                  )}
                 </Tabs>
               ) : (
                 /* Empty state */

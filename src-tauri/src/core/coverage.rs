@@ -1,8 +1,7 @@
 //! Parameter space coverage analysis for optimization and design space exploration
 
-use crate::core::types::{Result, AntennaError};
-use crate::core::batch::{BatchResult, SimulationPoint};
-use crate::core::solver::SimulationResult;
+use super::types::{Result, AntennaError, SimulationResult};
+use super::batch::{BatchResult, SimulationPoint};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
