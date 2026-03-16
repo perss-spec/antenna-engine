@@ -1,10 +1,19 @@
 {
   "phases": {
     "preflight": {
-      "status": "failed",
-      "attempts": 3,
-      "result": null,
-      "lastError": "{\"checks\":{\"cargo\":\"FAIL:    Compiling antenna-engine v0.1.0 (/mnt/d/NAS-DATA/antenna-engine/src-tauri)\\nerror[E0583]: file not found for module `materials`\\n --> src-tauri/src/core/mod.rs:2:1\\n  |\\n2 | pub mod materials;\\n  | ^^^^\",\"tsc\":\"FAIL: src/lib/stepLoader.ts(1,24): error TS2307: Cannot find module '@tauri-apps/api/tauri' or its corresponding type declarations.\\n\",\"python\":\"OK\",\"git\":\"DIRTY:  M .claude/em-pipeline-state.json\\n\"},\"status\":\"failed\",\"phase\":\"preflight\"}"
+      "status": "complete",
+      "attempts": 0,
+      "result": {
+        "checks": {
+          "cargo": "OK",
+          "tsc": "OK",
+          "python": "OK",
+          "git": "DIRTY:  M .claude/em-pipeline-state.json\n"
+        },
+        "status": "complete",
+        "phase": "preflight"
+      },
+      "completedAt": "2026-03-16T21:56:38.037Z"
     },
     "cad-import": {
       "status": "pending",
@@ -37,7 +46,7 @@
       "result": null
     }
   },
-  "currentPhase": "preflight",
+  "currentPhase": "cad-import",
   "startedAt": null,
   "maxRetries": 3,
   "initialCommit": null
