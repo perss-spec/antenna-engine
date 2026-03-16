@@ -1,12 +1,13 @@
 pub mod geometry;
-pub mod parsers;
+pub mod mesh_processing;
+pub mod stl;
+pub mod nec;
+pub mod nastran;
 pub mod import;
-pub mod analysis;
-pub mod export;
 
 pub use geometry::*;
+pub use mesh_processing::*;
+pub use stl::*;
+pub use nec::*;
+pub use nastran::*;
 pub use import::*;
-
-// Re-export commonly used types
-pub use crate::core::geometry::{Mesh, Vertex, Face, Vec3, Material, BoundingBox};
-pub use crate::core::import::{ImportFormat, ImportedModel, ImportMetadata, import_file, detect_format};
