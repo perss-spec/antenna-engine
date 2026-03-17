@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { useT } from '@/lib/i18n';
 
 interface OptimizationResult {
   iteration: number;
@@ -44,6 +45,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   results = [],
   className = '',
 }) => {
+  const { t } = useT();
   const [targetFrequency, setTargetFrequency] = useState<number>(2400);
   const [targetS11, setTargetS11] = useState<number>(-20);
   const [method, setMethod] = useState<'gradient' | 'random' | 'nelder_mead'>('gradient');
@@ -133,7 +135,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
         {/* Targets */}
         <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-base p-3">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="target-frequency" className="text-xs font-medium text-text-muted">Freq (MHz)</Label>
+            <Label htmlFor="target-frequency" className="text-xs font-medium text-text-muted">{t('opt.freqMhz')}</Label>
             <Input
               id="target-frequency"
               type="number"
@@ -147,7 +149,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="target-s11" className="text-xs font-medium text-text-muted">S11 (dB)</Label>
+            <Label htmlFor="target-s11" className="text-xs font-medium text-text-muted">{t('opt.s11Db')}</Label>
             <Input
               id="target-s11"
               type="number"
@@ -161,7 +163,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="opt-method" className="text-xs font-medium text-text-muted">Method</Label>
+            <Label htmlFor="opt-method" className="text-xs font-medium text-text-muted">{t('opt.method')}</Label>
             <Select
               id="opt-method"
               value={method}
@@ -169,9 +171,9 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               disabled={isOptimizing}
               className="h-10 text-sm focus-visible:ring-accent/50"
             >
-              <option value="gradient">Gradient</option>
-              <option value="random">Random</option>
-              <option value="nelder_mead">Nelder-Mead</option>
+              <option value="gradient">{t('opt.gradient')}</option>
+              <option value="random">{t('opt.random')}</option>
+              <option value="nelder_mead">{t('opt.nelderMead')}</option>
             </Select>
           </div>
         </div>
@@ -196,7 +198,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               type="submit"
               className="h-10 text-sm bg-accent hover:bg-accent-hover text-white px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
             >
-              Optimize
+              {t('opt.optimize')}
             </Button>
           ) : (
             <Button
@@ -205,14 +207,14 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               onClick={handleStop}
               className="h-10 text-sm px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
             >
-              Stop
+              {t('opt.stop')}
             </Button>
           )}
 
           {isOptimizing && (
             <div className="flex-1">
               <div className="flex justify-between text-[10px] text-text-dim mb-0.5">
-                <span>Progress</span>
+                <span>{t('opt.progress')}</span>
                 <span className="tabular-nums">{progress.toFixed(0)}%</span>
               </div>
               <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
@@ -223,7 +225,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
 
           {bestResult && !isOptimizing && (
             <span className="text-xs text-success font-medium tabular-nums ml-auto h-7 px-3 inline-flex items-center bg-success/10 rounded-md">
-              Best: {bestResult.s11.toFixed(1)} dB
+              {t('opt.best')} {bestResult.s11.toFixed(1)} dB
             </span>
           )}
         </div>

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trash2, History, RotateCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 
 import type { AntennaParameters } from '@/components/AntennaForm/AntennaForm';
 
@@ -58,6 +59,7 @@ const useSimulationHistory = () => {
 };
 
 const SimulationHistory: FC<SimulationHistoryProps> = ({ onLoadHistory, className }) => {
+  const { t } = useT();
   const { history, removeHistoryItem, clearHistory } = useSimulationHistory();
 
   const sortedHistory = useMemo(() => {
@@ -75,19 +77,19 @@ const SimulationHistory: FC<SimulationHistoryProps> = ({ onLoadHistory, classNam
       <CardHeader className="flex flex-row items-center justify-between p-3 border-b border-border">
         <CardTitle className="flex items-center gap-2">
           <History className="h-3 w-3" />
-          Simulation History
+          {t('history.title')}
         </CardTitle>
         {history.length > 0 && (
           <Button variant="ghost" size="sm" onClick={clearHistory} className="h-7 text-xs px-2">
-            Clear All
+            {t('history.clearAll')}
           </Button>
         )}
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-3">
         {sortedHistory.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-text-muted">No simulation history.</p>
-            <p className="text-xs text-text-dim mt-1">Run a simulation to see it here.</p>
+            <p className="text-sm text-text-muted">{t('history.empty')}</p>
+            <p className="text-xs text-text-dim mt-1">{t('history.emptyHint')}</p>
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -100,7 +102,7 @@ const SimulationHistory: FC<SimulationHistoryProps> = ({ onLoadHistory, classNam
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="sm" onClick={() => onLoadHistory(item)} className="h-7 text-xs px-2 gap-1">
                       <RotateCw className="h-3 w-3"/>
-                      Load
+                      {t('history.load')}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => removeHistoryItem(item.id)} className="h-7 w-7 p-0 text-text-muted hover:text-error">
                        <Trash2 className="h-3.5 w-3.5" />

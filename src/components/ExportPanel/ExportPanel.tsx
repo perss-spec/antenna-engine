@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 
 export interface ExportPanelProps {
   frequencies: number[];
@@ -142,6 +143,7 @@ const ExportPanel: FC<ExportPanelProps> = ({
   disabled = false,
   className,
 }) => {
+  const { t } = useT();
   const [s1pFormat, setS1pFormat] = useState<S1PFormat>('RI');
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('MHz');
   const [showSettings, setShowSettings] = useState(false);
@@ -171,11 +173,11 @@ const ExportPanel: FC<ExportPanelProps> = ({
       <div className="flex items-center gap-2">
         <Button onClick={handleExportS1P} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1">
           <Download className="h-3 w-3 mr-1.5" />
-          Export S1P
+          {t('export.s1p')}
         </Button>
         <Button onClick={handleExportCSV} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1">
           <Download className="h-3 w-3 mr-1.5" />
-          Export CSV
+          {t('export.csv')}
         </Button>
         <Button 
           onClick={() => setShowSettings(!showSettings)} 
@@ -190,21 +192,21 @@ const ExportPanel: FC<ExportPanelProps> = ({
       {showSettings && (
         <div className="p-3 border border-border rounded-lg bg-surface space-y-3" style={{ animation: 'fadeIn 0.15s ease-out' }}>
           <div className="space-y-1.5">
-            <Label className="text-xs">S1P Format</Label>
+            <Label className="text-xs">{t('export.s1pFormat')}</Label>
             <Select
               value={s1pFormat}
               onChange={(e) => setS1pFormat(e.target.value as S1PFormat)}
               size="sm"
               className="w-full"
             >
-              <option value="RI">Real/Imaginary</option>
-              <option value="MA">Magnitude/Angle</option>
-              <option value="DB">dB/Angle</option>
+              <option value="RI">{t('export.ri')}</option>
+              <option value="MA">{t('export.ma')}</option>
+              <option value="DB">{t('export.dbAngle')}</option>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Frequency Unit</Label>
+            <Label className="text-xs">{t('export.freqUnit')}</Label>
             <Select
               value={frequencyUnit}
               onChange={(e) => setFrequencyUnit(e.target.value as FrequencyUnit)}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import type { AntennaType } from '@/components/AntennaForm/AntennaForm';
 import { getCategoryForId } from '@/lib/antennaKB';
 import type { AntennaCategory } from '@/lib/antennaKB';
+import { useT } from '@/lib/i18n';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 
@@ -137,6 +138,7 @@ function getChartColor(index: number): string {
 }
 
 export function RadiationPatternView({ antennaType, frequency, patternData }: RadiationPatternViewProps) {
+  const { t } = useT();
   const [pattern, setPattern] = useState<number[][] | null>(null);
   const [maxGain, setMaxGain] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -182,10 +184,10 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
     <div className="flex flex-col gap-3 flex-1">
       <div className="flex items-center justify-between">
         <div className="flex gap-2 items-center">
-          <span className="text-sm font-semibold text-text-primary">3D Radiation Pattern</span>
+          <span className="text-sm font-semibold text-text-primary">{t('radiation.title')}</span>
           {maxGain > -Infinity && (
             <span className="text-xs text-text-dim font-mono">
-              Max Gain: {maxGain.toFixed(1)} dBi
+              {t('radiation.maxGain')} {maxGain.toFixed(1)} dBi
             </span>
           )}
         </div>
@@ -195,7 +197,7 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
             size="sm"
             onClick={() => setWireframe(!wireframe)}
           >
-            Wireframe
+            {t('radiation.wireframe')}
           </Button>
           <Button
             variant="outline"
@@ -203,7 +205,7 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
             onClick={computePattern}
             disabled={loading}
           >
-            {loading ? 'Computing...' : 'Refresh'}
+            {loading ? t('radiation.computing') : t('radiation.refresh')}
           </Button>
         </div>
       </div>
@@ -234,9 +236,9 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                 </svg>
-                <span>Computing radiation pattern...</span>
+                <span>{t('radiation.computingPattern')}</span>
               </>
-            ) : 'No pattern data'}
+            ) : t('radiation.noData')}
           </div>
         )}
       </div>
@@ -245,15 +247,15 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
       <div className="flex items-center gap-4 text-xs text-text-dim">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ background: getChartColor(1) }} />
-          <span>High Gain</span>
+          <span>{t('radiation.highGain')}</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ background: getChartColor(2) }} />
-          <span>Mid</span>
+          <span>{t('radiation.mid')}</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ background: getChartColor(3) }} />
-          <span>Low Gain</span>
+          <span>{t('radiation.lowGain')}</span>
         </div>
         <span className="ml-auto font-mono">Theta: 0-180, Phi: 0-360</span>
       </div>

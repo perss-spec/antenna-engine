@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Upload, FileText, CheckCircle, Clock, BarChart3 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 interface MeshData {
   vertices: number;
@@ -33,6 +34,7 @@ interface FileHistoryItem {
 const SUPPORTED_FORMATS = ['.stl', '.nec', '.nas', '.nastran', '.step', '.stp'];
 
 export default function FileImport({ onMeshImported, onError }: FileImportProps) {
+  const { t } = useT();
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -164,10 +166,10 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Import CAD File</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t('import.title')}</h3>
         <div className="flex items-center text-sm text-gray-500">
           <FileText className="w-4 h-4 mr-1" />
-          Supports: STL, NEC, NASTRAN, STEP
+          {t('import.supports')}
         </div>
       </div>
 
@@ -201,7 +203,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-900">
-                Importing {currentFile}...
+                {t('import.importing')} {currentFile}...
               </p>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
@@ -210,7 +212,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
                 />
               </div>
               <p className="text-xs text-gray-500">
-                {Math.round(importProgress)}% complete
+                {Math.round(importProgress)}% {t('import.complete')}
               </p>
             </div>
           </div>
@@ -221,10 +223,10 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
             </div>
             <div>
               <p className="text-lg font-medium text-gray-900 mb-2">
-                Drop your CAD file here
+                {t('import.dropHere')}
               </p>
               <p className="text-sm text-gray-500">
-                or <span className="text-blue-600 font-medium cursor-pointer">browse files</span>
+                {t('import.or')} <span className="text-blue-600 font-medium cursor-pointer">{t('import.browseFiles')}</span>
               </p>
             </div>
           </div>
@@ -237,7 +239,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-              <h4 className="font-medium text-green-900">Import Successful</h4>
+              <h4 className="font-medium text-green-900">{t('import.success')}</h4>
             </div>
             <span className="text-sm text-green-700">{lastImported.format}</span>
           </div>
@@ -246,19 +248,19 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
               <div className="font-semibold text-green-900">
                 {lastImported.vertices.toLocaleString()}
               </div>
-              <div className="text-green-700">Vertices</div>
+              <div className="text-green-700">{t('import.vertices')}</div>
             </div>
             <div className="text-center">
               <div className="font-semibold text-green-900">
                 {lastImported.triangles.toLocaleString()}
               </div>
-              <div className="text-green-700">Triangles</div>
+              <div className="text-green-700">{t('import.triangles')}</div>
             </div>
             <div className="text-center">
               <div className="font-semibold text-green-900">
                 {lastImported.segments.toLocaleString()}
               </div>
-              <div className="text-green-700">Segments</div>
+              <div className="text-green-700">{t('import.segments')}</div>
             </div>
           </div>
         </div>
@@ -269,7 +271,7 @@ export default function FileImport({ onMeshImported, onError }: FileImportProps)
         <div className="space-y-3">
           <div className="flex items-center">
             <Clock className="w-4 h-4 text-gray-500 mr-2" />
-            <h4 className="font-medium text-gray-900">Recent Imports</h4>
+            <h4 className="font-medium text-gray-900">{t('import.recentImports')}</h4>
           </div>
           <div className="space-y-2">
             {fileHistory.map((item) => (

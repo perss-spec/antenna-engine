@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 import { AntennaPreview } from '@/components/AntennaPreview/AntennaPreview';
 import {
   ANTENNA_PRESETS,
@@ -102,6 +103,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
   isSimulating = false,
   className,
 }) => {
+  const { t } = useT();
   const [localParams, setLocalParams] = useState<AntennaParameters>(parameters);
 
   useEffect(() => {
@@ -188,7 +190,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
         {/* Antenna Type */}
         <div className="px-5 py-5 flex flex-col gap-6">
           <div className="flex flex-col gap-3">
-            <Label htmlFor="antennaType" className="text-xs font-medium text-text-muted">Antenna Type</Label>
+            <Label htmlFor="antennaType" className="text-xs font-medium text-text-muted">{t('form.antennaType')}</Label>
             <Select
               id="antennaType"
               value={localParams.antennaType}
@@ -230,7 +232,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
           {/* Core Parameters */}
           <div className="flex flex-col gap-3">
-            <FieldRow label="Frequency" htmlFor="frequency" unit="MHz">
+            <FieldRow label={t('form.frequency')} htmlFor="frequency" unit="MHz">
               <Input
                 id="frequency"
                 type="number"
@@ -247,7 +249,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
             {showWireParams && (
               <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Length" htmlFor="length" unit="mm">
+                <FieldRow label={t('form.length')} htmlFor="length" unit="mm">
                   <Input
                     id="length"
                     type="number"
@@ -260,7 +262,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     className="h-10 text-sm"
                   />
                 </FieldRow>
-                <FieldRow label="Radius" htmlFor="radius" unit="mm">
+                <FieldRow label={t('form.radius')} htmlFor="radius" unit="mm">
                   <Input
                     id="radius"
                     type="number"
@@ -278,7 +280,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
             {showPatchParams && (
               <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Width" htmlFor="patchWidth" unit="mm">
+                <FieldRow label={t('form.width')} htmlFor="patchWidth" unit="mm">
                   <Input
                     id="patchWidth"
                     type="number"
@@ -304,7 +306,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
                     className="h-10 text-sm"
                   />
                 </FieldRow>
-                <FieldRow label="Sub. Height" htmlFor="substrateHeight" unit="mm">
+                <FieldRow label={t('form.subHeight')} htmlFor="substrateHeight" unit="mm">
                   <Input
                     id="substrateHeight"
                     type="number"
@@ -320,7 +322,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
               </div>
             )}
 
-            <FieldRow label="Material" htmlFor="material">
+            <FieldRow label={t('form.material')} htmlFor="material">
               <Select
                 id="material"
                 value={localParams.material}
@@ -329,10 +331,10 @@ const AntennaForm: FC<AntennaFormProps> = ({
                 required
                 className="h-10 text-sm"
               >
-                <option value="copper">Copper</option>
-                <option value="aluminum">Aluminum</option>
-                <option value="silver">Silver</option>
-                <option value="brass">Brass</option>
+                <option value="copper">{t('form.copper')}</option>
+                <option value="aluminum">{t('form.aluminum')}</option>
+                <option value="silver">{t('form.silver')}</option>
+                <option value="brass">{t('form.brass')}</option>
               </Select>
             </FieldRow>
           </div>
@@ -340,7 +342,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
         {/* KB Extra Parameters — collapsible */}
         {extraKBParams.length > 0 && (
-          <CollapsibleSection title="KB Parameters">
+          <CollapsibleSection title={t('form.kbParams')}>
             <div className="grid grid-cols-2 gap-3">
               {extraKBParams.slice(0, 6).map(([key, param]) => (
                 <div key={key} className="flex flex-col gap-3">
@@ -379,12 +381,12 @@ const AntennaForm: FC<AntennaFormProps> = ({
             {isSimulating ? (
               <span className="inline-flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" style={{ animation: 'spin-slow 0.8s linear infinite' }} />
-                Simulating...
+                {t('form.simulating')}
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
                 <Radio className="size-5" />
-                Run Simulation
+                {t('form.runSimulation')}
               </span>
             )}
           </Button>

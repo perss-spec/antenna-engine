@@ -43,6 +43,7 @@ import {
   watchSystemTheme,
   type ThemePreference,
 } from '@/lib/theme';
+import { useT, type Locale } from '@/lib/i18n';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 
@@ -202,6 +203,7 @@ function SidebarSection({ title, defaultOpen = false, children }: { title: strin
 }
 
 function App() {
+  const { t, locale, setLocale } = useT();
   const [showLanding, setShowLanding] = useState(true);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => readStoredTheme());
   const [isSimulating, setIsSimulating] = useState(false);
@@ -485,12 +487,12 @@ function App() {
     return ((1 + s11lin) / (1 - s11lin)).toFixed(2);
   })() : null;
   const workflowState = isOptimizing
-    ? 'Optimizing'
+    ? t('header.workflow.optimizing')
     : isSimulating
-      ? 'Simulating'
+      ? t('header.workflow.simulating')
       : summary
-        ? 'Review Results'
-        : 'Configure';
+        ? t('header.workflow.review')
+        : t('header.workflow.configure');
 
   if (showLanding) {
     return <LandingPage onLaunch={() => setShowLanding(false)} />;
@@ -520,17 +522,17 @@ function App() {
           {isSimulating && (
             <Badge variant="warning">
               <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
-              Running
+              {t('header.running')}
             </Badge>
           )}
           {isOptimizing && (
             <Badge variant="purple">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-              Optimizing
+              {t('header.optimizing')}
             </Badge>
           )}
           {summary && !isSimulating && !isOptimizing && (
-            <Badge variant="success">Done</Badge>
+            <Badge variant="success">{t('header.done')}</Badge>
           )}
           <div className="flex gap-3 items-center text-[12px] text-text-dim">
             {simTime && <span className="tabular-nums font-medium">{simTime}ms</span>}
@@ -539,14 +541,24 @@ function App() {
           <div className="flex items-center gap-2">
             <Select
               size="sm"
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as Locale)}
+              className="w-[80px] h-8 text-[11px] bg-elevated border-border"
+              aria-label="Language"
+            >
+              <option value="en">EN</option>
+              <option value="uk">UK</option>
+            </Select>
+            <Select
+              size="sm"
               value={themePreference}
               onChange={(e) => setThemePreference(e.target.value as ThemePreference)}
               className="w-[132px] h-8 text-[11px] bg-elevated border-border"
               aria-label="Theme"
             >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
+              <option value="light">{t('theme.light')}</option>
+              <option value="dark">{t('theme.dark')}</option>
+              <option value="system">{t('theme.system')}</option>
             </Select>
             <span className="w-2 h-2 rounded-full bg-success/60 animate-pulse" />
             <span className="text-[11px] text-text-dim">{workflowState}</span>
@@ -560,7 +572,7 @@ function App() {
         <Panel defaultSize="25%" minSize="18%" maxSize="36%">
           <div className="h-full bg-surface flex flex-col overflow-hidden">
             <div className="px-5 py-3.5 border-b border-border">
-              <div className="text-[11px] uppercase tracking-wider text-text-dim">Project Inputs</div>
+              <div className="text-[11px] uppercase tracking-wider text-text-dim">{t('sidebar.inputs')}</div>
             </div>
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <AntennaForm
@@ -570,7 +582,7 @@ function App() {
                 isSimulating={isSimulating}
               />
 
-              <SidebarSection title="Frequency Presets" defaultOpen>
+              <SidebarSection title={t('sidebar.presets')} defaultOpen>
                 <div className="px-5">
                   <FrequencyPresets
                     onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
@@ -579,7 +591,7 @@ function App() {
                 </div>
               </SidebarSection>
 
-              <SidebarSection title="Optimization">
+              <SidebarSection title={t('sidebar.optimization')}>
                 <OptimizationPanel
                   onStartOptimization={handleStartOptimization}
                   onStopOptimization={handleStopOptimization}
@@ -589,7 +601,7 @@ function App() {
                 />
               </SidebarSection>
 
-              <SidebarSection title="Import CAD">
+              <SidebarSection title={t('sidebar.importCad')}>
                 <div className="px-5">
                   <FileImport
                     onMeshImported={(mesh) => {
@@ -601,7 +613,7 @@ function App() {
                 </div>
               </SidebarSection>
 
-              <SidebarSection title="EM Solver">
+              <SidebarSection title={t('sidebar.solver')}>
                 <div className="px-5">
                   <SolverPanel
                     antennaType={params.antennaType}
@@ -638,14 +650,14 @@ function App() {
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <TabsList className="shrink-0 flex-wrap">
-                      <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
-                      <TabsTrigger value="impedance">Impedance</TabsTrigger>
-                      <TabsTrigger value="vswr">VSWR</TabsTrigger>
-                      <TabsTrigger value="z-freq">Z(f)</TabsTrigger>
-                      <TabsTrigger value="3d-view">3D View</TabsTrigger>
-                      <TabsTrigger value="radiation">Radiation</TabsTrigger>
-                      <TabsTrigger value="history">History</TabsTrigger>
-                      {importedMesh && <TabsTrigger value="mesh">Mesh</TabsTrigger>}
+                      <TabsTrigger value="s-parameters">{t('tab.sParams')}</TabsTrigger>
+                      <TabsTrigger value="impedance">{t('tab.impedance')}</TabsTrigger>
+                      <TabsTrigger value="vswr">{t('tab.vswr')}</TabsTrigger>
+                      <TabsTrigger value="z-freq">{t('tab.zFreq')}</TabsTrigger>
+                      <TabsTrigger value="3d-view">{t('tab.3d')}</TabsTrigger>
+                      <TabsTrigger value="radiation">{t('tab.radiation')}</TabsTrigger>
+                      <TabsTrigger value="history">{t('tab.history')}</TabsTrigger>
+                      {importedMesh && <TabsTrigger value="mesh">{t('tab.mesh')}</TabsTrigger>}
                     </TabsList>
                     {chartData.length > 0 && (
                       <div className="xl:w-[360px] w-full">
@@ -666,10 +678,10 @@ function App() {
                     {/* Stats cards */}
                     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                       {[
-                        { icon: Radio, label: 'Resonant Freq', value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
-                        { icon: Activity, label: 'Min S11', value: `${summary.minS11.toFixed(1)} dB`, iconBg: 'bg-success/10', iconColor: 'text-success', valueColor: 'text-success' },
-                        { icon: Zap, label: 'VSWR', value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
-                        { icon: Signal, label: 'BW (-10 dB)', value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
+                        { icon: Radio, label: t('stat.resonantFreq'), value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
+                        { icon: Activity, label: t('stat.minS11'), value: `${summary.minS11.toFixed(1)} dB`, iconBg: 'bg-success/10', iconColor: 'text-success', valueColor: 'text-success' },
+                        { icon: Zap, label: t('stat.vswr'), value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
+                        { icon: Signal, label: t('stat.bw'), value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
                       ].map(({ icon: Icon, label, value, iconBg, iconColor, valueColor }) => (
                         <div
                           key={label}
@@ -792,14 +804,14 @@ function App() {
                     <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full scale-150" />
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-text-muted mb-2">No Simulation Data</div>
+                    <div className="text-lg font-semibold text-text-muted mb-2">{t('empty.title')}</div>
                     <div className="text-[13px] text-text-dim max-w-[320px] leading-relaxed">
-                      Configure antenna parameters in the sidebar and run a simulation
+                      {t('empty.text')}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-[12px] text-text-dim/40 mt-1">
                     <span className="w-10 h-px bg-border" />
-                    <span>31 antenna types available</span>
+                    <span>{t('empty.types')}</span>
                     <span className="w-10 h-px bg-border" />
                   </div>
                 </div>

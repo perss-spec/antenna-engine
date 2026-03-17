@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { solveByCategory } from '@/lib/impedanceSolver';
 import { getCategoryForId } from '@/lib/antennaKB';
 import { analyticalGain } from '@/lib/gainCalculator';
+import { useT } from '@/lib/i18n';
 import './SolverPanel.css';
 
 const C0 = 299792458;
@@ -87,6 +88,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
   onSweepComplete,
   onComparisonComplete
 }) => {
+  const { t } = useT();
   // Solver configuration
   const [solverType, setSolverType] = useState<SolverType>('MoM Wire');
   const [meshResolution, setMeshResolution] = useState<number>(10);
@@ -295,9 +297,9 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
           <span className="value">{result.computation_time.toFixed(3)} s</span>
         </div>
         <div className="result-item">
-          <span className="label">Converged:</span>
+          <span className="label">{t('solver.converged')}</span>
           <span className="value">
-            {result.convergence.converged ? 'Yes' : 'No'} 
+            {result.convergence.converged ? t('solver.yes') : t('solver.no')}
             ({result.convergence.iterations} iter)
           </span>
         </div>
@@ -308,13 +310,13 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
   return (
     <div className="solver-panel">
       <div className="panel-header">
-        <h3>Solver Configuration</h3>
+        <h3>{t('solver.config')}</h3>
       </div>
       
       <div className="config-sections">
         {/* Solver Type */}
         <div className="config-section">
-          <h4>Solver Type</h4>
+          <h4>{t('solver.type')}</h4>
           <div className="radio-group">
             {['MoM Wire', 'MoM Surface', 'FDTD'].map((type) => (
               <label key={type}>
@@ -333,9 +335,9 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
         
         {/* Mesh Resolution */}
         <div className="config-section">
-          <h4>Mesh Resolution</h4>
+          <h4>{t('solver.meshResolution')}</h4>
           <div className="slider-container">
-            <label>Elements per wavelength: {meshResolution}</label>
+            <label>{t('solver.elementsPerWl')} {meshResolution}</label>
             <input
               type="range"
               min="5"
@@ -354,12 +356,12 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
         
         {/* Frequency Settings */}
         <div className="config-section">
-          <h4>Frequency</h4>
+          <h4>{t('solver.frequency')}</h4>
           <div className="radio-group">
             {[
-              { value: 'single', label: 'Single Frequency' },
-              { value: 'sweep', label: 'Frequency Sweep' },
-              { value: 'preset', label: 'Preset Band' }
+              { value: 'single', label: t('solver.singleFreq') },
+              { value: 'sweep', label: t('solver.freqSweep') },
+              { value: 'preset', label: t('solver.presetBand') }
             ].map(({ value, label }) => (
               <label key={value}>
                 <input
@@ -377,8 +379,8 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
           {frequencyMode === 'single' && (
             <div className="freq-input">
               <label>
-                Center: {formatFrequency(singleFreq)}
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}> (from antenna config)</span>
+                {t('solver.center')} {formatFrequency(singleFreq)}
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}> {t('solver.fromConfig')}</span>
               </label>
             </div>
           )}
@@ -387,11 +389,11 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
             <div className="freq-sweep">
               <div className="freq-row">
                 <label>
-                  Range: {formatFrequency(freqStart)} — {formatFrequency(freqEnd)}
+                  {t('solver.range')} {formatFrequency(freqStart)} — {formatFrequency(freqEnd)}
                 </label>
               </div>
               <div className="slider-container">
-                <label>Sweep width: ±{Math.round(sweepRatio * 100)}%</label>
+                <label>{t('solver.sweepWidth')} ±{Math.round(sweepRatio * 100)}%</label>
                 <input
                   type="range"
                   min="10"
@@ -407,7 +409,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
                 </div>
               </div>
               <label>
-                Points:
+                {t('solver.points')}
                 <input
                   type="number"
                   value={freqPoints}
@@ -423,7 +425,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
           {frequencyMode === 'preset' && (
             <div className="freq-preset">
               <label>
-                Band:
+                {t('solver.band')}
                 <select
                   value={presetBand}
                   onChange={(e) => setPresetBand(e.target.value)}
@@ -442,16 +444,16 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
         
         {/* Solver Options */}
         <div className="config-section">
-          <h4>Solver Options</h4>
+          <h4>{t('solver.options')}</h4>
           <div className="solver-options">
             <label>
-              Linear Solver:
+              {t('solver.linearSolver')}
               <select
                 value={linearSolver}
                 onChange={(e) => setLinearSolver(e.target.value as LinearSolver)}
                 disabled={isRunning}
               >
-                <option value="LU">LU Decomposition</option>
+                <option value="LU">{t('solver.luDecomp')}</option>
                 <option value="GMRES">GMRES</option>
               </select>
             </label>
@@ -459,7 +461,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
             {linearSolver === 'GMRES' && (
               <>
                 <label>
-                  Tolerance:
+                  {t('solver.tolerance')}
                   <input
                     type="number"
                     value={tolerance}
@@ -471,7 +473,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
                   />
                 </label>
                 <label>
-                  Max Iterations:
+                  {t('solver.maxIter')}
                   <input
                     type="number"
                     value={maxIterations}
@@ -496,7 +498,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
               onChange={(e) => setComparisonMode(e.target.checked)}
               disabled={isRunning}
             />
-            Comparison Mode (MoM vs FDTD)
+            {t('solver.comparisonMode')}
           </label>
         </div>
       </div>
@@ -508,12 +510,12 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
           disabled={isRunning}
           className="run-button"
         >
-          {isRunning ? 'Running...' : 'Run Solver'}
+          {isRunning ? t('solver.running') : t('solver.runSolver')}
         </button>
         
         {isRunning && (
           <button onClick={handleCancel} className="cancel-button">
-            Cancel
+            {t('solver.cancel')}
           </button>
         )}
       </div>
@@ -535,7 +537,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
       <div className="results-section">
         {comparisonMode && (momResult || fdtdResult) && (
           <div className="comparison-results">
-            <h3>Comparison Results</h3>
+            <h3>{t('solver.comparisonResults')}</h3>
             <div className="comparison-grid">
               {momResult && renderResultCard(momResult, `MoM @ ${formatFrequency(momResult.frequency)}`)}
               {fdtdResult && renderResultCard(fdtdResult, `FDTD @ ${formatFrequency(fdtdResult.frequency)}`)}
@@ -545,17 +547,17 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
         
         {!comparisonMode && currentResult && (
           <div className="single-results">
-            <h3>Simulation Results</h3>
+            <h3>{t('solver.simResults')}</h3>
             {renderResultCard(currentResult, `${currentResult.solver} @ ${formatFrequency(currentResult.frequency)}`)}
           </div>
         )}
         
         {sweepResults && (
           <div className="sweep-summary">
-            <h3>Sweep Summary</h3>
-            <p>{sweepResults.results.length} frequency points computed</p>
+            <h3>{t('solver.sweepSummary')}</h3>
+            <p>{sweepResults.results.length} {t('solver.freqPointsComputed')}</p>
             <p>Range: {formatFrequency(sweepResults.frequencies[0])} - {formatFrequency(sweepResults.frequencies[sweepResults.frequencies.length - 1])}</p>
-            <p>Total time: {sweepResults.results.reduce((sum, r) => sum + r.computation_time, 0).toFixed(2)} s</p>
+            <p>{t('solver.totalTime')} {sweepResults.results.reduce((sum, r) => sum + r.computation_time, 0).toFixed(2)} s</p>
           </div>
         )}
       </div>
