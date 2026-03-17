@@ -14,6 +14,7 @@ const C0 = 299792458;
 interface RadiationPatternViewProps {
   antennaType: AntennaType;
   frequency: number;
+  patternData?: { pattern: number[][]; maxGain: number };
 }
 
 const sinc = (x: number): number => {
@@ -132,13 +133,19 @@ function getChartColor(index: number): string {
   return color || ['#0ea5e9', '#22c55e', '#eab308', '#ef4444', '#a78bfa', '#f97316'][index - 1] || '#0ea5e9';
 }
 
-export function RadiationPatternView({ antennaType, frequency }: RadiationPatternViewProps) {
+export function RadiationPatternView({ antennaType, frequency, patternData }: RadiationPatternViewProps) {
   const [pattern, setPattern] = useState<number[][] | null>(null);
   const [maxGain, setMaxGain] = useState(0);
   const [loading, setLoading] = useState(false);
   const [wireframe, setWireframe] = useState(false);
 
   const computePattern = useCallback(async () => {
+    if (patternData) {
+      setPattern(patternData.pattern);
+      setMaxGain(patternData.maxGain);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       if (isTauri) {
@@ -162,7 +169,7 @@ export function RadiationPatternView({ antennaType, frequency }: RadiationPatter
     } finally {
       setLoading(false);
     }
-  }, [antennaType, frequency]);
+  }, [antennaType, frequency, patternData]);
 
   useEffect(() => {
     computePattern();

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Activity, Radio, Zap, Signal, ChevronDown } from 'lucide-react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import AntennaForm from './components/AntennaForm/AntennaForm';
@@ -6,6 +6,8 @@ import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
 import { getCategoryForId } from '@/lib/antennaKB';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
+import VswrChart from './components/VswrChart/VswrChart';
+import ImpedanceChart from './components/ImpedanceChart/ImpedanceChart';
 import OptimizationPanel from './components/OptimizationPanel/OptimizationPanel';
 import FrequencyPresets from './components/FrequencyPresets/FrequencyPresets';
 import SimulationHistory from './components/SimulationHistory/SimulationHistory';
@@ -19,12 +21,20 @@ import { Select } from '@/components/ui/select';
 import { LandingPage } from '@/components/landing/LandingPage';
 import FileImport from './components/FileImport/FileImport';
 import { SolverPanel } from './components/SolverPanel/SolverPanel';
-import type { SimulationResult as EMSimResult, SweepResult } from './components/SolverPanel/SolverPanel';
 import { MeshViewer } from './viewport/MeshViewer';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { solveByCategory } from '@/lib/impedanceSolver';
 import { api } from '@/lib/api';
+import {
+  fromSimulateResponse,
+  fromSweepResult,
+  toS11ChartData,
+  toSmithData,
+  toVswrData,
+  toImpedanceChartData,
+  type UnifiedSimResults,
+} from '@/lib/unifiedResults';
 import {
   applyTheme,
   persistTheme,
@@ -158,11 +168,6 @@ interface SimulateResponse {
   bandwidth: number;
 }
 
-interface S11DataPoint {
-  frequency: number;
-  s11_db: number;
-}
-
 interface OptimizationResult {
   iteration: number;
   frequency: number;
@@ -199,22 +204,34 @@ function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => readStoredTheme());
   const [isSimulating, setIsSimulating] = useState(false);
-  const [chartData, setChartData] = useState<S11DataPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<{ resonantFreq: number; minS11: number; bandwidth: number } | null>(null);
   const [simTime, setSimTime] = useState<number | null>(null);
-  const [impedanceData, setImpedanceData] = useState<{ real: number[]; imag: number[]; freq: number[] }>({ real: [], imag: [], freq: [] });
-  const [s11Data, setS11Data] = useState<{ real: number[]; imag: number[] }>({ real: [], imag: [] });
   const [activeTab, setActiveTab] = useState('s-parameters');
 
-  // EM Solver state
+  // Unified results (single source of truth)
+  const [results, setResults] = useState<UnifiedSimResults | null>(null);
+  const [comparisonResults, setComparisonResults] = useState<UnifiedSimResults | null>(null);
+
+  // Derived data via useMemo
+  const chartData = useMemo(() => results ? toS11ChartData(results) : [], [results]);
+  const smithData = useMemo(() => results ? toSmithData(results) : [], [results]);
+  const vswrData = useMemo(() => results ? toVswrData(results) : [], [results]);
+  const impedanceChartData = useMemo(() => results ? toImpedanceChartData(results) : [], [results]);
+  const compChartData = useMemo(() => comparisonResults ? toS11ChartData(comparisonResults) : undefined, [comparisonResults]);
+  const compVswrData = useMemo(() => comparisonResults ? toVswrData(comparisonResults) : undefined, [comparisonResults]);
+  const compImpedanceData = useMemo(() => comparisonResults ? toImpedanceChartData(comparisonResults) : undefined, [comparisonResults]);
+  const summary = useMemo(() => results ? { resonantFreq: results.resonantFreq, minS11: results.minS11, bandwidth: results.bandwidth } : null, [results]);
+
+  // Backward-compatible accessors for ExportPanel
+  const impedanceData = useMemo(() => results ? { real: results.impedanceReal, imag: results.impedanceImag, freq: results.frequencies } : { real: [], imag: [], freq: [] }, [results]);
+  const s11Data = useMemo(() => results ? { real: results.s11Real, imag: results.s11Imag } : { real: [], imag: [] }, [results]);
+
+  // Mesh import state
   const [importedMesh, setImportedMesh] = useState<{
     vertices: number; triangles: number; segments: number;
     file_path: string; file_name: string; file_size: number; format: string;
   } | null>(null);
   const [meshViewMode, setMeshViewMode] = useState<'wireframe' | 'solid' | 'transparent'>('solid');
-  const [_emResult, setEmResult] = useState<EMSimResult | null>(null);
-  const [_emSweepResult, setEmSweepResult] = useState<SweepResult | null>(null);
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
@@ -286,31 +303,14 @@ function App() {
   const handleSubmit = useCallback(async (formParams: AntennaParameters) => {
     setIsSimulating(true);
     setError(null);
-    setSummary(null);
+    setResults(null);
+    setComparisonResults(null);
     const t0 = performance.now();
 
     try {
       const result = await runSweep(formParams);
-
       setSimTime(Math.round(performance.now() - t0));
-
-      const data: S11DataPoint[] = result.frequencies.map((f: number, i: number) => ({
-        frequency: f / 1e6,
-        s11_db: result.s11Db[i],
-      }));
-
-      setChartData(data);
-      setS11Data({ real: result.s11Real, imag: result.s11Imag });
-      setImpedanceData({
-        real: result.impedanceReal,
-        imag: result.impedanceImag,
-        freq: result.frequencies,
-      });
-      setSummary({
-        resonantFreq: result.resonantFreq,
-        minS11: result.minS11,
-        bandwidth: result.bandwidth,
-      });
+      setResults(fromSimulateResponse(result));
 
       // Save to history
       const historyItem: HistoryItem = {
@@ -352,12 +352,7 @@ function App() {
       curS11 = result.minS11;
       curLength = len;
       curRadius = rad;
-      setChartData(result.frequencies.map((f: number, i: number) => ({
-        frequency: f / 1e6, s11_db: result.s11Db[i],
-      })));
-      setS11Data({ real: result.s11Real, imag: result.s11Imag });
-      setImpedanceData({ real: result.impedanceReal, imag: result.impedanceImag, freq: result.frequencies });
-      setSummary({ resonantFreq: result.resonantFreq, minS11: result.minS11, bandwidth: result.bandwidth });
+      setResults(fromSimulateResponse(result));
     };
 
     // Initial evaluation
@@ -610,8 +605,12 @@ function App() {
                   <SolverPanel
                     antennaType={params.antennaType}
                     antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
-                    onSolveComplete={(r) => setEmResult(r)}
-                    onSweepComplete={(r) => setEmSweepResult(r)}
+                    onSolveComplete={() => {}}
+                    onSweepComplete={(sweep) => setResults(fromSweepResult(sweep))}
+                    onComparisonComplete={(a, b) => {
+                      setResults(fromSweepResult(a));
+                      setComparisonResults(fromSweepResult(b));
+                    }}
                   />
                 </div>
               </SidebarSection>
@@ -639,6 +638,8 @@ function App() {
                     <TabsList className="flex-1 flex-wrap">
                       <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
                       <TabsTrigger value="impedance">Impedance</TabsTrigger>
+                      <TabsTrigger value="vswr">VSWR</TabsTrigger>
+                      <TabsTrigger value="z-freq">Z(f)</TabsTrigger>
                       <TabsTrigger value="3d-view">3D View</TabsTrigger>
                       <TabsTrigger value="radiation">Radiation</TabsTrigger>
                       <TabsTrigger value="history">History</TabsTrigger>
@@ -686,19 +687,25 @@ function App() {
 
                     {/* S11 Chart */}
                     <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
-                      <S11Chart data={chartData} />
+                      <S11Chart data={chartData} simulationData={compChartData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="impedance" className="flex-1 flex flex-col">
                     <div className="bg-surface border border-border rounded-xl p-5 flex-1 flex items-center justify-center">
-                      <SmithChart
-                        impedancePoints={impedanceData.real.map((re, i) => ({
-                          re,
-                          im: impedanceData.imag[i],
-                          freq: impedanceData.freq[i],
-                        }))}
-                      />
+                      <SmithChart impedancePoints={smithData} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="vswr" className="flex-1 flex flex-col">
+                    <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
+                      <VswrChart data={vswrData} comparisonData={compVswrData} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="z-freq" className="flex-1 flex flex-col">
+                    <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
+                      <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
                     </div>
                   </TabsContent>
 
@@ -718,6 +725,7 @@ function App() {
                     <RadiationPatternView
                       antennaType={params.antennaType}
                       frequency={params.frequency * 1e6}
+                      patternData={results?.pattern}
                     />
                   </TabsContent>
 
