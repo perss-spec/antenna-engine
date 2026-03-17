@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
-import { Activity, Radio, Zap, Signal, ChevronDown } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Activity, Radio, Zap, Signal, ChevronDown, SlidersHorizontal, ChartLine, Waypoints, History, Box } from 'lucide-react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import AntennaForm from './components/AntennaForm/AntennaForm';
 import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
@@ -16,6 +16,7 @@ import { RadiationPatternView } from './components/RadiationPatternView';
 import ExportPanel from './components/ExportPanel/ExportPanel';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Select } from '@/components/ui/select';
 import { LandingPage } from '@/components/landing/LandingPage';
 import FileImport from './components/FileImport/FileImport';
 import { SolverPanel } from './components/SolverPanel/SolverPanel';
@@ -24,6 +25,13 @@ import { MeshViewer } from './viewport/MeshViewer';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { solveByCategory } from '@/lib/impedanceSolver';
+import {
+  applyTheme,
+  persistTheme,
+  readStoredTheme,
+  watchSystemTheme,
+  type ThemePreference,
+} from '@/lib/theme';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 const invoke = isTauri
@@ -145,6 +153,7 @@ function SidebarSection({ title, defaultOpen = false, children }: { title: strin
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readStoredTheme());
   const [isSimulating, setIsSimulating] = useState(false);
   const [chartData, setChartData] = useState<S11DataPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +188,16 @@ function App() {
   };
 
   const [params, setParams] = useState(defaultParams);
+
+  useEffect(() => {
+    applyTheme(themePreference);
+    persistTheme(themePreference);
+  }, [themePreference]);
+
+  useEffect(() => {
+    if (themePreference !== 'system') return;
+    return watchSystemTheme(() => applyTheme('system'));
+  }, [themePreference]);
 
   const runSweep = useCallback(async (formParams: AntennaParameters): Promise<SimulateResponse> => {
     const centerFreqHz = formParams.frequency * 1e6;
@@ -425,6 +444,19 @@ function App() {
     const s11lin = Math.pow(10, summary.minS11 / 20);
     return ((1 + s11lin) / (1 - s11lin)).toFixed(2);
   })() : null;
+  const workflowState = isOptimizing
+    ? 'Optimizing'
+    : isSimulating
+      ? 'Simulating'
+      : summary
+        ? 'Review Results'
+        : 'Configure';
+  const workspaceNav = [
+    { id: 's-parameters', label: 'S-Parameters', icon: ChartLine, disabled: !summary },
+    { id: 'impedance', label: 'Impedance', icon: Waypoints, disabled: !summary },
+    { id: '3d-view', label: '3D View', icon: Box, disabled: !summary },
+    { id: 'history', label: 'History', icon: History, disabled: !summary },
+  ] as const;
 
   if (showLanding) {
     return <LandingPage onLaunch={() => setShowLanding(false)} />;
@@ -436,7 +468,7 @@ function App() {
       <div className="h-14 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-accent to-cyan-400 rounded-lg flex items-center justify-center text-sm font-bold text-white shadow-md shadow-accent/20">
+            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-sm font-bold text-white shadow-sm">
               P
             </div>
             <div className="flex items-baseline gap-2">
@@ -482,6 +514,17 @@ function App() {
             />
           )}
           <div className="flex items-center gap-2">
+            <Select
+              size="sm"
+              value={themePreference}
+              onChange={(e) => setThemePreference(e.target.value as ThemePreference)}
+              className="w-[132px] h-8 text-[11px] bg-elevated border-border"
+              aria-label="Theme"
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System</option>
+            </Select>
             <span className="w-2 h-2 rounded-full bg-success/60 animate-pulse" />
             <span className="text-[11px] text-text-dim">
               {isTauri ? 'Rust Solver' : 'Browser'}
@@ -490,12 +533,62 @@ function App() {
         </div>
       </div>
 
+      <div className="h-11 bg-base border-b border-border px-6 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">1. Configure</span>
+          <span className="text-text-dim">→</span>
+          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">2. Run</span>
+          <span className="text-text-dim">→</span>
+          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">3. Analyze</span>
+          <span className="text-text-dim">→</span>
+          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">4. Export</span>
+        </div>
+        <div className="text-xs text-text-muted">
+          Workspace state: <span className="font-medium text-text-primary">{workflowState}</span>
+        </div>
+      </div>
+
       {/* ═══ Main Content — Resizable Panels ═══ */}
       <PanelGroup orientation="horizontal" className="flex-1">
         {/* ─── Sidebar ─── */}
-        <Panel defaultSize="22%" minSize="15%" maxSize="35%">
+        <Panel defaultSize="24%" minSize="18%" maxSize="36%">
           <div className="h-full bg-surface flex flex-col overflow-hidden">
+            <div className="px-6 py-3.5 border-b border-border">
+              <div className="text-[11px] uppercase tracking-wider text-text-dim">Project Inputs</div>
+            </div>
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="px-6 py-4 border-b border-border">
+                <div className="text-[11px] uppercase tracking-wider text-text-dim mb-3">Navigation</div>
+                <div className="space-y-1.5">
+                  {workspaceNav.map(({ id, label, icon: Icon, disabled }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setActiveTab(id)}
+                      className={`w-full h-8 px-2.5 rounded-md border text-xs flex items-center gap-2 transition-colors ${
+                        activeTab === id
+                          ? 'bg-accent/10 border-accent/30 text-accent'
+                          : 'bg-base border-border text-text-muted hover:text-text-primary hover:bg-surface-hover'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('s-parameters');
+                      setError(null);
+                    }}
+                    className="w-full h-8 px-2.5 rounded-md border border-border text-xs flex items-center gap-2 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>Design Inputs</span>
+                  </button>
+                </div>
+              </div>
               <AntennaForm
                 parameters={params}
                 onParametersChange={setParams}
@@ -552,7 +645,7 @@ function App() {
         <PanelResizeHandle className="w-1 bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize relative before:content-[''] before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5" />
 
         {/* ─── Main Area ─── */}
-        <Panel minSize="40%">
+        <Panel minSize="42%">
           <div className="h-full flex flex-col overflow-auto">
             <div className="flex-1 p-6 flex flex-col gap-5">
               {error && (

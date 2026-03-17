@@ -92,7 +92,7 @@ const SimulationHistory: FC<SimulationHistoryProps> = ({ onLoadHistory, classNam
         ) : (
           <ul className="flex flex-col gap-2">
             {sortedHistory.map((item) => (
-              <li key={item.id} className="p-2.5 bg-surface-hover rounded-md border border-border flex flex-col gap-2.5">
+              <li key={item.id} className="p-3 bg-base rounded-lg border border-border flex flex-col gap-2.5">
                 <div className="flex justify-between items-start">
                   <span className="text-xs text-text-muted">
                     {new Date(item.timestamp).toLocaleString()}
@@ -109,7 +109,7 @@ const SimulationHistory: FC<SimulationHistoryProps> = ({ onLoadHistory, classNam
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 items-center">
-                  <Badge variant="default">
+                  <Badge variant="outline">
                     L: {item.parameters.length.toFixed(1)}mm
                   </Badge>
                    <Badge variant="purple">

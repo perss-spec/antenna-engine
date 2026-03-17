@@ -127,11 +127,11 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   }
 
   return (
-    <div className={`px-6 py-6 flex flex-col gap-8 ${className}`}>
+    <div className={`px-6 py-6 flex flex-col gap-6 ${className}`}>
       <form onSubmit={handleStart} className="flex flex-col gap-8">
 
         {/* Targets */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-base p-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor="target-frequency" className="text-xs font-medium text-text-muted">Freq (MHz)</Label>
             <Input
@@ -177,7 +177,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
         </div>
 
         {/* Parameter ranges */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-base p-3">
           <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-3 mb-0.5">
             <div />
             <span className="text-[11px] text-text-dim/60 text-center">min</span>

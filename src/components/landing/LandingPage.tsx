@@ -1,79 +1,7 @@
-import { useEffect, useState } from "react"
-import { EMCanvas } from "./EMCanvas"
-import { HeroSection } from "./HeroSection"
-import { FeaturesSection } from "./FeaturesSection"
-import { GpuHud } from "./GpuHud"
-
-function CustomCursor() {
-  const [pos, setPos] = useState({ x: -100, y: -100 })
-  const [active, setActive] = useState(false)
-
-  useEffect(() => {
-    const move = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY })
-    const down = () => setActive(true)
-    const up = () => setActive(false)
-    window.addEventListener("mousemove", move)
-    window.addEventListener("mousedown", down)
-    window.addEventListener("mouseup", up)
-    return () => {
-      window.removeEventListener("mousemove", move)
-      window.removeEventListener("mousedown", down)
-      window.removeEventListener("mouseup", up)
-    }
-  }, [])
-
-  return (
-    <>
-      <div
-        className="fixed pointer-events-none z-50 hidden md:block"
-        style={{
-          left: pos.x - 16,
-          top: pos.y - 16,
-          width: 32,
-          height: 32,
-          border: `1px solid ${active ? "#38bdf8" : "rgba(14,165,233,0.6)"}`,
-          borderRadius: "50%",
-          transition: "left 0.08s ease, top 0.08s ease, border-color 0.15s ease, transform 0.15s ease",
-          transform: active ? "scale(0.75)" : "scale(1)",
-        }}
-        aria-hidden="true"
-      />
-      <div
-        className="fixed pointer-events-none z-50 hidden md:block"
-        style={{ left: pos.x - 8, top: pos.y - 0.5, width: 6, height: 1, background: "rgba(14,165,233,0.7)" }}
-        aria-hidden="true"
-      />
-      <div
-        className="fixed pointer-events-none z-50 hidden md:block"
-        style={{ left: pos.x + 2, top: pos.y - 0.5, width: 6, height: 1, background: "rgba(14,165,233,0.7)" }}
-        aria-hidden="true"
-      />
-      <div
-        className="fixed pointer-events-none z-50 hidden md:block"
-        style={{ left: pos.x - 0.5, top: pos.y - 8, width: 1, height: 6, background: "rgba(14,165,233,0.7)" }}
-        aria-hidden="true"
-      />
-      <div
-        className="fixed pointer-events-none z-50 hidden md:block"
-        style={{ left: pos.x - 0.5, top: pos.y + 2, width: 1, height: 6, background: "rgba(14,165,233,0.7)" }}
-        aria-hidden="true"
-      />
-      <div
-        className="fixed pointer-events-none z-50 hidden md:block"
-        style={{
-          left: pos.x - 1.5,
-          top: pos.y - 1.5,
-          width: 3,
-          height: 3,
-          borderRadius: "50%",
-          background: active ? "#38bdf8" : "#0ea5e9",
-          boxShadow: `0 0 6px ${active ? "#38bdf8" : "#0ea5e9"}`,
-        }}
-        aria-hidden="true"
-      />
-    </>
-  )
-}
+import type { ReactNode } from "react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Radio, Activity, Box, Download } from "lucide-react"
 
 interface LandingPageProps {
   onLaunch: () => void
@@ -81,47 +9,96 @@ interface LandingPageProps {
 
 export function LandingPage({ onLaunch }: LandingPageProps) {
   return (
-    <main
-      className="relative min-h-screen overflow-x-hidden"
-      style={{ background: "#0c0c0f", cursor: "none" }}
-    >
-      <CustomCursor />
+    <main className="min-h-screen bg-base text-text-primary">
+      <div className="mx-auto max-w-6xl px-6 py-10 md:py-14">
+        <header className="flex items-center justify-between gap-4 border-b border-border pb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent text-white font-semibold flex items-center justify-center shadow-sm">
+              P
+            </div>
+            <div>
+              <div className="text-sm font-semibold tracking-tight">PROMIN</div>
+              <div className="text-xs text-text-dim">Antenna Studio</div>
+            </div>
+          </div>
+          <Badge variant="outline">v0.3</Badge>
+        </header>
 
-      <div className="fixed inset-0 z-0" aria-hidden="true">
-        <div className="absolute inset-0" style={{ background: "#0c0c0f" }} />
-        <EMCanvas />
+        <section className="pt-10 md:pt-14 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 items-start">
+          <div className="space-y-5">
+            <p className="text-sm text-text-dim uppercase tracking-wider">Antenna Engineering Workspace</p>
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+              Design, simulate and analyze antennas in one flow.
+            </h1>
+            <p className="text-[15px] text-text-muted max-w-2xl leading-relaxed">
+              A calmer, tool-first interface for rapid antenna iteration. Start from presets, run sweeps,
+              inspect S-parameters and move to export without jumping between disconnected screens.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <Button onClick={onLaunch} size="lg">
+                Open Workspace
+              </Button>
+              <Button variant="outline" size="lg">
+                Documentation
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+            <div className="text-sm font-semibold mb-3">Session Overview</div>
+            <div className="grid grid-cols-2 gap-3">
+              <MetricCard icon={<Radio className="w-4 h-4" />} label="Antenna Types" value="31" />
+              <MetricCard icon={<Activity className="w-4 h-4" />} label="Sweep Points" value="101" />
+              <MetricCard icon={<Box className="w-4 h-4" />} label="3D View" value="Enabled" />
+              <MetricCard icon={<Download className="w-4 h-4" />} label="Export" value="Touchstone/CSV" />
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <WorkflowCard
+            title="1. Configure"
+            text="Select an antenna family, edit parameters and apply frequency presets."
+          />
+          <WorkflowCard
+            title="2. Simulate"
+            text="Run sweep or optimization and monitor progress from the top status bar."
+          />
+          <WorkflowCard
+            title="3. Analyze & Export"
+            text="Review S11, Smith, 3D and radiation tabs, then export results."
+          />
+        </section>
       </div>
-
-      <div
-        className="fixed inset-0 z-[1] pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, rgba(12,12,15,0.7) 100%)",
-        }}
-        aria-hidden="true"
-      />
-
-      <div className="relative z-10">
-        <HeroSection onLaunch={onLaunch} />
-        <FeaturesSection />
-      </div>
-
-      <GpuHud />
-
-      <footer
-        className="relative z-10 border-t py-8 px-6 flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs"
-        style={{ borderColor: "rgba(14,165,233,0.1)", color: "rgba(14,165,233,0.35)" }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="font-bold" style={{ color: "#0ea5e9" }}>PROMIN</span>
-          <span style={{ color: "rgba(14,165,233,0.25)" }}>/</span>
-          <span>Antenna Studio v2.4.1</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span style={{ color: "rgba(56,189,248,0.4)" }}>wgpu backend active</span>
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400 ml-1 animate-pulse" aria-hidden="true" />
-        </div>
-        <span>&copy; 2026 PROMIN Technologies. All rights reserved.</span>
-      </footer>
     </main>
+  )
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-base p-3">
+      <div className="flex items-center gap-2 text-text-muted mb-1">
+        {icon}
+        <span className="text-xs">{label}</span>
+      </div>
+      <div className="text-sm font-medium text-text-primary">{value}</div>
+    </div>
+  )
+}
+
+function WorkflowCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="text-sm font-semibold mb-2">{title}</div>
+      <div className="text-sm text-text-muted leading-relaxed">{text}</div>
+    </div>
   )
 }

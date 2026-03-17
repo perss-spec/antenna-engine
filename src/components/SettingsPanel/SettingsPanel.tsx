@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { applyTheme, persistTheme, type ThemePreference } from '@/lib/theme';
 
 interface SettingsPanelProps {
   onSettingsChange?: (settings: SettingsData) => void;
@@ -17,7 +18,7 @@ interface SettingsPanelProps {
 
 interface SettingsData {
   general: {
-    theme: 'dark' | 'light' | 'auto';
+    theme: ThemePreference;
     language: string;
   };
   simulation: {
@@ -33,7 +34,7 @@ interface SettingsData {
 
 const defaultSettings: SettingsData = {
   general: {
-    theme: 'dark',
+    theme: 'system',
     language: 'en'
   },
   simulation: {
@@ -47,6 +48,12 @@ const defaultSettings: SettingsData = {
   }
 };
 
+const normalizeTheme = (value: unknown): ThemePreference => {
+  if (value === 'light' || value === 'dark' || value === 'system') return value;
+  if (value === 'auto') return 'system';
+  return 'system';
+};
+
 const SettingsPanel: FC<SettingsPanelProps> = ({
   onSettingsChange,
   onClose,
@@ -55,7 +62,17 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
   const [settings, setSettings] = useState<SettingsData>(() => {
     try {
       const stored = localStorage.getItem('promin_settings');
-      return stored ? { ...defaultSettings, ...JSON.parse(stored) } : defaultSettings;
+      if (!stored) return defaultSettings;
+      const parsed = JSON.parse(stored);
+      return {
+        ...defaultSettings,
+        ...parsed,
+        general: {
+          ...defaultSettings.general,
+          ...(parsed.general ?? {}),
+          theme: normalizeTheme(parsed?.general?.theme),
+        },
+      };
     } catch { return defaultSettings; }
   });
   const [hasChanges, setHasChanges] = useState(false);
@@ -73,7 +90,9 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
   }, [settings]);
 
   const handleThemeChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
-    updateSettings('general', 'theme', event.target.value as 'dark' | 'light' | 'auto');
+    const selectedTheme = event.target.value as ThemePreference;
+    updateSettings('general', 'theme', selectedTheme);
+    applyTheme(selectedTheme);
   }, [updateSettings]);
 
   const handleLanguageChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
@@ -105,12 +124,14 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
 
   const handleSave = useCallback(() => {
     try { localStorage.setItem('promin_settings', JSON.stringify(settings)); } catch { /* */ }
+    persistTheme(settings.general.theme);
     onSettingsChange?.(settings);
     setHasChanges(false);
   }, [settings, onSettingsChange]);
 
   const handleReset = useCallback(() => {
     setSettings(defaultSettings);
+    applyTheme(defaultSettings.general.theme);
     setHasChanges(true);
   }, []);
 
@@ -168,7 +189,7 @@ const SettingsPanel: FC<SettingsPanelProps> = ({
             >
               <option value="dark">Dark</option>
               <option value="light">Light</option>
-              <option value="auto">Auto (System)</option>
+              <option value="system">System</option>
             </Select>
           </div>
 

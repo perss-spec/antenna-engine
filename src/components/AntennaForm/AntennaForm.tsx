@@ -371,28 +371,23 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
         {/* Run button */}
         <div className="px-6 py-6">
-          <div className="relative">
-            <Button
-              type="submit"
-              disabled={isSimulating}
-              className="w-full h-12 bg-gradient-to-r from-accent to-sky-400 hover:opacity-90 text-white text-base font-semibold shadow-lg shadow-accent/25 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-            >
-              {isSimulating ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" style={{ animation: 'spin-slow 0.8s linear infinite' }} />
-                  Simulating...
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-2">
-                  <Radio className="size-5" />
-                  Run Simulation
-                </span>
-              )}
-            </Button>
-            {!isSimulating && (
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-sky-400 rounded-xl blur-md opacity-20 -z-10" />
+          <Button
+            type="submit"
+            disabled={isSimulating}
+            className="w-full h-12 text-base font-semibold rounded-xl"
+          >
+            {isSimulating ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" style={{ animation: 'spin-slow 0.8s linear infinite' }} />
+                Simulating...
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Radio className="size-5" />
+                Run Simulation
+              </span>
             )}
-          </div>
+          </Button>
         </div>
       </form>
     </div>

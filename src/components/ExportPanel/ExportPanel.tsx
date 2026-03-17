@@ -2,6 +2,8 @@ import type { FC } from 'react';
 import { useState } from 'react';
 import { Download, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 export interface ExportPanelProps {
@@ -188,30 +190,32 @@ const ExportPanel: FC<ExportPanelProps> = ({
       {showSettings && (
         <div className="p-3 border border-border rounded-lg bg-surface space-y-3" style={{ animation: 'fadeIn 0.15s ease-out' }}>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-text-muted">S1P Format:</label>
-            <select
+            <Label className="text-xs">S1P Format</Label>
+            <Select
               value={s1pFormat}
               onChange={(e) => setS1pFormat(e.target.value as S1PFormat)}
-              className="w-full h-8 px-2.5 text-xs border border-border rounded-md bg-base text-text focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
+              size="sm"
+              className="w-full"
             >
               <option value="RI">Real/Imaginary</option>
               <option value="MA">Magnitude/Angle</option>
               <option value="DB">dB/Angle</option>
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-text-muted">Frequency Unit:</label>
-            <select
+            <Label className="text-xs">Frequency Unit</Label>
+            <Select
               value={frequencyUnit}
               onChange={(e) => setFrequencyUnit(e.target.value as FrequencyUnit)}
-              className="w-full h-8 px-2.5 text-xs border border-border rounded-md bg-base text-text focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
+              size="sm"
+              className="w-full"
             >
               <option value="Hz">Hz</option>
               <option value="kHz">kHz</option>
               <option value="MHz">MHz</option>
               <option value="GHz">GHz</option>
-            </select>
+            </Select>
           </div>
         </div>
       )}
