@@ -13,7 +13,7 @@ export function resolveTheme(preference: ThemePreference): "light" | "dark" {
 }
 
 export function readStoredTheme(): ThemePreference {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "dark";
 
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "system") {
@@ -22,7 +22,7 @@ export function readStoredTheme(): ThemePreference {
 
   try {
     const rawSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!rawSettings) return "system";
+    if (!rawSettings) return "dark";
     const parsed = JSON.parse(rawSettings);
     const legacyTheme = parsed?.general?.theme;
 
@@ -32,7 +32,7 @@ export function readStoredTheme(): ThemePreference {
     // Ignore malformed settings, fallback to system
   }
 
-  return "system";
+  return "dark";
 }
 
 export function applyTheme(preference: ThemePreference): void {

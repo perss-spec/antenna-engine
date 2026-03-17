@@ -49,7 +49,7 @@ export function HeroSection({ onLaunch }: HeroSectionProps) {
 
   return (
     <section
-      className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center pt-20 pb-48"
+      className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center pt-24 pb-60"
       aria-label="Hero"
     >
       <nav
@@ -150,11 +150,10 @@ export function HeroSection({ onLaunch }: HeroSectionProps) {
         </p>
 
         <p
-          className="font-mono text-sm max-w-lg leading-relaxed"
-          style={{ color: "rgba(14,165,233,0.55)" }}
+          className="text-sm md:text-base max-w-2xl leading-relaxed text-center"
+          style={{ color: "rgba(186,230,253,0.55)" }}
         >
-          425&times; faster than CPU solvers. Real-time MoM, ML surrogates, and Touchstone export —
-          all running natively in your browser via WebGPU.
+          425× faster than CPU solvers. Real-time MoM, ML surrogates, and Touchstone export — all running natively in your browser via WebGPU.
         </p>
 
         <div className="flex flex-wrap items-center gap-4 mt-2">

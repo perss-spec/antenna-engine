@@ -27,7 +27,7 @@ const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       ref={ref}
       role="tablist"
       className={cn(
-        "inline-flex items-center gap-1 rounded-xl bg-base/80 p-1.5 border border-border",
+        "inline-flex items-center gap-1 rounded-xl bg-surface p-1.5 border border-border/60 shadow-xs",
         className
       )}
       {...props}
@@ -51,12 +51,12 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
         role="tab"
         aria-selected={isActive}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium transition-all duration-150",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
           "min-h-8",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-base",
           isActive
-            ? "bg-accent text-white shadow-sm"
-            : "text-text-muted hover:text-text-primary hover:bg-elevated",
+            ? "bg-accent/12 text-accent shadow-sm border border-accent/20"
+            : "text-text-muted hover:text-text-primary hover:bg-base border border-transparent",
           className
         )}
         onClick={() => ctx.onValueChange(value)}

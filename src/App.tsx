@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Activity, Radio, Zap, Signal, ChevronDown } from 'lucide-react';
+import { Activity, Radio, Zap, Signal, ChevronDown, Globe, Moon, Sun } from 'lucide-react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import AntennaForm from './components/AntennaForm/AntennaForm';
 import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
-import { getCategoryForId } from '@/lib/antennaKB';
+import { getCategoryForId, ANTENNA_PRESETS } from '@/lib/antennaKB';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
 import VswrChart from './components/VswrChart/VswrChart';
@@ -17,7 +17,7 @@ import { RadiationPatternView } from './components/RadiationPatternView';
 import ExportPanel from './components/ExportPanel/ExportPanel';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { LandingPage } from '@/components/landing/LandingPage';
 import FileImport from './components/FileImport/FileImport';
 import { SolverPanel } from './components/SolverPanel/SolverPanel';
@@ -39,11 +39,10 @@ import {
 import {
   applyTheme,
   persistTheme,
-  readStoredTheme,
   watchSystemTheme,
   type ThemePreference,
 } from '@/lib/theme';
-import { useT, type Locale } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 
@@ -204,8 +203,14 @@ function SidebarSection({ title, defaultOpen = false, children }: { title: strin
 
 function App() {
   const { t, locale, setLocale } = useT();
-  const [showLanding, setShowLanding] = useState(true);
-  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readStoredTheme());
+  const [showLanding, setShowLanding] = useState(() => {
+    try {
+      return localStorage.getItem('promin_workspace_seen') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const [themePreference, setThemePreference] = useState<ThemePreference>('dark');
   const [isSimulating, setIsSimulating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [simTime, setSimTime] = useState<number | null>(null);
@@ -252,6 +257,7 @@ function App() {
   };
 
   const [params, setParams] = useState(defaultParams);
+  const preset = useMemo(() => ANTENNA_PRESETS.find(p => p.id === params.antennaType), [params.antennaType]);
 
   useEffect(() => {
     applyTheme(themePreference);
@@ -527,27 +533,31 @@ function App() {
         ? t('header.workflow.review')
         : t('header.workflow.configure');
 
+  const handleLaunchWorkspace = () => {
+    try {
+      localStorage.setItem('promin_workspace_seen', '1');
+    } catch {}
+    setShowLanding(false);
+  };
+
   if (showLanding) {
-    return <LandingPage onLaunch={() => setShowLanding(false)} />;
+    return <LandingPage onLaunch={handleLaunchWorkspace} />;
   }
 
   return (
-    <div className="h-screen bg-base text-text-primary overflow-hidden flex flex-col">
-      <div className="h-15 bg-surface border-b border-border flex items-center justify-between px-5 shrink-0">
+    <div className="workspace-shell h-screen bg-base text-text-primary overflow-hidden flex flex-col">
+      <div className="h-14 bg-surface/80 backdrop-blur-md border-b border-border/60 flex items-center justify-between px-5 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-sm">
+          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-accent/25">
             P
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-[15px] font-bold tracking-tight">PROMIN Antenna Studio</span>
+          <div className="flex flex-col leading-none">
+            <span className="text-[14px] font-semibold tracking-tight">PROMIN</span>
             <span className="text-[11px] text-text-dim">{workflowState}</span>
           </div>
-          <span className="text-[11px] font-medium text-text-dim px-2 py-0.5 rounded bg-elevated border border-border ml-2">
-            {isTauri ? 'Native' : 'v0.3'}
-          </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {isSimulating && (
             <Badge variant="warning">
               <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
@@ -561,40 +571,39 @@ function App() {
             </Badge>
           )}
           {summary && !isSimulating && !isOptimizing && <Badge variant="success">{t('header.done')}</Badge>}
-          <div className="flex gap-3 items-center text-[12px] text-text-dim border-l border-border pl-3">
-            {simTime && <span className="tabular-nums font-medium">{simTime}ms</span>}
-            {chartData.length > 0 && <span className="tabular-nums">{chartData.length} pts</span>}
+          {(simTime || chartData.length > 0) && (
+            <div className="flex gap-2 items-center text-[11px] text-text-dim tabular-nums border-l border-border/50 pl-2 ml-1">
+              {simTime && <span className="font-medium">{simTime}ms</span>}
+              {chartData.length > 0 && <span>{chartData.length} pts</span>}
+            </div>
+          )}
+          <div className="flex items-center gap-1 border-l border-border/50 pl-2 ml-1">
+            <button
+              onClick={() => setLocale(locale === 'en' ? 'uk' : 'en')}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-surface-hover transition-all duration-150"
+              aria-label="Toggle language"
+              title={locale === 'en' ? 'Switch to Ukrainian' : 'Switch to English'}
+            >
+              <Globe className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setThemePreference(themePreference === 'dark' ? 'light' : 'dark')}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-surface-hover transition-all duration-150"
+              aria-label="Toggle theme"
+              title={themePreference === 'dark' ? 'Switch to light' : 'Switch to dark'}
+            >
+              {themePreference === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
           </div>
-          <Select
-            size="sm"
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
-            className="w-[80px] h-8 text-[11px] bg-elevated border-border"
-            aria-label="Language"
-          >
-            <option value="en">EN</option>
-            <option value="uk">UK</option>
-          </Select>
-          <Select
-            size="sm"
-            value={themePreference}
-            onChange={(e) => setThemePreference(e.target.value as ThemePreference)}
-            className="w-[132px] h-8 text-[11px] bg-elevated border-border"
-            aria-label="Theme"
-          >
-            <option value="light">{t('theme.light')}</option>
-            <option value="dark">{t('theme.dark')}</option>
-            <option value="system">{t('theme.system')}</option>
-          </Select>
         </div>
       </div>
 
       <PanelGroup orientation="horizontal" className="flex-1">
-        <Panel defaultSize="24%" minSize="19%" maxSize="34%">
-          <div className="h-full bg-surface flex flex-col overflow-hidden border-r border-border">
-            <div className="px-5 py-3.5 border-b border-border">
-              <div className="text-[11px] uppercase tracking-wider text-text-dim">{t('sidebar.inputs')}</div>
-              <div className="text-[12px] text-text-muted mt-1">Step 1: Configure, then run simulation</div>
+        <Panel defaultSize="28%" minSize="22%" maxSize="36%">
+          <div className="workspace-sidebar h-full bg-surface flex flex-col overflow-hidden border-r border-border">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="text-[12px] uppercase tracking-wider text-text-dim">{t('sidebar.inputs')}</div>
+              <div className="text-[13px] text-text-muted mt-1">Step 1: Configure, then run simulation</div>
             </div>
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <AntennaForm
@@ -665,7 +674,7 @@ function App() {
 
         <Panel minSize="42%">
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 p-4 xl:p-5 flex flex-col gap-4 min-h-0">
+            <div className="flex-1 p-5 xl:p-6 flex flex-col gap-4 min-h-0">
               {error && (
                 <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-[13px] flex items-center gap-3">
                   <span className="w-2 h-2 rounded-full bg-error shrink-0" />
@@ -676,8 +685,9 @@ function App() {
               {summary ? (
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   <div className="flex flex-col xl:flex-row gap-3 xl:items-start">
-                    <div className="flex-1 flex flex-col gap-2">
-                      <TabsList className="shrink-0 flex-wrap">
+                    <div className="flex-1 flex flex-col gap-2 soft-card p-3.5">
+                      <div className="section-label">Analysis views</div>
+                      <TabsList className="shrink-0 flex-wrap bg-base border-border/70">
                         <TabsTrigger value="s-parameters">{t('tab.sParams')}</TabsTrigger>
                         <TabsTrigger value="vswr">{t('tab.vswr')}</TabsTrigger>
                         <TabsTrigger value="z-freq">{t('tab.zFreq')}</TabsTrigger>
@@ -695,8 +705,8 @@ function App() {
                       )}
                     </div>
                     {chartData.length > 0 && (
-                      <div className="xl:w-[340px] w-full bg-surface border border-border rounded-xl p-3">
-                        <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">Export</div>
+                      <div className="xl:w-[360px] w-full soft-card p-3.5">
+                        <div className="section-label mb-2">Export</div>
                         <ExportPanel
                           frequencies={impedanceData.freq}
                           s11Db={chartData.map((d) => d.s11_db)}
@@ -711,49 +721,49 @@ function App() {
                   </div>
 
                   <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
-                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
                       {[
                         { icon: Radio, label: t('stat.resonantFreq'), value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
                         { icon: Activity, label: t('stat.minS11'), value: `${summary.minS11.toFixed(1)} dB`, iconBg: 'bg-success/10', iconColor: 'text-success', valueColor: 'text-success' },
                         { icon: Zap, label: t('stat.vswr'), value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
                         { icon: Signal, label: t('stat.bw'), value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
                       ].map(({ icon: Icon, label, value, iconBg, iconColor, valueColor }) => (
-                        <div key={label} className="flex items-center gap-3.5 rounded-xl border border-border bg-surface px-4 py-4">
-                          <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+                        <div key={label} className="soft-card flex items-center gap-3.5 px-4 py-4.5">
+                          <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                             <Icon className={`w-[18px] h-[18px] ${iconColor}`} />
                           </div>
                           <div>
-                            <div className="text-[11px] text-text-dim mb-0.5">{label}</div>
-                            <div className={`text-[15px] font-semibold ${valueColor} tabular-nums leading-tight`}>{value}</div>
+                            <div className="text-[12px] text-text-dim mb-0.5 tracking-wide">{label}</div>
+                            <div className={`text-[16px] font-semibold ${valueColor} tabular-nums leading-tight`}>{value}</div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 min-h-[300px] flex flex-col">
+                    <div className="soft-card p-4 flex-1 min-h-[300px] flex flex-col">
                       <S11Chart data={chartData} simulationData={compChartData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="impedance" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 flex items-center justify-center">
+                    <div className="soft-card p-4 flex-1 flex items-center justify-center">
                       <SmithChart impedancePoints={smithData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="vswr" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 min-h-[300px] flex flex-col">
+                    <div className="soft-card p-4 flex-1 min-h-[300px] flex flex-col">
                       <VswrChart data={vswrData} comparisonData={compVswrData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="z-freq" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 min-h-[300px] flex flex-col">
+                    <div className="soft-card p-4 flex-1 min-h-[300px] flex flex-col">
                       <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="3d-view" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl flex-1 min-h-[300px] overflow-hidden">
+                    <div className="soft-card flex-1 min-h-[300px] overflow-hidden">
                       <AntennaViewport
                         antennaType={params.antennaType}
                         length={params.length / 1000}
@@ -802,7 +812,7 @@ function App() {
                           ))}
                         </div>
                       </div>
-                      <div className="bg-surface border border-border rounded-xl flex-1 min-h-[400px] overflow-hidden">
+                      <div className="soft-card flex-1 min-h-[400px] overflow-hidden">
                         <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
                           <MeshViewer mesh={null} mode={meshViewMode} showQuality={false} />
                           <OrbitControls />
@@ -812,26 +822,46 @@ function App() {
                   )}
                 </Tabs>
               ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="w-full max-w-[640px] bg-surface border border-border rounded-2xl p-7">
-                    <div className="text-lg font-semibold text-text-muted mb-2">{t('empty.title')}</div>
-                    <div className="text-[13px] text-text-dim leading-relaxed mb-5">{t('empty.text')}</div>
-                    <div className="grid md:grid-cols-3 gap-3">
-                      {[
-                        { title: '1. Select antenna', text: 'Choose antenna type and set the center frequency.' },
-                        { title: '2. Tune geometry', text: 'Adjust dimensions and material in the left panel.' },
-                        { title: '3. Run + review', text: 'Run simulation, then inspect S11, VSWR and 3D tabs.' },
-                      ].map((step) => (
-                        <div key={step.title} className="rounded-xl border border-border bg-base px-4 py-3">
-                          <div className="text-xs font-semibold text-text-secondary mb-1">{step.title}</div>
-                          <div className="text-xs text-text-dim leading-relaxed">{step.text}</div>
-                        </div>
-                      ))}
+                <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-auto p-6">
+                  <div className="w-full max-w-[520px] space-y-5 min-w-0">
+                    <div className="flex flex-col items-center text-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+                        <Radio className="w-6 h-6 text-accent" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold tracking-tight text-text-primary mb-1.5">
+                          {t('empty.title')}
+                        </h2>
+                        <p className="text-sm text-text-muted leading-relaxed">
+                          {t('empty.text')}
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        disabled={isSimulating}
+                        onClick={() => handleSubmit(params)}
+                        className="w-full max-w-[260px]"
+                      >
+                        {isSimulating ? t('form.simulating') : t('form.runSimulation')}
+                      </Button>
+                      <p className="text-[11px] text-text-dim">{t('empty.types')}</p>
                     </div>
-                    <div className="flex items-center gap-3 text-[12px] text-text-dim/60 mt-5">
-                      <span className="w-10 h-px bg-border" />
-                      <span>{t('empty.types')}</span>
-                      <span className="w-10 h-px bg-border" />
+
+                    <div className="border-t border-border/30 pt-4">
+                      <div className="flex items-center justify-between gap-4 text-left">
+                        <div className="min-w-0">
+                          <div className="text-[10px] uppercase tracking-wider text-text-dim mb-0.5">Type</div>
+                          <div className="text-[13px] font-medium text-text-secondary truncate">{preset?.name ?? params.antennaType.replace(/_/g, ' ')}</div>
+                        </div>
+                        <div className="min-w-0 text-center">
+                          <div className="text-[10px] uppercase tracking-wider text-text-dim mb-0.5">Freq</div>
+                          <div className="text-[13px] font-medium text-text-secondary tabular-nums">{params.frequency} MHz</div>
+                        </div>
+                        <div className="min-w-0 text-right">
+                          <div className="text-[10px] uppercase tracking-wider text-text-dim mb-0.5">Material</div>
+                          <div className="text-[13px] font-medium text-text-secondary capitalize">{params.material}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

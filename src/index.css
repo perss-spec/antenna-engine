@@ -82,20 +82,20 @@
 }
 
 :root[data-theme="light"] {
-  --color-base: #f3f5f8;
+  --color-base: #e9eef5;
   --color-surface: #ffffff;
-  --color-surface-hover: #f8f9fb;
-  --color-elevated: #eef2f7;
-  --color-overlay: #e7edf6;
+  --color-surface-hover: #f3f6fb;
+  --color-elevated: #e8eef8;
+  --color-overlay: #dfe7f3;
 
-  --color-border: #d5dce8;
-  --color-border-hover: #c5cfdd;
-  --color-border-strong: #b7c4d7;
+  --color-border: #c5d0e0;
+  --color-border-hover: #b3c0d5;
+  --color-border-strong: #9fb0cb;
 
-  --color-text-primary: #101623;
-  --color-text-secondary: #2e3a4b;
-  --color-text-muted: #556277;
-  --color-text-dim: #7a8799;
+  --color-text-primary: #0b1220;
+  --color-text-secondary: #223146;
+  --color-text-muted: #3f4f66;
+  --color-text-dim: #5f728d;
 
   --color-accent: #3f6cff;
   --color-accent-hover: #355de0;
@@ -107,10 +107,10 @@
   --color-error: #ca3b31;
   --color-info: #2578d8;
 
-  --shadow-xs: 0 1px 2px rgba(16, 22, 35, 0.08);
-  --shadow-sm: 0 2px 6px rgba(16, 22, 35, 0.1);
-  --shadow-md: 0 6px 18px rgba(16, 22, 35, 0.12);
-  --shadow-lg: 0 12px 30px rgba(16, 22, 35, 0.16);
+  --shadow-xs: 0 1px 2px rgba(16, 22, 35, 0.1);
+  --shadow-sm: 0 2px 8px rgba(16, 22, 35, 0.12);
+  --shadow-md: 0 8px 22px rgba(16, 22, 35, 0.14);
+  --shadow-lg: 0 14px 34px rgba(16, 22, 35, 0.18);
   --shadow-glow: 0 0 16px rgba(63, 108, 255, 0.15);
 }
 
@@ -194,4 +194,60 @@ body {
   background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), transparent 50%, rgba(14, 165, 233, 0.06));
   z-index: -1;
   pointer-events: none;
+}
+
+/* Workspace polish helpers */
+.soft-card {
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-surface) 86%, var(--color-base) 14%);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.soft-card:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  font-weight: 600;
+}
+
+/* Empty state centered layout */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Larger, more readable sidebar UI */
+.workspace-sidebar {
+  font-size: 14px;
+}
+
+.workspace-sidebar input,
+.workspace-sidebar select,
+.workspace-sidebar button {
+  font-size: 14px;
+}
+
+.workspace-sidebar .text-xs {
+  font-size: 13px !important;
+}
+
+/* Content reveal animation */
+@keyframes contentReveal {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-reveal {
+  animation: contentReveal 0.3s ease-out;
 }

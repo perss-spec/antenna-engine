@@ -60,7 +60,7 @@ function CollapsibleSection({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={contentId}
-        className="w-full flex items-center justify-between px-5 py-4 text-xs font-semibold uppercase tracking-widest text-text-dim/70 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+        className="w-full flex items-center justify-between px-5 py-4 text-[12px] font-semibold uppercase tracking-widest text-text-dim/80 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         {title}
         <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', open && 'rotate-180')} />
@@ -76,7 +76,7 @@ function CollapsibleSection({
 
 function UnitBadge({ unit }: { unit: string }) {
   return (
-    <span className="shrink-0 inline-flex items-center justify-center px-2.5 h-10 text-xs text-text-dim bg-elevated border border-border rounded-r-lg border-l-0">
+    <span className="shrink-0 inline-flex items-center justify-center px-2.5 h-10 text-[12px] text-text-dim bg-elevated border border-border rounded-r-lg border-l-0">
       {unit}
     </span>
   );
@@ -85,7 +85,7 @@ function UnitBadge({ unit }: { unit: string }) {
 function FieldRow({ label, htmlFor, unit, children }: { label: string; htmlFor: string; unit?: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
-      <Label htmlFor={htmlFor} className="text-xs font-medium text-text-muted">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-[13px] font-medium text-text-muted">{label}</Label>
       <div className={cn('flex', unit && 'items-stretch')}>
         <div className={cn('flex-1', unit && '[&>input]:rounded-r-none [&>input]:border-r-0')}>
           {children}
@@ -211,15 +211,15 @@ const AntennaForm: FC<AntennaFormProps> = ({
         {/* Antenna Type */}
         <div className="px-5 py-5 flex flex-col gap-6">
           <div className="rounded-xl border border-border bg-base px-4 py-3">
-            <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">Current setup</div>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="text-[12px] uppercase tracking-wider text-text-dim mb-2">Current setup</div>
+            <div className="flex flex-wrap items-center gap-2 text-[12px]">
               <span className="px-2 py-1 rounded-md bg-elevated text-text-secondary">{preset?.name ?? localParams.antennaType}</span>
               <span className="px-2 py-1 rounded-md bg-elevated text-text-secondary tabular-nums">{localParams.frequency} MHz</span>
               <span className="px-2 py-1 rounded-md bg-elevated text-text-secondary">{localParams.material}</span>
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            <Label htmlFor="antennaType" className="text-xs font-medium text-text-muted">{t('form.antennaType')}</Label>
+            <Label htmlFor="antennaType" className="text-[13px] font-medium text-text-muted">{t('form.antennaType')}</Label>
             <Select
               id="antennaType"
               value={localParams.antennaType}
@@ -240,7 +240,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
               })}
             </Select>
             {preset && (
-              <p className="text-[11px] leading-relaxed text-text-dim/70 line-clamp-2 mt-1.5">
+              <p className="text-[12px] leading-relaxed text-text-dim/70 line-clamp-2 mt-1.5">
                 {preset.description.slice(0, 100)}
               </p>
             )}
