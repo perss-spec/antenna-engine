@@ -606,6 +606,7 @@ function App() {
                   <SolverPanel
                     antennaType={params.antennaType}
                     antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
+                    frequency={params.frequency}
                     onSolveComplete={(r) => setResults(fromSingleSolve(r, params.antennaType, { length_m: params.length / 1000, radius_m: params.radius / 1000 }))}
                     onSweepComplete={(sweep) => setResults(fromSweepResult(sweep))}
                     onComparisonComplete={(a, b) => {

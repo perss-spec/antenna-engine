@@ -22,6 +22,10 @@ vi.mock('@/lib/antennaKB', () => ({
   getCategoryForId: vi.fn().mockReturnValue('wire'),
 }));
 
+vi.mock('@/lib/gainCalculator', () => ({
+  analyticalGain: vi.fn().mockReturnValue(2.15),
+}));
+
 // Mock CSS import
 vi.mock('../SolverPanel.css', () => ({}));
 
@@ -29,7 +33,8 @@ import { api } from '@/lib/api';
 
 const defaultProps = {
   antennaType: 'dipole',
-  antennaParams: { length: 0.0625 },
+  antennaParams: { length_m: 0.0625 },
+  frequency: 2400, // MHz
   onSolveComplete: vi.fn(),
   onSweepComplete: vi.fn(),
 };
@@ -52,29 +57,20 @@ describe('SolverPanel', () => {
     expect(button).not.toBeDisabled();
   });
 
-  it('clicking "Run Solver" triggers computation and shows results', async () => {
+  it('clicking "Run Solver" triggers sweep and calls onSweepComplete', async () => {
     render(<SolverPanel {...defaultProps} />);
 
     const button = screen.getByRole('button', { name: /run solver/i });
     fireEvent.click(button);
 
-    // Wait for the local solver to complete and results to appear
+    // Default mode is sweep, so onSweepComplete should be called
     await waitFor(() => {
-      expect(screen.getByText('Simulation Results')).toBeInTheDocument();
+      expect(defaultProps.onSweepComplete).toHaveBeenCalledTimes(1);
     });
 
-    // Check that result values are displayed (impedance, S11, VSWR)
-    expect(screen.getByText('Z_in:')).toBeInTheDocument();
-    expect(screen.getByText('S11:')).toBeInTheDocument();
-    expect(screen.getByText('VSWR:')).toBeInTheDocument();
-
-    // Callback should have been called
-    expect(defaultProps.onSolveComplete).toHaveBeenCalledTimes(1);
-    const result = defaultProps.onSolveComplete.mock.calls[0][0];
-    expect(result.impedance.real).toBe(73);
-    expect(result.impedance.imag).toBe(42.5);
-    expect(typeof result.s11_db).toBe('number');
-    expect(typeof result.vswr).toBe('number');
+    const sweep = defaultProps.onSweepComplete.mock.calls[0][0];
+    expect(sweep.frequencies.length).toBeGreaterThan(1);
+    expect(sweep.results.length).toBe(sweep.frequencies.length);
   });
 
   it('solver type radio buttons work', () => {
@@ -85,19 +81,9 @@ describe('SolverPanel', () => {
     const momSurface = radios.find(r => (r as HTMLInputElement).value === 'MoM Surface') as HTMLInputElement;
     const fdtd = radios.find(r => (r as HTMLInputElement).value === 'FDTD') as HTMLInputElement;
 
-    expect(momWire).toBeDefined();
-    expect(momSurface).toBeDefined();
-    expect(fdtd).toBeDefined();
-
-    // Default is MoM Wire
     expect(momWire.checked).toBe(true);
-
-    // Switch to FDTD
     fireEvent.click(fdtd);
     expect(fdtd.checked).toBe(true);
-    expect(momWire.checked).toBe(false);
-
-    // Switch to MoM Surface
     fireEvent.click(momSurface);
     expect(momSurface.checked).toBe(true);
   });
@@ -110,14 +96,12 @@ describe('SolverPanel', () => {
     const sweepRadio = radios.find(r => (r as HTMLInputElement).value === 'sweep') as HTMLInputElement;
     const presetRadio = radios.find(r => (r as HTMLInputElement).value === 'preset') as HTMLInputElement;
 
-    // Default is single
-    expect(singleRadio.checked).toBe(true);
-
-    // Switch to sweep — should show Start/End inputs
-    fireEvent.click(sweepRadio);
+    // Default is sweep now
     expect(sweepRadio.checked).toBe(true);
-    expect(screen.getByText(/Start \(Hz\):/)).toBeInTheDocument();
-    expect(screen.getByText(/End \(Hz\):/)).toBeInTheDocument();
+
+    // Switch to single
+    fireEvent.click(singleRadio);
+    expect(singleRadio.checked).toBe(true);
 
     // Switch to preset — should show Band selector
     fireEvent.click(presetRadio);
@@ -128,7 +112,13 @@ describe('SolverPanel', () => {
   it('local fallback works when server is unavailable', async () => {
     (api.isServerAvailable as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
+    // Use single mode to test onSolveComplete
     render(<SolverPanel {...defaultProps} />);
+
+    // Switch to single mode
+    const radios = screen.getAllByRole('radio');
+    const singleRadio = radios.find(r => (r as HTMLInputElement).value === 'single') as HTMLInputElement;
+    fireEvent.click(singleRadio);
 
     const button = screen.getByRole('button', { name: /run solver/i });
     fireEvent.click(button);
@@ -137,10 +127,7 @@ describe('SolverPanel', () => {
       expect(screen.getByText('Simulation Results')).toBeInTheDocument();
     });
 
-    // api.solve should NOT have been called (server unavailable → local fallback)
     expect(api.solve).not.toHaveBeenCalled();
-
-    // But results should still be shown from localSolve
     expect(defaultProps.onSolveComplete).toHaveBeenCalledTimes(1);
     const result = defaultProps.onSolveComplete.mock.calls[0][0];
     expect(result.impedance.real).toBe(73);

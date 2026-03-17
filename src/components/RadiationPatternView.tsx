@@ -42,14 +42,17 @@ const categoryModels: Record<AntennaCategory, PatternModel> = {
     baseGain: 6.0,
     fn: (theta, k, lambda) => {
       const W = lambda / 2;
-      const L = lambda / 2;
-      const kW = k * W;
-      const kL = k * L;
+      const h = lambda / 50; // typical substrate ~ λ/50
       const sinTheta = Math.sin(theta);
       const cosTheta = Math.cos(theta);
-      const ePattern = Math.abs(cosTheta) * Math.abs(sinc(kW / 2 * sinTheta));
-      const hPattern = Math.abs(sinc(kL / 2 * sinTheta)) * Math.abs(cosTheta);
-      const combined = Math.sqrt(ePattern * hPattern);
+      // E-plane: cos(kW/2 * sinθ) broadside pattern
+      const eArg = k * W / 2 * sinTheta;
+      const ePattern = Math.abs(eArg) < 1e-10 ? 1.0 : Math.abs(Math.sin(eArg) / eArg);
+      // H-plane: cosθ envelope × sinc(kh*sinθ/2)
+      const hArg = k * h / 2 * sinTheta;
+      const hPattern = Math.abs(cosTheta) * (Math.abs(hArg) < 1e-10 ? 1.0 : Math.abs(Math.sin(hArg) / hArg));
+      // Total pattern is product of E and H planes
+      const combined = ePattern * hPattern;
       return Math.max(6.0 + 20 * Math.log10(Math.max(combined, 1e-10)), -40);
     }
   },

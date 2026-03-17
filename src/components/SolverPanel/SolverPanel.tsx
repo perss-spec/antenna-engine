@@ -60,6 +60,7 @@ export interface SweepResult {
 interface SolverPanelProps {
   antennaType: string;
   antennaParams: Record<string, number>;
+  frequency: number; // MHz — from AntennaForm, single source of truth
   onSolveComplete: (result: SimulationResult) => void;
   onSweepComplete: (result: SweepResult) => void;
   onComparisonComplete?: (momResult: SweepResult, fdtdResult: SweepResult) => void;
@@ -81,6 +82,7 @@ const PRESET_FREQUENCIES: Record<string, number[]> = {
 export const SolverPanel: React.FC<SolverPanelProps> = ({
   antennaType,
   antennaParams,
+  frequency,
   onSolveComplete,
   onSweepComplete,
   onComparisonComplete
@@ -88,13 +90,16 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
   // Solver configuration
   const [solverType, setSolverType] = useState<SolverType>('MoM Wire');
   const [meshResolution, setMeshResolution] = useState<number>(10);
-  
-  // Frequency settings
-  const [frequencyMode, setFrequencyMode] = useState<FrequencyMode>('single');
-  const [singleFreq, setSingleFreq] = useState<number>(2.4e9);
-  const [freqStart, setFreqStart] = useState<number>(2e9);
-  const [freqEnd, setFreqEnd] = useState<number>(3e9);
-  const [freqPoints, setFreqPoints] = useState<number>(21);
+
+  // Frequency settings — derived from props, with sweep overrides
+  const [frequencyMode, setFrequencyMode] = useState<FrequencyMode>('sweep');
+  // Single freq synced from AntennaForm (MHz → Hz)
+  const singleFreq = frequency * 1e6;
+  // Sweep defaults: ±50% around center
+  const [sweepRatio, setSweepRatio] = useState<number>(0.5);
+  const freqStart = singleFreq * (1 - sweepRatio);
+  const freqEnd = singleFreq * (1 + sweepRatio);
+  const [freqPoints, setFreqPoints] = useState<number>(51);
   const [presetBand, setPresetBand] = useState<string>('S-Band');
   
   // Solver options
@@ -368,45 +373,38 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
               </label>
             ))}
           </div>
-          
+
           {frequencyMode === 'single' && (
             <div className="freq-input">
               <label>
-                Frequency (Hz):
-                <input
-                  type="number"
-                  value={singleFreq}
-                  onChange={(e) => setSingleFreq(Number(e.target.value))}
-                  disabled={isRunning}
-                  step="1000000"
-                />
+                Center: {formatFrequency(singleFreq)}
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}> (from antenna config)</span>
               </label>
             </div>
           )}
-          
+
           {frequencyMode === 'sweep' && (
             <div className="freq-sweep">
               <div className="freq-row">
                 <label>
-                  Start (Hz):
-                  <input
-                    type="number"
-                    value={freqStart}
-                    onChange={(e) => setFreqStart(Number(e.target.value))}
-                    disabled={isRunning}
-                    step="1000000"
-                  />
+                  Range: {formatFrequency(freqStart)} — {formatFrequency(freqEnd)}
                 </label>
-                <label>
-                  End (Hz):
-                  <input
-                    type="number"
-                    value={freqEnd}
-                    onChange={(e) => setFreqEnd(Number(e.target.value))}
-                    disabled={isRunning}
-                    step="1000000"
-                  />
-                </label>
+              </div>
+              <div className="slider-container">
+                <label>Sweep width: ±{Math.round(sweepRatio * 100)}%</label>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={sweepRatio * 100}
+                  onChange={(e) => setSweepRatio(Number(e.target.value) / 100)}
+                  disabled={isRunning}
+                  className="slider"
+                />
+                <div className="slider-labels">
+                  <span>±10%</span>
+                  <span>±100%</span>
+                </div>
               </div>
               <label>
                 Points:

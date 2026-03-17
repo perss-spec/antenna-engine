@@ -39,9 +39,10 @@ function solveWire(
 ): [number, number] {
   const L = ap.length_m || lambda / 2;
   const a = ap.radius_m || 0.001;
-  const x = k * L - Math.PI;
-  const zr = 73.13 * (1 + 0.014 * x * x) + conductorLoss(L, a, f);
-  const zi = 42.5 * clampTan(x);
+  // King's method: phase deviation from half-wave resonance
+  const psi = k * L / 2 - Math.PI / 2;
+  const zr = 73.13 * (1 + 0.014 * psi * psi) + conductorLoss(L, a, f);
+  const zi = 42.5 * clampTan(psi);
   return [zr, zi];
 }
 
@@ -49,8 +50,8 @@ function solveWire(
 function solveMicrostrip(
   ap: Record<string, number>,
   f: number,
-  _lambda: number,
-  _k: number,
+  lambda: number,
+  k: number,
   _antennaType: string,
 ): [number, number] {
   const er = ap.substrate_er || 4.4;
@@ -62,13 +63,18 @@ function solveMicrostrip(
   const pLen = ap.length_m || C0 / (2 * f * Math.sqrt(erEff));
   const Le = pLen + 2 * deltaL;
   const fRes = C0 / (2 * Le * Math.sqrt(erEff));
-  const Zedge = Math.min(90 * er * er / (er - 1) * Math.pow(pLen / W, 2), 400);
+  // Bahl & Bhartia edge impedance for rectangular patch
+  const G1 = (W / (120 * lambda)) * (1 - (1 / 24) * Math.pow(k * h, 2));
+  const Zedge = Math.min(1 / (2 * Math.max(G1, 1e-6)), 400);
 
   // Q_total = 1/(1/Q_rad + 1/Q_d + 1/Q_c) — full loss model
   const Q_rad = C0 / (4 * fRes * h * Math.sqrt(erEff));
   const lossTan = ap.loss_tangent || 0.02;
   const Q_d = 1 / lossTan;
-  const Q_c = h * Math.sqrt(Math.PI * f * 4 * Math.PI * 1e-7 * 5.8e7);
+  // Conductor Q: skin depth δ = √(2/(ωμσ)), Q_c = h/δ
+  const sigma = 5.8e7; // copper conductivity S/m
+  const skinDepth = Math.sqrt(2 / (2 * Math.PI * f * 4 * Math.PI * 1e-7 * sigma));
+  const Q_c = h / Math.max(skinDepth, 1e-9);
   const Q = 1 / (1 / Q_rad + 1 / Q_d + 1 / Math.max(Q_c, 1));
 
   const detuning = f / fRes - fRes / f;
@@ -142,15 +148,18 @@ function solveAperture(
     const diameter = ap.diameter || lambda * 10;
     const efficiency = 0.55 + 0.1 * focalRatio;
     const Zfeed = 377 * efficiency / (1 + (diameter / lambda) * 0.01);
-    const zi = 377 * 0.05 * (1 - f * lambda / C0);
+    // Detuning reactance: resonant when aperture = design size
+    const fRes = C0 / (Math.PI * diameter * 0.5);
+    const zi = 377 * 0.05 * (f / fRes - fRes / f);
     return [Math.max(Zfeed, 10), zi];
   }
 
   const fCutoff = C0 / (2 * Math.max(aW, lambda * 0.5));
   const ratio = f / fCutoff;
   if (ratio <= 1.01) {
-    // At or below cutoff — high reactance, poor match
-    return [5, -500];
+    // At/below cutoff — continuous reactive model
+    const evanescent = 1 / (ratio + 0.01);
+    return [5 * ratio, -377 * evanescent];
   }
   const Zw = 377 / Math.sqrt(1 - Math.pow(fCutoff / f, 2));
 
@@ -181,10 +190,10 @@ function solveArray(
   const d = ap.element_spacing || lambda / 2;
   const L = ap.length_m || lambda / 2;
 
-  // Element self-impedance (dipole)
-  const x = k * L - Math.PI;
-  const ze_r = 73.13 * (1 + 0.014 * x * x);
-  const ze_i = 42.5 * clampTan(x);
+  // Element self-impedance (dipole) — King's method
+  const psi = k * L / 2 - Math.PI / 2;
+  const ze_r = 73.13 * (1 + 0.014 * psi * psi);
+  const ze_i = 42.5 * clampTan(psi);
 
   // Mutual impedance via Induced EMF method (Balanis eq. 8-68)
   // Z12 = R12 + jX12 computed from Si/Ci integrals
