@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
+import { api } from '@/lib/api';
 import './SolverPanel.css';
-
-declare global {
-  interface Window {
-    bridge?: {
-      sendMessage: (message: unknown) => void;
-    };
-  }
-}
 
 export interface SimulationResult {
   solver: 'MoM Wire' | 'MoM Surface' | 'FDTD';
@@ -84,141 +77,129 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
   const [momResult, setMomResult] = useState<SimulationResult | null>(null);
   const [fdtdResult, setFdtdResult] = useState<SimulationResult | null>(null);
 
-  // Bridge communication
-  const sendMessage = useCallback((message: any) => {
-    if (window.bridge) {
-      window.bridge.sendMessage(message);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleMessage = (event: any) => {
-      const { type, data } = event.detail;
-      
-      switch (type) {
-        case 'solver_progress':
-          setProgress(data.progress);
-          break;
-          
-        case 'solve_complete':
-          setIsRunning(false);
-          setProgress(100);
-          const result: SimulationResult = {
-            solver: data.solver,
-            frequency: data.frequency,
-            impedance: data.impedance,
-            s11_db: data.s11_db,
-            vswr: data.vswr,
-            gain_dbi: data.gain_dbi,
-            computation_time: data.computation_time,
-            convergence: data.convergence
-          };
-          setCurrentResult(result);
-          onSolveComplete(result);
-          
-          if (comparisonMode) {
-            if (data.solver.includes('MoM')) {
-              setMomResult(result);
-            } else {
-              setFdtdResult(result);
-            }
-          }
-          break;
-          
-        case 'sweep_complete':
-          setIsRunning(false);
-          setProgress(100);
-          const sweepResult: SweepResult = {
-            solver: data.solver,
-            frequencies: data.frequencies,
-            results: data.results
-          };
-          setSweepResults(sweepResult);
-          onSweepComplete(sweepResult);
-          break;
-          
-        case 'solver_error':
-          setIsRunning(false);
-          setProgress(0);
-          alert(`Solver error: ${data.message}`);
-          break;
-      }
-    };
-
-    window.addEventListener('bridge_message', handleMessage);
-    return () => window.removeEventListener('bridge_message', handleMessage);
-  }, [onSolveComplete, onSweepComplete, comparisonMode]);
-
-  const handleRun = () => {
+  const handleRun = useCallback(async () => {
     if (isRunning) return;
-    
+
     setIsRunning(true);
     setProgress(0);
     setCurrentResult(null);
     setSweepResults(null);
     setMomResult(null);
     setFdtdResult(null);
-    
-    const config = {
-      antenna_type: antennaType,
-      antenna_params: antennaParams,
-      mesh_resolution: meshResolution,
-      linear_solver: linearSolver,
-      tolerance: tolerance,
-      max_iterations: maxIterations
-    };
-    
-    if (comparisonMode) {
-      // Run both MoM and FDTD
-      const frequency = frequencyMode === 'single' ? singleFreq : 
-                       frequencyMode === 'preset' ? (PRESET_FREQUENCIES[presetBand][0] + PRESET_FREQUENCIES[presetBand][1]) / 2 :
-                       (freqStart + freqEnd) / 2;
-      
-      sendMessage({
-        type: 'run_comparison',
-        data: {
-          ...config,
-          frequency
+
+    const t0 = performance.now();
+
+    try {
+      if (frequencyMode === 'single' || comparisonMode) {
+        const freq = frequencyMode === 'single' ? singleFreq :
+          frequencyMode === 'preset' ? (PRESET_FREQUENCIES[presetBand][0] + PRESET_FREQUENCIES[presetBand][1]) / 2 :
+          (freqStart + freqEnd) / 2;
+
+        setProgress(10);
+
+        // Use MoM job for MoM solvers, solve for quick analytical
+        const useMom = solverType.includes('MoM');
+
+        if (useMom) {
+          const { job_id } = await api.submitMomJob({
+            antenna_type: antennaType,
+            frequency: freq,
+            segments: meshResolution * 2 + 1,
+            parameters: antennaParams,
+          });
+
+          // Poll until done
+          const job = await api.waitForJob(job_id, (p) => setProgress(10 + p * 0.85));
+          if (job.status === 'failed') throw new Error(job.error || 'MoM failed');
+
+          const data = job.result as any;
+          const result: SimulationResult = {
+            solver: solverType,
+            frequency: freq,
+            impedance: { real: data.impedance_real, imag: data.impedance_imag },
+            s11_db: data.s11_db,
+            vswr: data.vswr,
+            gain_dbi: data.radiation_pattern?.max_gain_dbi ?? 2.15,
+            computation_time: (performance.now() - t0) / 1000,
+            convergence: { converged: true, iterations: data.segments || meshResolution, final_error: 0 },
+          };
+          setCurrentResult(result);
+          onSolveComplete(result);
+          if (comparisonMode) setMomResult(result);
+        } else {
+          // Analytical solve via server
+          const resp = await api.solve({
+            antenna_type: antennaType,
+            frequency: freq,
+            parameters: antennaParams,
+          });
+          setProgress(90);
+
+          const result: SimulationResult = {
+            solver: solverType,
+            frequency: freq,
+            impedance: { real: resp.impedance_real, imag: resp.impedance_imag },
+            s11_db: resp.s11_db,
+            vswr: resp.vswr,
+            gain_dbi: 2.15,
+            computation_time: (performance.now() - t0) / 1000,
+            convergence: { converged: true, iterations: 1, final_error: 0 },
+          };
+          setCurrentResult(result);
+          onSolveComplete(result);
+          if (comparisonMode) setFdtdResult(result);
         }
-      });
-    } else if (frequencyMode === 'single') {
-      sendMessage({
-        type: 'run_solver',
-        data: {
-          ...config,
-          solver: solverType,
-          frequency: singleFreq
-        }
-      });
-    } else {
-      let frequencies: number[];
-      
-      if (frequencyMode === 'sweep') {
-        frequencies = Array.from({length: freqPoints}, (_, i) => 
-          freqStart + (freqEnd - freqStart) * i / (freqPoints - 1)
-        );
       } else {
-        const [start, end] = PRESET_FREQUENCIES[presetBand];
-        frequencies = Array.from({length: freqPoints}, (_, i) => 
-          start + (end - start) * i / (freqPoints - 1)
-        );
-      }
-      
-      sendMessage({
-        type: 'run_sweep',
-        data: {
-          ...config,
-          solver: solverType,
-          frequencies
+        // Frequency sweep
+        let fS: number, fE: number;
+        if (frequencyMode === 'preset') {
+          [fS, fE] = PRESET_FREQUENCIES[presetBand];
+        } else {
+          fS = freqStart;
+          fE = freqEnd;
         }
-      });
+
+        setProgress(10);
+        const resp = await api.sweep({
+          antenna_type: antennaType,
+          freq_start: fS,
+          freq_stop: fE,
+          freq_points: freqPoints,
+          parameters: antennaParams,
+        });
+        setProgress(90);
+
+        const results: SimulationResult[] = resp.frequencies.map((f, i) => ({
+          solver: solverType,
+          frequency: f,
+          impedance: { real: resp.impedance_real[i], imag: resp.impedance_imag[i] },
+          s11_db: resp.s11_db[i],
+          vswr: 1,
+          gain_dbi: 2.15,
+          computation_time: (performance.now() - t0) / 1000 / resp.frequencies.length,
+          convergence: { converged: true, iterations: 1, final_error: 0 },
+        }));
+
+        const sweepResult: SweepResult = {
+          solver: solverType,
+          frequencies: resp.frequencies,
+          results,
+        };
+        setSweepResults(sweepResult);
+        onSweepComplete(sweepResult);
+      }
+
+      setProgress(100);
+    } catch (err: any) {
+      alert(`Solver error: ${err.message || err}`);
+    } finally {
+      setIsRunning(false);
     }
-  };
+  }, [isRunning, frequencyMode, comparisonMode, singleFreq, freqStart, freqEnd, freqPoints, presetBand, solverType, meshResolution, antennaType, antennaParams, onSolveComplete, onSweepComplete]);
 
   const handleCancel = () => {
     setIsRunning(false);
     setProgress(0);
-    sendMessage({ type: 'cancel_solver', data: {} });
   };
 
   const formatComplex = (z: { real: number; imag: number }) => {

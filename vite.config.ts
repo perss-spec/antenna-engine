@@ -27,6 +27,16 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/webhook': {
+        target: 'http://localhost:5678',
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     globals: true,
