@@ -3,8 +3,21 @@ name = "antenna-engine"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "antenna_engine_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "promin-server"
+path = "src/bin/server.rs"
+required-features = ["server"]
+
+[features]
+default = ["tauri-app"]
+tauri-app = ["dep:tauri", "dep:tauri-plugin-dialog", "dep:tauri-plugin-fs"]
+server = ["dep:axum", "dep:tower-http", "dep:tower", "dep:uuid"]
+
 [dependencies]
-tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ndarray = "0.16"
@@ -13,10 +26,21 @@ rayon = "1.10"
 tokio = { version = "1", features = ["full"] }
 wgpu = "24"
 bytemuck = { version = "1", features = ["derive"] }
-tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2"
 ort = "2.0.0-rc.12"
 thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Tauri (optional, for desktop app)
+tauri = { version = "2", features = [], optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-fs = { version = "2", optional = true }
+
+# Server (optional, for HTTP API)
+axum = { version = "0.8", features = ["ws"], optional = true }
+tower-http = { version = "0.6", features = ["cors", "trace"], optional = true }
+tower = { version = "0.5", optional = true }
+uuid = { version = "1", features = ["v4"], optional = true }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

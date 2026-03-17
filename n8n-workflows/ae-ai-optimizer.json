@@ -1,0 +1,443 @@
+{
+  "name": "ae-ai-optimizer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ae/optimize",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $input.item.json.body;\n\nreturn [{\n  json: {\n    antenna_type: req.antenna_type,\n    target_frequency: req.target_frequency,\n    target_s11: req.target_s11 || -15,\n    target_bandwidth_pct: req.target_bandwidth_pct || 10,\n    constraints: req.constraints || {},\n    iteration: 0,\n    max_iterations: 3,\n    history: [],\n    best_design: null,\n    best_score: Infinity\n  }\n}];"
+      },
+      "id": "init-state",
+      "name": "Init Optimization State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "text": "You are an antenna design expert. Generate candidate parameter sets for optimization.\n\nAntenna type: {{ $json.antenna_type }}\nTarget frequency: {{ $json.target_frequency }} Hz\nTarget S11: {{ $json.target_s11 }} dB\nTarget bandwidth: {{ $json.target_bandwidth_pct }}%\nConstraints: {{ JSON.stringify($json.constraints) }}\n\nIteration: {{ $json.iteration }} / {{ $json.max_iterations }}\n\n{% if $json.iteration > 0 %}\nPrevious results:\n{{ JSON.stringify($json.history, null, 2) }}\n\nBest design so far:\n{{ JSON.stringify($json.best_design, null, 2) }}\nBest score: {{ $json.best_score }}\n\nBased on previous results, suggest 5 REFINED parameter sets that should improve performance.\nFocus on the parameters that had the most impact. Use interpolation/extrapolation from best results.\n{% else %}\nGenerate 5 diverse initial candidate parameter sets covering the design space.\nInclude conservative, aggressive, and balanced designs.\n{% endif %}\n\nReturn ONLY a JSON array of 5 objects. Each object must have these fields:\n- candidate_id: number (1-5)\n- description: string (brief design rationale)\n- parameters: object (antenna-specific parameters in SI units)\n\nExample for half_wave_dipole:\n[{\"candidate_id\":1,\"description\":\"Standard half-wave at target freq\",\"parameters\":{\"length_m\":0.0625,\"wire_radius_m\":0.001}}]\n\nReturn valid JSON array only, no markdown.",
+        "options": {
+          "systemMessage": "You are an antenna optimization expert. You understand RF design principles: shorter elements raise resonance, thicker wires broaden bandwidth, substrate permittivity affects patch dimensions. Generate physically meaningful parameter variations. Return ONLY a valid JSON array."
+        },
+        "promptType": "define"
+      },
+      "id": "ai-gen-candidates",
+      "name": "Claude Generate Candidates",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-6",
+          "mode": "list",
+          "cachedResultName": "claude-opus-4-6"
+        },
+        "maxTokensToSample": 8192,
+        "temperature": 0.3,
+        "options": {}
+      },
+      "id": "opus-llm-gen",
+      "name": "Opus LLM (Generate)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [720, 680],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $('Init Optimization State').item.json.iteration === undefined\n  ? $('Init Optimization State').item.json\n  : ($('Loop Check').item?.json || $('Init Optimization State').item.json);\n\nconst aiOutput = $('Claude Generate Candidates').item.json.output || '';\n\n// Parse JSON array from AI output\nlet candidates = [];\ntry {\n  // Try direct parse first\n  candidates = JSON.parse(aiOutput);\n} catch {\n  // Try to extract JSON array from text\n  const match = aiOutput.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    candidates = JSON.parse(match[0]);\n  }\n}\n\nif (!Array.isArray(candidates) || candidates.length === 0) {\n  // Fallback: generate basic candidates\n  const freq = state.target_frequency;\n  const lambda = 3e8 / freq;\n  candidates = [\n    { candidate_id: 1, description: 'Half-wave baseline', parameters: { length_m: lambda / 2 } },\n    { candidate_id: 2, description: 'Slightly shorter', parameters: { length_m: lambda * 0.47 } },\n    { candidate_id: 3, description: 'Slightly longer', parameters: { length_m: lambda * 0.53 } },\n    { candidate_id: 4, description: 'Short with thick wire', parameters: { length_m: lambda * 0.45, wire_radius_m: 0.005 } },\n    { candidate_id: 5, description: 'Optimized length', parameters: { length_m: lambda * 0.48 } }\n  ];\n}\n\nreturn candidates.map(c => ({\n  json: {\n    ...c,\n    antenna_type: state.antenna_type,\n    target_frequency: state.target_frequency,\n    target_s11: state.target_s11,\n    target_bandwidth_pct: state.target_bandwidth_pct,\n    constraints: state.constraints,\n    iteration: state.iteration,\n    state_ref: state\n  }\n}));"
+      },
+      "id": "parse-candidates",
+      "name": "Parse Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "split-candidates",
+      "name": "Simulate Each",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1240, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/api/solve",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ antenna_type: $json.antenna_type, frequency: $json.target_frequency, parameters: $json.parameters }) }}",
+        "options": {
+          "timeout": 120000,
+          "response": { "response": { "fullResponse": true } }
+        }
+      },
+      "id": "http-simulate",
+      "name": "Axum Simulate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1480, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidate = $('Simulate Each').item.json;\nconst response = $input.item.json;\nconst results = response.body || response;\n\nreturn [{\n  json: {\n    candidate_id: candidate.candidate_id,\n    description: candidate.description,\n    parameters: candidate.parameters,\n    results,\n    state_ref: candidate.state_ref\n  }\n}];"
+      },
+      "id": "attach-results",
+      "name": "Attach Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 400]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-candidates",
+      "name": "Merge Simulated",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1960, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidates = $input.all().map(i => i.json);\nconst state = candidates[0]?.state_ref || {};\n\n// Score each candidate: lower = better\nfunction scoreCandidate(c) {\n  const r = c.results || {};\n  const s11 = r.s11_db ?? r.s_parameters?.s11_db ?? 0;\n  const z_re = r.impedance?.real ?? r.z_re ?? 50;\n  const z_im = r.impedance?.imag ?? r.z_im ?? 0;\n  const gain = r.gain_dbi ?? r.max_gain_dbi ?? 0;\n\n  // S11 penalty: want below target_s11\n  const s11_target = state.target_s11 || -15;\n  const s11_penalty = s11 > s11_target ? (s11 - s11_target) * 5 : 0;\n\n  // Impedance match to 50 ohm\n  const z_mismatch = Math.sqrt(Math.pow(z_re - 50, 2) + Math.pow(z_im, 2)) / 50;\n\n  // Gain bonus (negative = better score)\n  const gain_bonus = -gain * 0.5;\n\n  return s11_penalty + z_mismatch * 10 + gain_bonus;\n}\n\nconst scored = candidates.map(c => ({\n  ...c,\n  score: scoreCandidate(c)\n})).sort((a, b) => a.score - b.score);\n\n// Update state\nconst newIteration = (state.iteration || 0) + 1;\nconst prevHistory = state.history || [];\nconst iterationResults = scored.map(c => ({\n  candidate_id: c.candidate_id,\n  description: c.description,\n  parameters: c.parameters,\n  score: c.score,\n  s11_db: c.results?.s11_db ?? c.results?.s_parameters?.s11_db,\n  z_re: c.results?.impedance?.real ?? c.results?.z_re,\n  z_im: c.results?.impedance?.imag ?? c.results?.z_im,\n  gain_dbi: c.results?.gain_dbi ?? c.results?.max_gain_dbi\n}));\n\nconst bestThisRound = scored[0];\nconst prevBestScore = state.best_score ?? Infinity;\nconst newBest = bestThisRound.score < prevBestScore\n  ? { parameters: bestThisRound.parameters, results: bestThisRound.results, score: bestThisRound.score, description: bestThisRound.description }\n  : state.best_design;\nconst newBestScore = Math.min(bestThisRound.score, prevBestScore);\n\nreturn [{\n  json: {\n    antenna_type: state.antenna_type,\n    target_frequency: state.target_frequency,\n    target_s11: state.target_s11,\n    target_bandwidth_pct: state.target_bandwidth_pct,\n    constraints: state.constraints,\n    iteration: newIteration,\n    max_iterations: state.max_iterations || 3,\n    history: [...prevHistory, { iteration: newIteration, results: iterationResults }],\n    best_design: newBest,\n    best_score: newBestScore,\n    ranked_candidates: scored\n  }\n}];"
+      },
+      "id": "rank-candidates",
+      "name": "Rank Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.iteration }}",
+              "rightValue": "={{ $json.max_iterations }}",
+              "operator": { "type": "number", "operation": "lt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "loop-check",
+      "name": "Loop Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2440, 400]
+    },
+    {
+      "parameters": {
+        "text": "Optimization complete for {{ $json.antenna_type }} at {{ $json.target_frequency }} Hz.\n\nTarget: S11 < {{ $json.target_s11 }} dB, bandwidth > {{ $json.target_bandwidth_pct }}%\nConstraints: {{ JSON.stringify($json.constraints) }}\n\nFull optimization history:\n{{ JSON.stringify($json.history, null, 2) }}\n\nBest design found:\n{{ JSON.stringify($json.best_design, null, 2) }}\nBest score: {{ $json.best_score }}\n\nProvide final analysis:\n1. Best design summary with all parameters\n2. Expected performance metrics (S11, bandwidth, gain, impedance)\n3. Matching network recommendation (L-network or stub) with component values\n4. Manufacturing considerations (tolerances, materials)\n5. Potential improvements if more iterations were allowed\n6. Confidence level (high/medium/low) with justification\n\nBe specific with numbers. This will be shown to the user as the final optimization report.",
+        "options": {
+          "systemMessage": "You are a senior antenna design engineer delivering a final optimization report. Be thorough but concise. Include specific component values for matching networks. Reference the optimization trajectory to explain how the design evolved."
+        },
+        "promptType": "define"
+      },
+      "id": "ai-final-analysis",
+      "name": "Claude Final Analysis",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [2720, 500]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-6",
+          "mode": "list",
+          "cachedResultName": "claude-opus-4-6"
+        },
+        "maxTokensToSample": 16384,
+        "temperature": 0.2,
+        "options": {}
+      },
+      "id": "opus-llm-final",
+      "name": "Opus LLM (Final)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [2720, 780],
+      "credentials": {
+        "anthropicApi": {
+          "id": "xyS2ZoWkkNPBoTTS",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $('Rank Candidates').item.json;\nconst aiReport = $('Claude Final Analysis').item.json.output || '';\n\nreturn [{\n  json: {\n    status: 'optimization_complete',\n    antenna_type: state.antenna_type,\n    target_frequency: state.target_frequency,\n    iterations_completed: state.iteration,\n    best_design: state.best_design,\n    best_score: state.best_score,\n    optimization_history: state.history,\n    ai_report: aiReport,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-final",
+      "name": "Format Final Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3000, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "X-Powered-By", "value": "PROMIN Antenna Studio AI Optimizer" }
+            ]
+          }
+        }
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3240, 500]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [200, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "const error = $input.item.json;\nconst errorMsg = {\n  status: 'error',\n  error: error.execution?.error?.message || 'Unknown error',\n  node: error.execution?.lastNodeExecuted || 'unknown',\n  workflow: 'ae-ai-optimizer',\n  timestamp: new Date().toISOString()\n};\nconsole.error('ae-ai-optimizer error:', JSON.stringify(errorMsg));\nreturn [{ json: errorMsg }];"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 800]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Init Optimization State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Optimization State": {
+      "main": [
+        [
+          {
+            "node": "Claude Generate Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Generate Candidates": {
+      "main": [
+        [
+          {
+            "node": "Parse Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Candidates": {
+      "main": [
+        [
+          {
+            "node": "Simulate Each",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulate Each": {
+      "main": [
+        [
+          {
+            "node": "Axum Simulate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Simulated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Axum Simulate": {
+      "main": [
+        [
+          {
+            "node": "Attach Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Results": {
+      "main": [
+        [
+          {
+            "node": "Simulate Each",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Simulated": {
+      "main": [
+        [
+          {
+            "node": "Rank Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Candidates": {
+      "main": [
+        [
+          {
+            "node": "Loop Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Check": {
+      "main": [
+        [
+          {
+            "node": "Claude Generate Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude Final Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Final Analysis": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Final Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opus LLM (Generate)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Claude Generate Candidates",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opus LLM (Final)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Claude Final Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "promin-antenna-studio"
+  },
+  "tags": [
+    { "name": "antenna-engine" },
+    { "name": "optimization" },
+    { "name": "ai" }
+  ],
+  "active": true
+}

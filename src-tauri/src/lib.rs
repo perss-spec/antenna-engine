@@ -1,7 +1,10 @@
 pub mod core;
 pub mod gpu;
+
+#[cfg(feature = "tauri-app")]
 pub mod bridge;
 
+#[cfg(feature = "tauri-app")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

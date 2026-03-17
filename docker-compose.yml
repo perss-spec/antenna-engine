@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  promin-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: promin-solver
+    ports:
+      - "3001:3001"
+    environment:
+      - PROMIN_ADDR=0.0.0.0:3001
+      - RUST_LOG=promin_server=info,tower_http=info
+      - RAYON_NUM_THREADS=0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${SOLVER_CPUS:-0}"  # 0 = all cores
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: promin-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_SECURE_COOKIE=false
+      - N8N_PUBLIC_API_DISABLED=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs,path,child_process,crypto
+      - WEBHOOK_URL=http://localhost:5678
+      - N8N_RUNNERS_DISABLED=true
+      - GENERIC_TIMEZONE=Europe/Kiev
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/home/node/workflows:ro
+    restart: unless-stopped
+    depends_on:
+      promin-server:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: promin-web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - frontend_dist:/usr/share/nginx/html:ro
+    depends_on:
+      - promin-server
+      - n8n
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+  frontend_dist:

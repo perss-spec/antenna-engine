@@ -262,6 +262,7 @@ impl FdtdBridge {
     }
 }
 
+#[cfg(feature = "tauri-app")]
 #[tauri::command]
 pub async fn run_fdtd_simulation(params: Value) -> Result<Value, String> {
     let fdtd_params: FdtdParams = serde_json::from_value(params)
