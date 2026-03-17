@@ -297,10 +297,10 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
         ? formatFrequency(singleFreq)
         : `${formatFrequency(freqStart)} - ${formatFrequency(freqEnd)}`;
 
-  const sectionCard = 'rounded-xl border border-border bg-base px-3.5 py-3';
+  const sectionCard = 'rounded-xl border border-border bg-base px-3 py-3';
 
   return (
-    <div className="px-5 py-4 flex flex-col gap-3.5">
+    <div className="px-5 py-4 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="text-[11px] uppercase tracking-wider text-text-dim font-semibold">
           {t('solver.config')}

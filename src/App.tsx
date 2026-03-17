@@ -685,7 +685,7 @@ function App() {
               {summary ? (
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   <div className="flex flex-col xl:flex-row gap-3 xl:items-start">
-                    <div className="flex-1 flex flex-col gap-2 soft-card p-3.5">
+                    <div className="flex-1 flex flex-col gap-2 soft-card p-4">
                       <div className="section-label">Analysis views</div>
                       <TabsList className="shrink-0 flex-wrap bg-base border-border/70">
                         <TabsTrigger value="s-parameters">{t('tab.sParams')}</TabsTrigger>
@@ -705,7 +705,7 @@ function App() {
                       )}
                     </div>
                     {chartData.length > 0 && (
-                      <div className="xl:w-[360px] w-full soft-card p-3.5">
+                      <div className="xl:w-[360px] w-full soft-card p-4">
                         <div className="section-label mb-2">Export</div>
                         <ExportPanel
                           frequencies={impedanceData.freq}
@@ -721,14 +721,14 @@ function App() {
                   </div>
 
                   <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
-                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                       {[
                         { icon: Radio, label: t('stat.resonantFreq'), value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
                         { icon: Activity, label: t('stat.minS11'), value: `${summary.minS11.toFixed(1)} dB`, iconBg: 'bg-success/10', iconColor: 'text-success', valueColor: 'text-success' },
                         { icon: Zap, label: t('stat.vswr'), value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
                         { icon: Signal, label: t('stat.bw'), value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
                       ].map(({ icon: Icon, label, value, iconBg, iconColor, valueColor }) => (
-                        <div key={label} className="soft-card flex items-center gap-3.5 px-4 py-3">
+                        <div key={label} className="soft-card flex items-center gap-4 px-4 py-3">
                           <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                             <Icon className={`w-[18px] h-[18px] ${iconColor}`} />
                           </div>
