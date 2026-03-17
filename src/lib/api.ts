@@ -106,16 +106,26 @@ class ProminAPI {
     this.n8nUrl = n8nUrl;
   }
 
-  private async request<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `API error: ${res.status}`);
+  private async request<T>(path: string, options?: RequestInit, timeoutMs = 10000): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        ...options,
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || `API error: ${res.status}`);
+      }
+      return res.json();
+    } catch (e: any) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') throw new Error('Server timeout');
+      throw e;
     }
-    return res.json();
   }
 
   private async n8nRequest<T>(path: string, body: unknown): Promise<T> {
@@ -137,16 +147,22 @@ class ProminAPI {
     return result;
   }
 
-  // Check if server is available (with cache)
+  // Check if server is available (with cache, 3s timeout)
   async isServerAvailable(): Promise<boolean> {
     if (this._serverAvailable !== null) return this._serverAvailable;
     try {
-      await this.health();
+      await this.request<HealthResponse>('/health', undefined, 3000);
+      this._serverAvailable = true;
       return true;
     } catch {
       this._serverAvailable = false;
       return false;
     }
+  }
+
+  // Reset cached availability (e.g. when server starts later)
+  resetCache() {
+    this._serverAvailable = null;
   }
 
   // === Direct Solver API ===

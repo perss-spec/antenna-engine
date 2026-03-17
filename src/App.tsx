@@ -35,8 +35,23 @@ import {
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 
+// Check server once at startup, cache result
+let _serverChecked = false;
+let _serverOk = false;
+async function checkServer() {
+  if (_serverChecked) return _serverOk;
+  _serverChecked = true;
+  _serverOk = await api.isServerAvailable();
+  if (_serverOk) console.log('[PROMIN] Server connected:', api);
+  else console.log('[PROMIN] Server unavailable, using local JS solver');
+  return _serverOk;
+}
+
 // Server-first sweep: try Axum API, fallback to local JS
 async function serverSweep(antennaType: string, fStart: number, fStop: number, n: number, ap: Record<string, number>): Promise<SimulateResponse> {
+  const hasServer = await checkServer();
+  if (!hasServer) return localSweep(antennaType, fStart, fStop, n, ap);
+
   try {
     const resp = await api.sweep({
       antenna_type: antennaType,
@@ -62,7 +77,8 @@ async function serverSweep(antennaType: string, fStart: number, fStop: number, n
       bandwidth,
     };
   } catch {
-    // Server unavailable — fallback to local JS solver
+    // Server error — fallback to local JS solver
+    _serverChecked = false; // retry next time
     return localSweep(antennaType, fStart, fStop, n, ap);
   }
 }
