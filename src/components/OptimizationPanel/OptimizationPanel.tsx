@@ -129,11 +129,14 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
   }
 
   return (
-    <div className={`px-6 py-6 flex flex-col gap-6 ${className}`}>
-      <form onSubmit={handleStart} className="flex flex-col gap-8">
+    <div className={`px-5 py-5 flex flex-col gap-4 ${className}`}>
+      <div className="rounded-xl border border-border bg-base px-4 py-3">
+        <div className="text-[11px] uppercase tracking-wider text-text-dim mb-1">Optimization brief</div>
+        <div className="text-[12px] text-text-muted">Tune geometry to approach target S11 with minimal manual iteration.</div>
+      </div>
 
-        {/* Targets */}
-        <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-base p-3">
+      <form onSubmit={handleStart} className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 rounded-xl border border-border bg-base p-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor="target-frequency" className="text-xs font-medium text-text-muted">{t('opt.freqMhz')}</Label>
             <Input
@@ -145,7 +148,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               max={10000}
               step={1}
               disabled={isOptimizing}
-              className="h-10 text-sm focus-visible:ring-accent/50"
+              className="h-10 text-sm"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -159,7 +162,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               max={0}
               step={0.1}
               disabled={isOptimizing}
-              className="h-10 text-sm focus-visible:ring-accent/50"
+              className="h-10 text-sm"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -169,7 +172,7 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
               value={method}
               onChange={handleMethodChange}
               disabled={isOptimizing}
-              className="h-10 text-sm focus-visible:ring-accent/50"
+              className="h-10 text-sm"
             >
               <option value="gradient">{t('opt.gradient')}</option>
               <option value="random">{t('opt.random')}</option>
@@ -178,8 +181,8 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
           </div>
         </div>
 
-        {/* Parameter ranges */}
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-base p-3">
+          <div className="text-[11px] uppercase tracking-wider text-text-dim">Search ranges</div>
           <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-3 mb-0.5">
             <div />
             <span className="text-[11px] text-text-dim/60 text-center">min</span>
@@ -191,22 +194,13 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
           {rangeRow('Rad', radRange, setRadRange)}
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3 items-center">
           {!isOptimizing ? (
-            <Button
-              type="submit"
-              className="h-10 text-sm bg-accent hover:bg-accent-hover text-white px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-            >
+            <Button type="submit" className="h-10 text-sm px-6">
               {t('opt.optimize')}
             </Button>
           ) : (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleStop}
-              className="h-10 text-sm px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
-            >
+            <Button type="button" variant="destructive" onClick={handleStop} className="h-10 text-sm px-6">
               {t('opt.stop')}
             </Button>
           )}
@@ -232,37 +226,32 @@ const OptimizationPanel: FC<OptimizationPanelProps> = ({
       </form>
 
       {results.length > 0 && (
-        <div className="bg-surface border border-border/50 rounded-lg overflow-hidden">
-          <div className="max-h-[120px] overflow-y-auto">
+        <div className="bg-surface border border-border/50 rounded-xl overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/50 text-[11px] uppercase tracking-wider text-text-dim">Recent iterations</div>
+          <div className="max-h-[160px] overflow-y-auto">
             <table className="w-full text-xs">
               <thead className="text-text-dim uppercase tracking-wider border-b border-border/50 sticky top-0 bg-surface">
                 <tr>
-                  <th className="py-2.5 px-4 text-left">#</th>
-                  <th className="py-2.5 px-4 text-left">Freq</th>
-                  <th className="py-2.5 px-4 text-left">Len</th>
-                  <th className="py-2.5 px-4 text-left">S11</th>
+                  <th className="py-2 px-3 text-left">#</th>
+                  <th className="py-2 px-3 text-left">Freq</th>
+                  <th className="py-2 px-3 text-left">Len</th>
+                  <th className="py-2 px-3 text-left">S11</th>
                 </tr>
               </thead>
               <tbody>
                 {results
-                  .slice(-8)
+                  .slice(-10)
                   .reverse()
                   .map(r => {
                     const isBest = r === bestResult;
                     return (
                       <tr key={r.iteration} className={isBest ? 'bg-success/5' : ''}>
-                        <td className="py-2.5 px-4 text-text-dim tabular-nums">{r.iteration}</td>
-                        <td className="py-2.5 px-4 tabular-nums">
-                          {r.frequency >= 1000
-                            ? `${(r.frequency / 1000).toFixed(1)}G`
-                            : `${r.frequency}M`}
+                        <td className="py-2 px-3 text-text-dim tabular-nums">{r.iteration}</td>
+                        <td className="py-2 px-3 tabular-nums">
+                          {r.frequency >= 1000 ? `${(r.frequency / 1000).toFixed(1)}G` : `${r.frequency}M`}
                         </td>
-                        <td className="py-2.5 px-4 tabular-nums">{r.length.toFixed(3)}m</td>
-                        <td
-                          className={`py-2 px-3 tabular-nums ${
-                            isBest ? 'text-success font-semibold' : ''
-                          }`}
-                        >
+                        <td className="py-2 px-3 tabular-nums">{r.length.toFixed(3)}m</td>
+                        <td className={`py-2 px-3 tabular-nums ${isBest ? 'text-success font-semibold' : ''}`}>
                           {r.s11.toFixed(1)}
                         </td>
                       </tr>

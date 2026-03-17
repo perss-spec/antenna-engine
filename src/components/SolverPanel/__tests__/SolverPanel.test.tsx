@@ -27,9 +27,6 @@ vi.mock('@/lib/gainCalculator', () => ({
   analyticalGain: vi.fn().mockReturnValue(2.15),
 }));
 
-// Mock CSS import
-vi.mock('../SolverPanel.css', () => ({}));
-
 import { api } from '@/lib/api';
 
 const defaultProps = {
@@ -74,39 +71,36 @@ describe('SolverPanel', () => {
     expect(sweep.results.length).toBe(sweep.frequencies.length);
   });
 
-  it('solver type radio buttons work', () => {
+  it('solver type buttons work', () => {
     render(<I18nProvider><SolverPanel {...defaultProps} /></I18nProvider>);
 
-    const radios = screen.getAllByRole('radio');
-    const momWire = radios.find(r => (r as HTMLInputElement).value === 'MoM Wire') as HTMLInputElement;
-    const momSurface = radios.find(r => (r as HTMLInputElement).value === 'MoM Surface') as HTMLInputElement;
-    const fdtd = radios.find(r => (r as HTMLInputElement).value === 'FDTD') as HTMLInputElement;
+    const momWire = screen.getByRole('button', { name: 'MoM Wire' });
+    const momSurface = screen.getByRole('button', { name: 'MoM Surface' });
+    const fdtd = screen.getByRole('button', { name: 'FDTD' });
 
-    expect(momWire.checked).toBe(true);
+    expect(momWire).toHaveClass('bg-accent');
     fireEvent.click(fdtd);
-    expect(fdtd.checked).toBe(true);
+    expect(fdtd).toHaveClass('bg-accent');
     fireEvent.click(momSurface);
-    expect(momSurface.checked).toBe(true);
+    expect(momSurface).toHaveClass('bg-accent');
   });
 
   it('frequency mode switching works', () => {
     render(<I18nProvider><SolverPanel {...defaultProps} /></I18nProvider>);
 
-    const radios = screen.getAllByRole('radio');
-    const singleRadio = radios.find(r => (r as HTMLInputElement).value === 'single') as HTMLInputElement;
-    const sweepRadio = radios.find(r => (r as HTMLInputElement).value === 'sweep') as HTMLInputElement;
-    const presetRadio = radios.find(r => (r as HTMLInputElement).value === 'preset') as HTMLInputElement;
+    const singleButton = screen.getByRole('button', { name: /single frequency/i });
+    const sweepButton = screen.getByRole('button', { name: /frequency sweep/i });
+    const presetButton = screen.getByRole('button', { name: /preset band/i });
 
-    // Default is sweep now
-    expect(sweepRadio.checked).toBe(true);
+    expect(sweepButton).toHaveClass('bg-accent');
 
     // Switch to single
-    fireEvent.click(singleRadio);
-    expect(singleRadio.checked).toBe(true);
+    fireEvent.click(singleButton);
+    expect(singleButton).toHaveClass('bg-accent');
 
     // Switch to preset — should show Band selector
-    fireEvent.click(presetRadio);
-    expect(presetRadio.checked).toBe(true);
+    fireEvent.click(presetButton);
+    expect(presetButton).toHaveClass('bg-accent');
     expect(screen.getByText(/^Band:/)).toBeInTheDocument();
   });
 
@@ -117,9 +111,8 @@ describe('SolverPanel', () => {
     render(<I18nProvider><SolverPanel {...defaultProps} /></I18nProvider>);
 
     // Switch to single mode
-    const radios = screen.getAllByRole('radio');
-    const singleRadio = radios.find(r => (r as HTMLInputElement).value === 'single') as HTMLInputElement;
-    fireEvent.click(singleRadio);
+    const singleButton = screen.getByRole('button', { name: /single frequency/i });
+    fireEvent.click(singleButton);
 
     const button = screen.getByRole('button', { name: /run solver/i });
     fireEvent.click(button);

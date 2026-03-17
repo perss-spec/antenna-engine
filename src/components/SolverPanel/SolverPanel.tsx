@@ -1,10 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { solveByCategory } from '@/lib/impedanceSolver';
 import { getCategoryForId } from '@/lib/antennaKB';
 import { analyticalGain } from '@/lib/gainCalculator';
 import { useT } from '@/lib/i18n';
-import './SolverPanel.css';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const C0 = 299792458;
 
@@ -119,6 +122,8 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
   const [momResult, setMomResult] = useState<SimulationResult | null>(null);
   const [fdtdResult, setFdtdResult] = useState<SimulationResult | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Try server, fallback to local JS
   const solveOne = useCallback(async (freq: number): Promise<{ impedance_real: number; impedance_imag: number; s11_db: number; vswr: number }> => {
@@ -135,6 +140,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
     if (isRunning) return;
 
     setIsRunning(true);
+    setErrorMessage(null);
     setProgress(0);
     setCurrentResult(null);
     setSweepResults(null);
@@ -249,7 +255,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
 
       setProgress(100);
     } catch (err: any) {
-      alert(`Solver error: ${err.message || err}`);
+      setErrorMessage(`Solver error: ${err.message || err}`);
     } finally {
       setIsRunning(false);
     }
@@ -272,197 +278,183 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
     return `${freq.toFixed(0)} Hz`;
   };
 
-  const renderResultCard = (result: SimulationResult, title: string) => (
-    <div className="result-card">
-      <h4>{title}</h4>
-      <div className="result-grid">
-        <div className="result-item">
-          <span className="label">Z_in:</span>
-          <span className="value">{formatComplex(result.impedance)}</span>
-        </div>
-        <div className="result-item">
-          <span className="label">S11:</span>
-          <span className="value">{result.s11_db.toFixed(2)} dB</span>
-        </div>
-        <div className="result-item">
-          <span className="label">VSWR:</span>
-          <span className="value">{result.vswr.toFixed(2)}</span>
-        </div>
-        <div className="result-item">
-          <span className="label">Gain:</span>
-          <span className="value">{result.gain_dbi.toFixed(2)} dBi</span>
-        </div>
-        <div className="result-item">
-          <span className="label">Time:</span>
-          <span className="value">{result.computation_time.toFixed(3)} s</span>
-        </div>
-        <div className="result-item">
-          <span className="label">{t('solver.converged')}</span>
-          <span className="value">
-            {result.convergence.converged ? t('solver.yes') : t('solver.no')}
-            ({result.convergence.iterations} iter)
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+  const sweepSummary = useMemo(() => {
+    if (!sweepResults?.results.length) return null;
+    const best = sweepResults.results.reduce((acc, cur) => (cur.s11_db < acc.s11_db ? cur : acc));
+    return {
+      points: sweepResults.results.length,
+      start: sweepResults.frequencies[0],
+      stop: sweepResults.frequencies[sweepResults.frequencies.length - 1],
+      best,
+      totalTime: sweepResults.results.reduce((sum, r) => sum + r.computation_time, 0),
+    };
+  }, [sweepResults]);
+
+  const currentRangeLabel =
+    frequencyMode === 'preset'
+      ? `${formatFrequency(PRESET_FREQUENCIES[presetBand][0])} - ${formatFrequency(PRESET_FREQUENCIES[presetBand][1])}`
+      : frequencyMode === 'single'
+        ? formatFrequency(singleFreq)
+        : `${formatFrequency(freqStart)} - ${formatFrequency(freqEnd)}`;
+
+  const sectionCard = 'rounded-xl border border-border bg-base px-3.5 py-3';
 
   return (
-    <div className="solver-panel">
-      <div className="panel-header">
-        <h3>{t('solver.config')}</h3>
+    <div className="px-5 py-4 flex flex-col gap-3.5">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] uppercase tracking-wider text-text-dim font-semibold">
+          {t('solver.config')}
+        </div>
+        <label className="flex items-center gap-2 text-[12px] text-text-muted">
+          <input
+            type="checkbox"
+            checked={comparisonMode}
+            onChange={(e) => setComparisonMode(e.target.checked)}
+            disabled={isRunning}
+            className="w-4 h-4 accent-accent"
+          />
+          {t('solver.comparisonMode')}
+        </label>
       </div>
-      
-      <div className="config-sections">
-        {/* Solver Type */}
-        <div className="config-section">
-          <h4>{t('solver.type')}</h4>
-          <div className="radio-group">
-            {['MoM Wire', 'MoM Surface', 'FDTD'].map((type) => (
-              <label key={type}>
-                <input
-                  type="radio"
-                  value={type}
-                  checked={solverType === type}
-                  onChange={(e) => setSolverType(e.target.value as SolverType)}
-                  disabled={isRunning}
-                />
-                {type}
-              </label>
-            ))}
-          </div>
-        </div>
-        
-        {/* Mesh Resolution */}
-        <div className="config-section">
-          <h4>{t('solver.meshResolution')}</h4>
-          <div className="slider-container">
-            <label>{t('solver.elementsPerWl')} {meshResolution}</label>
-            <input
-              type="range"
-              min="5"
-              max="30"
-              value={meshResolution}
-              onChange={(e) => setMeshResolution(Number(e.target.value))}
+
+      <div className={sectionCard}>
+        <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">{t('solver.type')}</div>
+        <div className="grid grid-cols-3 gap-2">
+          {(['MoM Wire', 'MoM Surface', 'FDTD'] as SolverType[]).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setSolverType(type)}
               disabled={isRunning}
-              className="slider"
-            />
-            <div className="slider-labels">
-              <span>5</span>
-              <span>30</span>
+              className={cn(
+                'h-9 rounded-lg border text-xs font-medium transition-colors',
+                solverType === type
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-border bg-surface text-text-muted hover:text-text-primary hover:bg-elevated'
+              )}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={sectionCard}>
+        <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">{t('solver.frequency')}</div>
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {[
+            { value: 'single', label: t('solver.singleFreq') },
+            { value: 'sweep', label: t('solver.freqSweep') },
+            { value: 'preset', label: t('solver.presetBand') },
+          ].map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFrequencyMode(value as FrequencyMode)}
+              disabled={isRunning}
+              className={cn(
+                'h-9 rounded-lg border text-xs font-medium transition-colors',
+                frequencyMode === value
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-border bg-surface text-text-muted hover:text-text-primary hover:bg-elevated'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-lg bg-surface border border-border px-3 py-2 text-[12px] text-text-muted mb-3">
+          {t('solver.range')} <span className="font-semibold text-text-primary tabular-nums">{currentRangeLabel}</span>
+        </div>
+
+        {frequencyMode === 'single' && (
+          <div className="text-[12px] text-text-dim">
+            {t('solver.center')} {formatFrequency(singleFreq)} {t('solver.fromConfig')}
+          </div>
+        )}
+
+        {frequencyMode === 'sweep' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] text-text-muted">{t('solver.sweepWidth')} ±{Math.round(sweepRatio * 100)}%</label>
+              <input
+                type="range"
+                min="10"
+                max="100"
+                value={sweepRatio * 100}
+                onChange={(e) => setSweepRatio(Number(e.target.value) / 100)}
+                disabled={isRunning}
+                className="w-full accent-accent"
+              />
+              <div className="flex justify-between text-[11px] text-text-dim">
+                <span>±10%</span>
+                <span>±100%</span>
+              </div>
+            </div>
+            <div className="max-w-[160px]">
+              <label className="text-[12px] text-text-muted">{t('solver.points')}</label>
+              <Input
+                type="number"
+                value={freqPoints}
+                onChange={(e) => setFreqPoints(Number(e.target.value))}
+                disabled={isRunning}
+                min={2}
+                max={1000}
+                className="h-9 mt-1"
+              />
             </div>
           </div>
-        </div>
-        
-        {/* Frequency Settings */}
-        <div className="config-section">
-          <h4>{t('solver.frequency')}</h4>
-          <div className="radio-group">
-            {[
-              { value: 'single', label: t('solver.singleFreq') },
-              { value: 'sweep', label: t('solver.freqSweep') },
-              { value: 'preset', label: t('solver.presetBand') }
-            ].map(({ value, label }) => (
-              <label key={value}>
-                <input
-                  type="radio"
-                  value={value}
-                  checked={frequencyMode === value}
-                  onChange={(e) => setFrequencyMode(e.target.value as FrequencyMode)}
-                  disabled={isRunning}
-                />
-                {label}
-              </label>
-            ))}
+        )}
+
+        {frequencyMode === 'preset' && (
+          <div className="max-w-[260px]">
+            <label className="text-[12px] text-text-muted">{t('solver.band')}</label>
+            <Select
+              value={presetBand}
+              onChange={(e) => setPresetBand(e.target.value)}
+              disabled={isRunning}
+              className="h-9 mt-1"
+            >
+              {Object.entries(PRESET_FREQUENCIES).map(([band, range]) => (
+                <option key={band} value={band}>
+                  {band} ({formatFrequency(range[0])} - {formatFrequency(range[1])})
+                </option>
+              ))}
+            </Select>
           </div>
+        )}
+      </div>
 
-          {frequencyMode === 'single' && (
-            <div className="freq-input">
-              <label>
-                {t('solver.center')} {formatFrequency(singleFreq)}
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}> {t('solver.fromConfig')}</span>
-              </label>
-            </div>
-          )}
+      <button
+        type="button"
+        onClick={() => setShowAdvanced((v) => !v)}
+        className="text-left text-[12px] text-text-muted hover:text-text-primary"
+      >
+        {showAdvanced ? 'Hide advanced options' : 'Show advanced options'}
+      </button>
 
-          {frequencyMode === 'sweep' && (
-            <div className="freq-sweep">
-              <div className="freq-row">
-                <label>
-                  {t('solver.range')} {formatFrequency(freqStart)} — {formatFrequency(freqEnd)}
-                </label>
-              </div>
-              <div className="slider-container">
-                <label>{t('solver.sweepWidth')} ±{Math.round(sweepRatio * 100)}%</label>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={sweepRatio * 100}
-                  onChange={(e) => setSweepRatio(Number(e.target.value) / 100)}
-                  disabled={isRunning}
-                  className="slider"
-                />
-                <div className="slider-labels">
-                  <span>±10%</span>
-                  <span>±100%</span>
-                </div>
-              </div>
-              <label>
-                {t('solver.points')}
-                <input
-                  type="number"
-                  value={freqPoints}
-                  onChange={(e) => setFreqPoints(Number(e.target.value))}
-                  disabled={isRunning}
-                  min="2"
-                  max="1000"
-                />
-              </label>
-            </div>
-          )}
-          
-          {frequencyMode === 'preset' && (
-            <div className="freq-preset">
-              <label>
-                {t('solver.band')}
-                <select
-                  value={presetBand}
-                  onChange={(e) => setPresetBand(e.target.value)}
-                  disabled={isRunning}
-                >
-                  {Object.entries(PRESET_FREQUENCIES).map(([band, range]) => (
-                    <option key={band} value={band}>
-                      {band} ({formatFrequency(range[0])} - {formatFrequency(range[1])})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-        </div>
-        
-        {/* Solver Options */}
-        <div className="config-section">
-          <h4>{t('solver.options')}</h4>
-          <div className="solver-options">
-            <label>
-              {t('solver.linearSolver')}
-              <select
+      {showAdvanced && (
+        <div className={sectionCard}>
+          <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">{t('solver.options')}</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[12px] text-text-muted">{t('solver.linearSolver')}</label>
+              <Select
                 value={linearSolver}
                 onChange={(e) => setLinearSolver(e.target.value as LinearSolver)}
                 disabled={isRunning}
+                className="h-9 mt-1"
               >
                 <option value="LU">{t('solver.luDecomp')}</option>
                 <option value="GMRES">GMRES</option>
-              </select>
-            </label>
-            
+              </Select>
+            </div>
             {linearSolver === 'GMRES' && (
               <>
-                <label>
-                  {t('solver.tolerance')}
-                  <input
+                <div>
+                  <label className="text-[12px] text-text-muted">{t('solver.tolerance')}</label>
+                  <Input
                     type="number"
                     value={tolerance}
                     onChange={(e) => setTolerance(Number(e.target.value))}
@@ -470,97 +462,120 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
                     step="1e-9"
                     min="1e-12"
                     max="1e-3"
+                    className="h-9 mt-1"
                   />
-                </label>
-                <label>
-                  {t('solver.maxIter')}
-                  <input
+                </div>
+                <div>
+                  <label className="text-[12px] text-text-muted">{t('solver.maxIter')}</label>
+                  <Input
                     type="number"
                     value={maxIterations}
                     onChange={(e) => setMaxIterations(Number(e.target.value))}
                     disabled={isRunning}
-                    min="100"
-                    max="10000"
-                    step="100"
+                    min={100}
+                    max={10000}
+                    step={100}
+                    className="h-9 mt-1"
                   />
-                </label>
+                </div>
               </>
+            )}
+            <div className="md:col-span-3">
+              <label className="text-[12px] text-text-muted">
+                {t('solver.elementsPerWl')} {meshResolution}
+              </label>
+              <input
+                type="range"
+                min="5"
+                max="30"
+                value={meshResolution}
+                onChange={(e) => setMeshResolution(Number(e.target.value))}
+                disabled={isRunning}
+                className="w-full accent-accent mt-1"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button type="button" onClick={handleRun} disabled={isRunning} className="h-10 px-5">
+          {isRunning ? t('solver.running') : t('solver.runSolver')}
+        </Button>
+        {isRunning && (
+          <Button type="button" variant="outline" onClick={handleCancel} className="h-10 px-4">
+            {t('solver.cancel')}
+          </Button>
+        )}
+      </div>
+
+      {isRunning && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-1.5 rounded-full bg-elevated overflow-hidden">
+            <div className="h-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }} />
+          </div>
+          <span className="text-[11px] text-text-dim tabular-nums min-w-10 text-right">{progress.toFixed(0)}%</span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="text-[12px] text-error border border-error/25 bg-error/10 rounded-lg px-3 py-2">
+          {errorMessage}
+        </div>
+      )}
+
+      {comparisonMode && (momResult || fdtdResult) && (
+        <div className={cn(sectionCard, 'space-y-2')}>
+          <div className="text-[11px] uppercase tracking-wider text-text-dim">{t('solver.comparisonResults')}</div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+            {momResult && (
+              <div className="rounded-lg border border-border bg-surface px-3 py-2">
+                <div className="text-xs font-semibold text-accent mb-1">MoM @ {formatFrequency(momResult.frequency)}</div>
+                <div className="text-[12px] text-text-muted">S11: <span className="tabular-nums text-text-primary">{momResult.s11_db.toFixed(2)} dB</span></div>
+                <div className="text-[12px] text-text-muted">VSWR: <span className="tabular-nums text-text-primary">{momResult.vswr.toFixed(2)}</span></div>
+                <div className="text-[12px] text-text-muted">Z: <span className="tabular-nums text-text-primary">{formatComplex(momResult.impedance)}</span></div>
+              </div>
+            )}
+            {fdtdResult && (
+              <div className="rounded-lg border border-border bg-surface px-3 py-2">
+                <div className="text-xs font-semibold text-accent mb-1">FDTD @ {formatFrequency(fdtdResult.frequency)}</div>
+                <div className="text-[12px] text-text-muted">S11: <span className="tabular-nums text-text-primary">{fdtdResult.s11_db.toFixed(2)} dB</span></div>
+                <div className="text-[12px] text-text-muted">VSWR: <span className="tabular-nums text-text-primary">{fdtdResult.vswr.toFixed(2)}</span></div>
+                <div className="text-[12px] text-text-muted">Z: <span className="tabular-nums text-text-primary">{formatComplex(fdtdResult.impedance)}</span></div>
+              </div>
             )}
           </div>
         </div>
-        
-        {/* Comparison Mode */}
-        <div className="config-section">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={comparisonMode}
-              onChange={(e) => setComparisonMode(e.target.checked)}
-              disabled={isRunning}
-            />
-            {t('solver.comparisonMode')}
-          </label>
-        </div>
-      </div>
-      
-      {/* Control Buttons */}
-      <div className="control-buttons">
-        <button
-          onClick={handleRun}
-          disabled={isRunning}
-          className="run-button"
-        >
-          {isRunning ? t('solver.running') : t('solver.runSolver')}
-        </button>
-        
-        {isRunning && (
-          <button onClick={handleCancel} className="cancel-button">
-            {t('solver.cancel')}
-          </button>
-        )}
-      </div>
-      
-      {/* Progress Bar */}
-      {isRunning && (
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="progress-text">{progress.toFixed(0)}%</span>
+      )}
+
+      {!comparisonMode && currentResult && (
+        <div className={cn(sectionCard, 'space-y-1.5')}>
+          <div className="text-[11px] uppercase tracking-wider text-text-dim">{t('solver.simResults')}</div>
+          <div className="text-[12px] text-text-muted">{currentResult.solver} @ {formatFrequency(currentResult.frequency)}</div>
+          <div className="text-[12px] text-text-muted">S11: <span className="tabular-nums text-text-primary">{currentResult.s11_db.toFixed(2)} dB</span></div>
+          <div className="text-[12px] text-text-muted">VSWR: <span className="tabular-nums text-text-primary">{currentResult.vswr.toFixed(2)}</span></div>
+          <div className="text-[12px] text-text-muted">Gain: <span className="tabular-nums text-text-primary">{currentResult.gain_dbi.toFixed(2)} dBi</span></div>
+          <div className="text-[12px] text-text-muted">Z: <span className="tabular-nums text-text-primary">{formatComplex(currentResult.impedance)}</span></div>
         </div>
       )}
-      
-      {/* Results */}
-      <div className="results-section">
-        {comparisonMode && (momResult || fdtdResult) && (
-          <div className="comparison-results">
-            <h3>{t('solver.comparisonResults')}</h3>
-            <div className="comparison-grid">
-              {momResult && renderResultCard(momResult, `MoM @ ${formatFrequency(momResult.frequency)}`)}
-              {fdtdResult && renderResultCard(fdtdResult, `FDTD @ ${formatFrequency(fdtdResult.frequency)}`)}
-            </div>
+
+      {sweepSummary && (
+        <div className={cn(sectionCard, 'space-y-1.5')}>
+          <div className="text-[11px] uppercase tracking-wider text-text-dim">{t('solver.sweepSummary')}</div>
+          <div className="text-[12px] text-text-muted">
+            {sweepSummary.points} {t('solver.freqPointsComputed')}
           </div>
-        )}
-        
-        {!comparisonMode && currentResult && (
-          <div className="single-results">
-            <h3>{t('solver.simResults')}</h3>
-            {renderResultCard(currentResult, `${currentResult.solver} @ ${formatFrequency(currentResult.frequency)}`)}
+          <div className="text-[12px] text-text-muted">
+            Range: <span className="tabular-nums text-text-primary">{formatFrequency(sweepSummary.start)} - {formatFrequency(sweepSummary.stop)}</span>
           </div>
-        )}
-        
-        {sweepResults && (
-          <div className="sweep-summary">
-            <h3>{t('solver.sweepSummary')}</h3>
-            <p>{sweepResults.results.length} {t('solver.freqPointsComputed')}</p>
-            <p>Range: {formatFrequency(sweepResults.frequencies[0])} - {formatFrequency(sweepResults.frequencies[sweepResults.frequencies.length - 1])}</p>
-            <p>{t('solver.totalTime')} {sweepResults.results.reduce((sum, r) => sum + r.computation_time, 0).toFixed(2)} s</p>
+          <div className="text-[12px] text-text-muted">
+            Best S11: <span className="tabular-nums text-success">{sweepSummary.best.s11_db.toFixed(2)} dB</span>
           </div>
-        )}
-      </div>
+          <div className="text-[12px] text-text-muted">
+            {t('solver.totalTime')} <span className="tabular-nums text-text-primary">{sweepSummary.totalTime.toFixed(2)} s</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

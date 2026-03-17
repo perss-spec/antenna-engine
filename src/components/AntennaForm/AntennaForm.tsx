@@ -182,6 +182,27 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
   const showWireParams = category === 'wire';
   const showPatchParams = category === 'microstrip';
+  const canResetToPreset = Boolean(preset);
+
+  const handleResetToPreset = useCallback(() => {
+    if (!preset) return;
+    const cat = getCategoryForId(preset.id);
+    const resetParams: AntennaParameters = {
+      ...localParams,
+      antennaType: preset.id,
+      frequency: preset.frequency,
+      length: 0,
+      radius: 1,
+      height: 0,
+      material: 'copper',
+      substrateEr: cat === 'microstrip' ? 4.4 : undefined,
+      substrateHeight: cat === 'microstrip' ? 1.6 : undefined,
+      patchWidth: cat === 'microstrip' ? 38 : undefined,
+      extraParams: {},
+    };
+    setLocalParams(resetParams);
+    onParametersChange(resetParams);
+  }, [preset, localParams, onParametersChange]);
 
   return (
     <div className={cn('flex flex-col', className)}>
@@ -189,6 +210,14 @@ const AntennaForm: FC<AntennaFormProps> = ({
 
         {/* Antenna Type */}
         <div className="px-5 py-5 flex flex-col gap-6">
+          <div className="rounded-xl border border-border bg-base px-4 py-3">
+            <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">Current setup</div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2 py-1 rounded-md bg-elevated text-text-secondary">{preset?.name ?? localParams.antennaType}</span>
+              <span className="px-2 py-1 rounded-md bg-elevated text-text-secondary tabular-nums">{localParams.frequency} MHz</span>
+              <span className="px-2 py-1 rounded-md bg-elevated text-text-secondary">{localParams.material}</span>
+            </div>
+          </div>
           <div className="flex flex-col gap-3">
             <Label htmlFor="antennaType" className="text-xs font-medium text-text-muted">{t('form.antennaType')}</Label>
             <Select
@@ -217,18 +246,20 @@ const AntennaForm: FC<AntennaFormProps> = ({
             )}
           </div>
 
-          <AntennaPreview
-            antennaType={localParams.antennaType}
-            params={{
-              length_m: (localParams.length || 0) / 1000,
-              radius_m: (localParams.radius || 0) / 1000,
-              width_m: (localParams.patchWidth || 0) / 1000,
-              substrate_er: localParams.substrateEr || 4.4,
-              substrate_height_m: (localParams.substrateHeight || 1.6) / 1000,
-              ...localParams.extraParams,
-            }}
-            frequency={(localParams.frequency || 1000) * 1e6}
-          />
+          <div className="rounded-xl border border-border bg-base p-3">
+            <AntennaPreview
+              antennaType={localParams.antennaType}
+              params={{
+                length_m: (localParams.length || 0) / 1000,
+                radius_m: (localParams.radius || 0) / 1000,
+                width_m: (localParams.patchWidth || 0) / 1000,
+                substrate_er: localParams.substrateEr || 4.4,
+                substrate_height_m: (localParams.substrateHeight || 1.6) / 1000,
+                ...localParams.extraParams,
+              }}
+              frequency={(localParams.frequency || 1000) * 1e6}
+            />
+          </div>
 
           {/* Core Parameters */}
           <div className="flex flex-col gap-3">
@@ -372,7 +403,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
         )}
 
         {/* Run button */}
-        <div className="px-5 py-5">
+        <div className="px-5 py-5 space-y-2">
           <Button
             type="submit"
             disabled={isSimulating}
@@ -389,6 +420,15 @@ const AntennaForm: FC<AntennaFormProps> = ({
                 {t('form.runSimulation')}
               </span>
             )}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isSimulating || !canResetToPreset}
+            onClick={handleResetToPreset}
+            className="w-full h-10 text-sm rounded-xl"
+          >
+            Reset to preset defaults
           </Button>
         </div>
       </form>

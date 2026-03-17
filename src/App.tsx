@@ -482,10 +482,43 @@ function App() {
     return `${(hz / 1e3).toFixed(1)} kHz`;
   };
 
-  const vswr = summary ? (() => {
+  const vswrValue = summary ? (() => {
     const s11lin = Math.pow(10, summary.minS11 / 20);
-    return ((1 + s11lin) / (1 - s11lin)).toFixed(2);
+    return (1 + s11lin) / (1 - s11lin);
   })() : null;
+  const vswr = vswrValue !== null ? vswrValue.toFixed(2) : null;
+  const designHealth = useMemo(() => {
+    if (!summary || vswrValue === null) return null;
+    let score = 0;
+    if (summary.minS11 <= -20) score += 2;
+    else if (summary.minS11 <= -12) score += 1;
+    if (vswrValue <= 1.5) score += 2;
+    else if (vswrValue <= 2) score += 1;
+    if (summary.bandwidth >= summary.resonantFreq * 0.08) score += 1;
+
+    if (score >= 5) {
+      return {
+        label: 'Excellent match',
+        hint: 'Ready for export and fabrication review.',
+        color: 'text-success',
+        bg: 'bg-success/10',
+      };
+    }
+    if (score >= 3) {
+      return {
+        label: 'Good baseline',
+        hint: 'Consider optimization to improve S11 or bandwidth.',
+        color: 'text-info',
+        bg: 'bg-info/10',
+      };
+    }
+    return {
+      label: 'Needs tuning',
+      hint: 'Run optimization or adjust dimensions and re-simulate.',
+      color: 'text-warning',
+      bg: 'bg-warning/10',
+    };
+  }, [summary, vswrValue]);
   const workflowState = isOptimizing
     ? t('header.workflow.optimizing')
     : isSimulating
@@ -500,25 +533,21 @@ function App() {
 
   return (
     <div className="h-screen bg-base text-text-primary overflow-hidden flex flex-col">
-      {/* ═══ Top Header Bar ═══ */}
-      <div className="h-14 bg-surface border-b border-border flex items-center justify-between px-5 shrink-0">
+      <div className="h-15 bg-surface border-b border-border flex items-center justify-between px-5 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-sm font-bold text-white shadow-sm">
-              P
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[15px] font-bold text-text-primary tracking-tight">PROMIN</span>
-              <span className="text-[11px] text-text-dim font-medium">Antenna Studio</span>
-            </div>
+          <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-sm">
+            P
           </div>
-          <div className="w-px h-5 bg-border mx-1" />
-          <span className="text-[11px] font-medium text-text-dim px-2 py-0.5 rounded bg-elevated border border-border">
+          <div className="flex flex-col leading-tight">
+            <span className="text-[15px] font-bold tracking-tight">PROMIN Antenna Studio</span>
+            <span className="text-[11px] text-text-dim">{workflowState}</span>
+          </div>
+          <span className="text-[11px] font-medium text-text-dim px-2 py-0.5 rounded bg-elevated border border-border ml-2">
             {isTauri ? 'Native' : 'v0.3'}
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {isSimulating && (
             <Badge variant="warning">
               <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
@@ -531,48 +560,41 @@ function App() {
               {t('header.optimizing')}
             </Badge>
           )}
-          {summary && !isSimulating && !isOptimizing && (
-            <Badge variant="success">{t('header.done')}</Badge>
-          )}
-          <div className="flex gap-3 items-center text-[12px] text-text-dim">
+          {summary && !isSimulating && !isOptimizing && <Badge variant="success">{t('header.done')}</Badge>}
+          <div className="flex gap-3 items-center text-[12px] text-text-dim border-l border-border pl-3">
             {simTime && <span className="tabular-nums font-medium">{simTime}ms</span>}
             {chartData.length > 0 && <span className="tabular-nums">{chartData.length} pts</span>}
           </div>
-          <div className="flex items-center gap-2">
-            <Select
-              size="sm"
-              value={locale}
-              onChange={(e) => setLocale(e.target.value as Locale)}
-              className="w-[80px] h-8 text-[11px] bg-elevated border-border"
-              aria-label="Language"
-            >
-              <option value="en">EN</option>
-              <option value="uk">UK</option>
-            </Select>
-            <Select
-              size="sm"
-              value={themePreference}
-              onChange={(e) => setThemePreference(e.target.value as ThemePreference)}
-              className="w-[132px] h-8 text-[11px] bg-elevated border-border"
-              aria-label="Theme"
-            >
-              <option value="light">{t('theme.light')}</option>
-              <option value="dark">{t('theme.dark')}</option>
-              <option value="system">{t('theme.system')}</option>
-            </Select>
-            <span className="w-2 h-2 rounded-full bg-success/60 animate-pulse" />
-            <span className="text-[11px] text-text-dim">{workflowState}</span>
-          </div>
+          <Select
+            size="sm"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            className="w-[80px] h-8 text-[11px] bg-elevated border-border"
+            aria-label="Language"
+          >
+            <option value="en">EN</option>
+            <option value="uk">UK</option>
+          </Select>
+          <Select
+            size="sm"
+            value={themePreference}
+            onChange={(e) => setThemePreference(e.target.value as ThemePreference)}
+            className="w-[132px] h-8 text-[11px] bg-elevated border-border"
+            aria-label="Theme"
+          >
+            <option value="light">{t('theme.light')}</option>
+            <option value="dark">{t('theme.dark')}</option>
+            <option value="system">{t('theme.system')}</option>
+          </Select>
         </div>
       </div>
 
-      {/* ═══ Main Content — Resizable Panels ═══ */}
       <PanelGroup orientation="horizontal" className="flex-1">
-        {/* ─── Sidebar ─── */}
-        <Panel defaultSize="25%" minSize="18%" maxSize="36%">
-          <div className="h-full bg-surface flex flex-col overflow-hidden">
+        <Panel defaultSize="24%" minSize="19%" maxSize="34%">
+          <div className="h-full bg-surface flex flex-col overflow-hidden border-r border-border">
             <div className="px-5 py-3.5 border-b border-border">
               <div className="text-[11px] uppercase tracking-wider text-text-dim">{t('sidebar.inputs')}</div>
+              <div className="text-[12px] text-text-muted mt-1">Step 1: Configure, then run simulation</div>
             </div>
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <AntennaForm
@@ -585,8 +607,31 @@ function App() {
               <SidebarSection title={t('sidebar.presets')} defaultOpen>
                 <div className="px-5">
                   <FrequencyPresets
-                    onSelect={(freq) => setParams(p => ({ ...p, frequency: freq }))}
+                    onSelect={(freq) => setParams((p) => ({ ...p, frequency: freq }))}
                     disabled={isSimulating || isOptimizing}
+                  />
+                </div>
+              </SidebarSection>
+
+              <SidebarSection title={t('sidebar.solver')}>
+                <div className="px-5">
+                  <SolverPanel
+                    antennaType={params.antennaType}
+                    antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
+                    frequency={params.frequency}
+                    onSolveComplete={(r) =>
+                      setResults(
+                        fromSingleSolve(r, params.antennaType, {
+                          length_m: params.length / 1000,
+                          radius_m: params.radius / 1000,
+                        })
+                      )
+                    }
+                    onSweepComplete={(sweep) => setResults(fromSweepResult(sweep))}
+                    onComparisonComplete={(a, b) => {
+                      setResults(fromSweepResult(a));
+                      setComparisonResults(fromSweepResult(b));
+                    }}
                   />
                 </div>
               </SidebarSection>
@@ -612,35 +657,17 @@ function App() {
                   />
                 </div>
               </SidebarSection>
-
-              <SidebarSection title={t('sidebar.solver')}>
-                <div className="px-5">
-                  <SolverPanel
-                    antennaType={params.antennaType}
-                    antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
-                    frequency={params.frequency}
-                    onSolveComplete={(r) => setResults(fromSingleSolve(r, params.antennaType, { length_m: params.length / 1000, radius_m: params.radius / 1000 }))}
-                    onSweepComplete={(sweep) => setResults(fromSweepResult(sweep))}
-                    onComparisonComplete={(a, b) => {
-                      setResults(fromSweepResult(a));
-                      setComparisonResults(fromSweepResult(b));
-                    }}
-                  />
-                </div>
-              </SidebarSection>
             </div>
           </div>
         </Panel>
 
-        {/* ─── Resize Handle ─── */}
         <PanelResizeHandle className="w-1 bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize relative z-20 before:content-[''] before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5" />
 
-        {/* ─── Main Area ─── */}
         <Panel minSize="42%">
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 p-5 flex flex-col gap-4 min-h-0">
+            <div className="flex-1 p-4 xl:p-5 flex flex-col gap-4 min-h-0">
               {error && (
-                <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-[13px] flex items-center gap-3" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+                <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-[13px] flex items-center gap-3">
                   <span className="w-2 h-2 rounded-full bg-error shrink-0" />
                   {error}
                 </div>
@@ -648,22 +675,31 @@ function App() {
 
               {summary ? (
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <div className="flex flex-col xl:flex-row xl:items-start gap-3">
-                    <TabsList className="shrink-0 flex-wrap">
-                      <TabsTrigger value="s-parameters">{t('tab.sParams')}</TabsTrigger>
-                      <TabsTrigger value="impedance">{t('tab.impedance')}</TabsTrigger>
-                      <TabsTrigger value="vswr">{t('tab.vswr')}</TabsTrigger>
-                      <TabsTrigger value="z-freq">{t('tab.zFreq')}</TabsTrigger>
-                      <TabsTrigger value="3d-view">{t('tab.3d')}</TabsTrigger>
-                      <TabsTrigger value="radiation">{t('tab.radiation')}</TabsTrigger>
-                      <TabsTrigger value="history">{t('tab.history')}</TabsTrigger>
-                      {importedMesh && <TabsTrigger value="mesh">{t('tab.mesh')}</TabsTrigger>}
-                    </TabsList>
+                  <div className="flex flex-col xl:flex-row gap-3 xl:items-start">
+                    <div className="flex-1 flex flex-col gap-2">
+                      <TabsList className="shrink-0 flex-wrap">
+                        <TabsTrigger value="s-parameters">{t('tab.sParams')}</TabsTrigger>
+                        <TabsTrigger value="vswr">{t('tab.vswr')}</TabsTrigger>
+                        <TabsTrigger value="z-freq">{t('tab.zFreq')}</TabsTrigger>
+                        <TabsTrigger value="impedance">{t('tab.impedance')}</TabsTrigger>
+                        <TabsTrigger value="3d-view">{t('tab.3d')}</TabsTrigger>
+                        <TabsTrigger value="radiation">{t('tab.radiation')}</TabsTrigger>
+                        <TabsTrigger value="history">{t('tab.history')}</TabsTrigger>
+                        {importedMesh && <TabsTrigger value="mesh">{t('tab.mesh')}</TabsTrigger>}
+                      </TabsList>
+                      {designHealth && (
+                        <div className={`rounded-xl border border-border px-3 py-2 text-xs ${designHealth.bg}`}>
+                          <span className={`font-semibold ${designHealth.color}`}>{designHealth.label}</span>
+                          <span className="text-text-muted"> - {designHealth.hint}</span>
+                        </div>
+                      )}
+                    </div>
                     {chartData.length > 0 && (
-                      <div className="xl:w-[360px] w-full">
+                      <div className="xl:w-[340px] w-full bg-surface border border-border rounded-xl p-3">
+                        <div className="text-[11px] uppercase tracking-wider text-text-dim mb-2">Export</div>
                         <ExportPanel
                           frequencies={impedanceData.freq}
-                          s11Db={chartData.map(d => d.s11_db)}
+                          s11Db={chartData.map((d) => d.s11_db)}
                           s11Real={s11Data.real}
                           s11Imag={s11Data.imag}
                           impedanceReal={impedanceData.real}
@@ -675,7 +711,6 @@ function App() {
                   </div>
 
                   <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
-                    {/* Stats cards */}
                     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                       {[
                         { icon: Radio, label: t('stat.resonantFreq'), value: formatFreq(summary.resonantFreq), iconBg: 'bg-accent/10', iconColor: 'text-accent', valueColor: 'text-accent' },
@@ -683,11 +718,7 @@ function App() {
                         { icon: Zap, label: t('stat.vswr'), value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
                         { icon: Signal, label: t('stat.bw'), value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
                       ].map(({ icon: Icon, label, value, iconBg, iconColor, valueColor }) => (
-                        <div
-                          key={label}
-                          className="flex items-center gap-3.5 rounded-xl border border-border bg-surface px-5 py-4"
-                          style={{ animation: 'fadeInScale 0.3s ease-out' }}
-                        >
+                        <div key={label} className="flex items-center gap-3.5 rounded-xl border border-border bg-surface px-4 py-4">
                           <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
                             <Icon className={`w-[18px] h-[18px] ${iconColor}`} />
                           </div>
@@ -698,27 +729,25 @@ function App() {
                         </div>
                       ))}
                     </div>
-
-                    {/* S11 Chart */}
-                    <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
+                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 min-h-[300px] flex flex-col">
                       <S11Chart data={chartData} simulationData={compChartData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="impedance" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl p-5 flex-1 flex items-center justify-center">
+                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 flex items-center justify-center">
                       <SmithChart impedancePoints={smithData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="vswr" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
+                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 min-h-[300px] flex flex-col">
                       <VswrChart data={vswrData} comparisonData={compVswrData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="z-freq" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
+                    <div className="bg-surface border border-border rounded-xl p-4 flex-1 min-h-[300px] flex flex-col">
                       <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
                     </div>
                   </TabsContent>
@@ -762,7 +791,7 @@ function App() {
                           {importedMesh.vertices.toLocaleString()} verts, {importedMesh.triangles.toLocaleString()} tris
                         </span>
                         <div className="ml-auto flex gap-1">
-                          {(['wireframe', 'solid', 'transparent'] as const).map(m => (
+                          {(['wireframe', 'solid', 'transparent'] as const).map((m) => (
                             <button
                               key={m}
                               onClick={() => setMeshViewMode(m)}
@@ -783,36 +812,27 @@ function App() {
                   )}
                 </Tabs>
               ) : (
-                /* Empty state */
-                <div className="flex-1 flex flex-col items-center justify-center gap-6 text-text-dim">
-                  <div className="relative">
-                    <svg width="96" height="96" viewBox="0 0 96 96" fill="none">
-                      <rect x="12" y="60" width="5" height="20" rx="2.5" fill="var(--color-surface)" />
-                      <rect x="23" y="46" width="5" height="34" rx="2.5" fill="var(--color-surface)" />
-                      <rect x="34" y="32" width="5" height="48" rx="2.5" fill="var(--color-elevated)" />
-                      <rect x="45" y="12" width="6" height="68" rx="3" fill="url(#emptyGrad)" />
-                      <rect x="57" y="32" width="5" height="48" rx="2.5" fill="var(--color-elevated)" />
-                      <rect x="68" y="46" width="5" height="34" rx="2.5" fill="var(--color-surface)" />
-                      <rect x="79" y="60" width="5" height="20" rx="2.5" fill="var(--color-surface)" />
-                      <defs>
-                        <linearGradient id="emptyGrad" x1="48" y1="12" x2="48" y2="80" gradientUnits="userSpaceOnUse">
-                          <stop stopColor="#0ea5e9" stopOpacity="0.5" />
-                          <stop offset="1" stopColor="#0ea5e9" stopOpacity="0.05" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full scale-150" />
-                  </div>
-                  <div className="text-center">
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="w-full max-w-[640px] bg-surface border border-border rounded-2xl p-7">
                     <div className="text-lg font-semibold text-text-muted mb-2">{t('empty.title')}</div>
-                    <div className="text-[13px] text-text-dim max-w-[320px] leading-relaxed">
-                      {t('empty.text')}
+                    <div className="text-[13px] text-text-dim leading-relaxed mb-5">{t('empty.text')}</div>
+                    <div className="grid md:grid-cols-3 gap-3">
+                      {[
+                        { title: '1. Select antenna', text: 'Choose antenna type and set the center frequency.' },
+                        { title: '2. Tune geometry', text: 'Adjust dimensions and material in the left panel.' },
+                        { title: '3. Run + review', text: 'Run simulation, then inspect S11, VSWR and 3D tabs.' },
+                      ].map((step) => (
+                        <div key={step.title} className="rounded-xl border border-border bg-base px-4 py-3">
+                          <div className="text-xs font-semibold text-text-secondary mb-1">{step.title}</div>
+                          <div className="text-xs text-text-dim leading-relaxed">{step.text}</div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-[12px] text-text-dim/40 mt-1">
-                    <span className="w-10 h-px bg-border" />
-                    <span>{t('empty.types')}</span>
-                    <span className="w-10 h-px bg-border" />
+                    <div className="flex items-center gap-3 text-[12px] text-text-dim/60 mt-5">
+                      <span className="w-10 h-px bg-border" />
+                      <span>{t('empty.types')}</span>
+                      <span className="w-10 h-px bg-border" />
+                    </div>
                   </div>
                 </div>
               )}
