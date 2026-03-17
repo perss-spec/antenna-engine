@@ -28,6 +28,7 @@ import { solveByCategory } from '@/lib/impedanceSolver';
 import { api } from '@/lib/api';
 import {
   fromSimulateResponse,
+  fromSingleSolve,
   fromSweepResult,
   toS11ChartData,
   toSmithData,
@@ -605,7 +606,7 @@ function App() {
                   <SolverPanel
                     antennaType={params.antennaType}
                     antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
-                    onSolveComplete={() => {}}
+                    onSolveComplete={(r) => setResults(fromSingleSolve(r, params.antennaType, { length_m: params.length / 1000, radius_m: params.radius / 1000 }))}
                     onSweepComplete={(sweep) => setResults(fromSweepResult(sweep))}
                     onComparisonComplete={(a, b) => {
                       setResults(fromSweepResult(a));

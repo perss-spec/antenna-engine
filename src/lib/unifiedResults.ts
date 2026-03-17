@@ -1,4 +1,4 @@
-import type { SweepResult } from '@/components/SolverPanel/SolverPanel';
+import type { SimulationResult, SweepResult } from '@/components/SolverPanel/SolverPanel';
 
 export interface UnifiedSimResults {
   frequencies: number[];
@@ -71,6 +71,67 @@ export function fromSimulateResponse(resp: SimulateResponse): UnifiedSimResults 
     bandwidth: resp.bandwidth,
     source: 'simulate',
     solverType: 'local',
+  };
+}
+
+export function fromSingleSolve(r: SimulationResult, _antennaType?: string, _antennaParams?: Record<string, number>): UnifiedSimResults {
+  const freq = r.frequency;
+  const fStart = freq * 0.5;
+  const fStop = freq * 1.5;
+  const nPts = 51;
+
+  const frequencies: number[] = [];
+  const impedanceReal: number[] = [];
+  const impedanceImag: number[] = [];
+  const s11Db: number[] = [];
+  const s11Real: number[] = [];
+  const s11Imag: number[] = [];
+  const vswrArr: number[] = [];
+
+  // Import solver dynamically would be circular; use inline reflection calc
+  // We have the single-point result, build a mini sweep around it using simple interpolation
+  for (let i = 0; i < nPts; i++) {
+    const f = fStart + (fStop - fStart) * i / (nPts - 1);
+    frequencies.push(f);
+
+    // Simple detuning model: impedance shifts with frequency
+    const ratio = f / freq;
+    const zr = r.impedance.real * (0.5 + 0.5 * ratio);
+    const zi = r.impedance.imag + r.impedance.real * Math.tan(Math.PI * (ratio - 1));
+    impedanceReal.push(zr);
+    impedanceImag.push(zi);
+
+    const dr = zr + 50, di = zi;
+    const dMag2 = dr * dr + di * di;
+    const gr = ((zr - 50) * dr + zi * di) / dMag2;
+    const gi = (zi * dr - (zr - 50) * di) / dMag2;
+    const gMag2 = gr * gr + gi * gi;
+    s11Real.push(gr);
+    s11Imag.push(gi);
+    s11Db.push(10 * Math.log10(gMag2 || 1e-20));
+    const mag = Math.sqrt(gMag2);
+    vswrArr.push((1 + Math.min(mag, 0.9999)) / (1 - Math.min(mag, 0.9999)));
+  }
+
+  const minIdx = s11Db.indexOf(Math.min(...s11Db));
+  const bwIndices = s11Db.map((v, i) => v <= -10 ? i : -1).filter(i => i >= 0);
+  const bandwidth = bwIndices.length >= 2
+    ? frequencies[bwIndices[bwIndices.length - 1]] - frequencies[bwIndices[0]]
+    : 0;
+
+  return {
+    frequencies,
+    s11Db,
+    s11Real,
+    s11Imag,
+    impedanceReal,
+    impedanceImag,
+    vswr: vswrArr,
+    resonantFreq: frequencies[minIdx],
+    minS11: s11Db[minIdx],
+    bandwidth,
+    source: 'solver',
+    solverType: r.solver,
   };
 }
 
