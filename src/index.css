@@ -50,23 +50,25 @@
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
   --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.15);
 
-  /* ═══ Spacing ═══ */
+  --color-background: var(--color-base);
+  --color-text: var(--color-text-primary);
+}
+
+/* Custom design tokens — kept outside @theme to avoid overriding Tailwind's defaults */
+:root {
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
 
-  /* ═══ Transitions ═══ */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.2s ease;
 
-  /* ═══ Component sizes ═══ */
   --size-input-sm: 34px;
   --size-input-md: 40px;
   --size-input-lg: 44px;
 
-  /* ═══ Typography ═══ */
   --font-size-2xs: 10px;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
@@ -76,9 +78,6 @@
   --font-size-xl: 18px;
   --font-size-2xl: 22px;
   --font-size-3xl: 28px;
-
-  --color-background: var(--color-base);
-  --color-text: var(--color-text-primary);
 }
 
 :root[data-theme="light"] {
