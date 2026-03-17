@@ -728,7 +728,7 @@ function App() {
                         { icon: Zap, label: t('stat.vswr'), value: `${vswr}:1`, iconBg: 'bg-warning/10', iconColor: 'text-warning', valueColor: 'text-warning' },
                         { icon: Signal, label: t('stat.bw'), value: formatFreq(summary.bandwidth), iconBg: 'bg-info/10', iconColor: 'text-info', valueColor: 'text-info' },
                       ].map(({ icon: Icon, label, value, iconBg, iconColor, valueColor }) => (
-                        <div key={label} className="soft-card flex items-center gap-3.5 px-4 py-4.5">
+                        <div key={label} className="soft-card flex items-center gap-3.5 px-4 py-3">
                           <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                             <Icon className={`w-[18px] h-[18px] ${iconColor}`} />
                           </div>

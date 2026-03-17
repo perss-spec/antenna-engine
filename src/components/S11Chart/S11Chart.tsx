@@ -172,6 +172,7 @@ const S11Chart: FC<S11ChartProps> = ({
           />
           <YAxis
             domain={yAxisDomain}
+            tickFormatter={(v: number) => `${v.toFixed(1)}`}
             label={{ value: 'S11 (dB)', angle: -90, position: 'insideLeft', fill: '#8e8e9a' }} /* --color-text-muted */
             stroke="#5c5c68" /* --color-text-dim */
             tick={{ fill: '#8e8e9a', fontSize: 11 }} /* --color-text-muted */
