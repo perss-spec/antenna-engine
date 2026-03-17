@@ -205,11 +205,11 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-lg flex-1 min-h-[400px] overflow-hidden">
+      <div className="bg-surface border border-border rounded-lg flex-1 min-h-[300px] overflow-hidden">
         {pattern ? (
           <Canvas
             camera={{ position: [2, 1.5, 2], fov: 50 }}
-            style={{ background: 'transparent', width: '100%', height: '100%', minHeight: 400 }}
+            style={{ background: 'transparent', width: '100%', height: '100%' }}
           >
             <ambientLight intensity={0.4} />
             <directionalLight position={[10, 10, 5]} intensity={0.8} />

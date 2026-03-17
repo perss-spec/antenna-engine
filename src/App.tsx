@@ -620,12 +620,12 @@ function App() {
         </Panel>
 
         {/* ─── Resize Handle ─── */}
-        <PanelResizeHandle className="w-1 bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize relative before:content-[''] before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5" />
+        <PanelResizeHandle className="w-1 bg-border hover:bg-accent active:bg-accent transition-colors duration-150 cursor-col-resize relative z-20 before:content-[''] before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5" />
 
         {/* ─── Main Area ─── */}
         <Panel minSize="42%">
-          <div className="h-full flex flex-col overflow-auto">
-            <div className="flex-1 p-5 flex flex-col gap-4">
+          <div className="h-full flex flex-col overflow-hidden">
+            <div className="flex-1 p-5 flex flex-col gap-4 min-h-0">
               {error && (
                 <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-[13px] flex items-center gap-3" style={{ animation: 'fadeIn 0.2s ease-out' }}>
                   <span className="w-2 h-2 rounded-full bg-error shrink-0" />
@@ -634,9 +634,9 @@ function App() {
               )}
 
               {summary ? (
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   <div className="flex flex-col xl:flex-row xl:items-start gap-3">
-                    <TabsList className="flex-1 flex-wrap">
+                    <TabsList className="shrink-0 flex-wrap">
                       <TabsTrigger value="s-parameters">S-Parameters</TabsTrigger>
                       <TabsTrigger value="impedance">Impedance</TabsTrigger>
                       <TabsTrigger value="vswr">VSWR</TabsTrigger>
@@ -661,7 +661,7 @@ function App() {
                     )}
                   </div>
 
-                  <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4">
+                  <TabsContent value="s-parameters" className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
                     {/* Stats cards */}
                     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                       {[
@@ -692,25 +692,25 @@ function App() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="impedance" className="flex-1 flex flex-col">
+                  <TabsContent value="impedance" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                     <div className="bg-surface border border-border rounded-xl p-5 flex-1 flex items-center justify-center">
                       <SmithChart impedancePoints={smithData} />
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="vswr" className="flex-1 flex flex-col">
+                  <TabsContent value="vswr" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                     <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
                       <VswrChart data={vswrData} comparisonData={compVswrData} />
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="z-freq" className="flex-1 flex flex-col">
+                  <TabsContent value="z-freq" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                     <div className="bg-surface border border-border rounded-xl p-5 flex-1 min-h-[300px] flex flex-col">
                       <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="3d-view" className="flex-1 flex flex-col">
+                  <TabsContent value="3d-view" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                     <div className="bg-surface border border-border rounded-xl flex-1 min-h-[300px] overflow-hidden">
                       <AntennaViewport
                         antennaType={params.antennaType}
@@ -722,7 +722,7 @@ function App() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="radiation" className="flex-1 flex flex-col">
+                  <TabsContent value="radiation" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                     <RadiationPatternView
                       antennaType={params.antennaType}
                       frequency={params.frequency * 1e6}
@@ -730,7 +730,7 @@ function App() {
                     />
                   </TabsContent>
 
-                  <TabsContent value="history" className="flex-1 flex flex-col">
+                  <TabsContent value="history" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                     <SimulationHistory
                       onLoadHistory={(item: HistoryItem) => {
                         setParams(item.parameters);
@@ -741,7 +741,7 @@ function App() {
                   </TabsContent>
 
                   {importedMesh && (
-                    <TabsContent value="mesh" className="flex-1 flex flex-col">
+                    <TabsContent value="mesh" className="flex-1 flex flex-col overflow-y-auto min-h-0">
                       <div className="flex items-center gap-3 mb-3">
                         <span className="text-[13px] text-text-muted">{importedMesh.file_name}</span>
                         <Badge variant="default">{importedMesh.format}</Badge>

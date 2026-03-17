@@ -374,7 +374,7 @@ const SmithChart: FC<SmithChartProps> = ({
         <div className="relative flex justify-center">
           <svg
             viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-            className="w-full max-w-[500px] aspect-square"
+            className="w-full max-w-[600px] aspect-square mx-auto"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeaveChart}
           >

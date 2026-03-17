@@ -157,7 +157,7 @@ const S11Chart: FC<S11ChartProps> = ({
   return (
     <div className={`flex flex-col flex-1 ${className || ''}`}>
       <h3 className="text-sm font-semibold text-text mb-3">S11 Return Loss</h3>
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height="100%" minHeight={300}>
         <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" opacity={0.3} /> {/* --color-border */}
           <XAxis
