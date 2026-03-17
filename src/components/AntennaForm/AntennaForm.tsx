@@ -60,13 +60,13 @@ function CollapsibleSection({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={contentId}
-        className="w-full flex items-center justify-between px-5 py-4 text-[12px] font-semibold uppercase tracking-widest text-text-dim/80 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+        className="w-full flex items-center justify-between px-6 xl:px-8 py-5 text-[12px] font-semibold uppercase tracking-widest text-text-dim/80 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         {title}
         <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', open && 'rotate-180')} />
       </button>
       {open && (
-        <div id={contentId} className="px-5 pb-5" style={{ animation: 'fadeIn 0.15s ease-out' }}>
+        <div id={contentId} className="px-6 xl:px-8 pb-6" style={{ animation: 'fadeIn 0.15s ease-out' }}>
           {children}
         </div>
       )}
@@ -403,7 +403,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
         )}
 
         {/* Run button */}
-        <div className="px-5 py-5 space-y-2">
+        <div className="px-6 xl:px-8 py-5 space-y-2">
           <Button
             type="submit"
             disabled={isSimulating}

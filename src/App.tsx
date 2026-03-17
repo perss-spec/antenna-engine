@@ -546,7 +546,7 @@ function App() {
 
   return (
     <div className="workspace-shell h-screen bg-base text-text-primary overflow-hidden flex flex-col">
-      <div className="h-14 bg-surface/80 backdrop-blur-md border-b border-border/60 flex items-center justify-between px-5 shrink-0">
+      <div className="h-14 bg-surface/80 backdrop-blur-md border-b border-border/60 flex items-center justify-between px-6 xl:px-8 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-accent/25">
             P
@@ -601,7 +601,7 @@ function App() {
       <PanelGroup orientation="horizontal" className="flex-1">
         <Panel defaultSize="28%" minSize="22%" maxSize="36%">
           <div className="workspace-sidebar h-full bg-surface flex flex-col overflow-hidden border-r border-border">
-            <div className="px-5 py-4 border-b border-border">
+            <div className="px-6 xl:px-8 py-5 border-b border-border">
               <div className="text-[12px] uppercase tracking-wider text-text-dim">{t('sidebar.inputs')}</div>
               <div className="text-[13px] text-text-muted mt-1">Step 1: Configure, then run simulation</div>
             </div>
@@ -614,7 +614,7 @@ function App() {
               />
 
               <SidebarSection title={t('sidebar.presets')} defaultOpen>
-                <div className="px-5">
+                <div className="px-6 xl:px-8">
                   <FrequencyPresets
                     onSelect={(freq) => setParams((p) => ({ ...p, frequency: freq }))}
                     disabled={isSimulating || isOptimizing}
@@ -623,7 +623,7 @@ function App() {
               </SidebarSection>
 
               <SidebarSection title={t('sidebar.solver')}>
-                <div className="px-5">
+                <div className="px-6 xl:px-8">
                   <SolverPanel
                     antennaType={params.antennaType}
                     antennaParams={{ length_m: params.length / 1000, radius_m: params.radius / 1000 }}
@@ -656,7 +656,7 @@ function App() {
               </SidebarSection>
 
               <SidebarSection title={t('sidebar.importCad')}>
-                <div className="px-5">
+                <div className="px-6 xl:px-8">
                   <FileImport
                     onMeshImported={(mesh) => {
                       setImportedMesh(mesh);
@@ -674,7 +674,7 @@ function App() {
 
         <Panel minSize="42%">
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 p-5 xl:p-6 flex flex-col gap-4 min-h-0">
+            <div className="flex-1 p-6 xl:p-8 flex flex-col gap-6 min-h-0">
               {error && (
                 <div className="px-4 py-3 bg-error/8 border border-error/20 rounded-xl text-error text-[13px] flex items-center gap-3">
                   <span className="w-2 h-2 rounded-full bg-error shrink-0" />
