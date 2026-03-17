@@ -59,13 +59,13 @@ function CollapsibleSection({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={contentId}
-        className="w-full flex items-center justify-between px-6 py-4 text-xs font-semibold uppercase tracking-widest text-text-dim/70 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+        className="w-full flex items-center justify-between px-5 py-4 text-xs font-semibold uppercase tracking-widest text-text-dim/70 hover:text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         {title}
         <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', open && 'rotate-180')} />
       </button>
       {open && (
-        <div id={contentId} className="px-6 pb-6" style={{ animation: 'fadeIn 0.15s ease-out' }}>
+        <div id={contentId} className="px-5 pb-5" style={{ animation: 'fadeIn 0.15s ease-out' }}>
           {children}
         </div>
       )}
@@ -186,7 +186,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col">
 
         {/* Antenna Type */}
-        <div className="px-6 py-6 flex flex-col gap-8">
+        <div className="px-5 py-5 flex flex-col gap-6">
           <div className="flex flex-col gap-3">
             <Label htmlFor="antennaType" className="text-xs font-medium text-text-muted">Antenna Type</Label>
             <Select
@@ -370,7 +370,7 @@ const AntennaForm: FC<AntennaFormProps> = ({
         )}
 
         {/* Run button */}
-        <div className="px-6 py-6">
+        <div className="px-5 py-5">
           <Button
             type="submit"
             disabled={isSimulating}

@@ -51,7 +51,8 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
         role="tab"
         aria-selected={isActive}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-5 py-2.5 text-xs font-medium transition-all duration-150",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium transition-all duration-150",
+          "min-h-8",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-base",
           isActive
             ? "bg-accent text-white shadow-sm"
