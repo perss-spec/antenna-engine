@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { AntennaPreview } from '@/components/AntennaPreview/AntennaPreview';
 import {
   ANTENNA_PRESETS,
   CATEGORY_LABELS,
@@ -213,6 +214,19 @@ const AntennaForm: FC<AntennaFormProps> = ({
               </p>
             )}
           </div>
+
+          <AntennaPreview
+            antennaType={localParams.antennaType}
+            params={{
+              length_m: (localParams.length || 0) / 1000,
+              radius_m: (localParams.radius || 0) / 1000,
+              width_m: (localParams.patchWidth || 0) / 1000,
+              substrate_er: localParams.substrateEr || 4.4,
+              substrate_height_m: (localParams.substrateHeight || 1.6) / 1000,
+              ...localParams.extraParams,
+            }}
+            frequency={(localParams.frequency || 1000) * 1e6}
+          />
 
           {/* Core Parameters */}
           <div className="flex flex-col gap-3">
