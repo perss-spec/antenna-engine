@@ -306,54 +306,188 @@ impl NearToFarFieldTransform {
         if far_field.is_empty() {
             return Ok(PatternMetrics::default());
         }
-        
-        // Find maximum gain
-        let max_gain_dbi = far_field
+
+        // Find maximum gain and its index
+        let (max_idx, max_gain_dbi) = far_field
             .iter()
-            .map(|s| s.gain_db)
-            .fold(f64::NEG_INFINITY, f64::max);
-        
-        // Calculate directivity (simplified)
-        let directivity_dbi = max_gain_dbi - 2.15; // Assume some loss
-        
-        // Calculate beamwidth (simplified)
+            .enumerate()
+            .map(|(i, s)| (i, s.gain_db))
+            .fold((0, f64::NEG_INFINITY), |(bi, bg), (i, g)| {
+                if g > bg { (i, g) } else { (bi, bg) }
+            });
+
+        // Directivity via spherical integration
+        let directivity_dbi = self.calculate_directivity(far_field);
+
+        // Beamwidth with interpolation
         let half_power_level = max_gain_dbi - 3.0;
         let beamwidth_deg = self.calculate_beamwidth(far_field, half_power_level);
-        
-        // Calculate front-to-back ratio
+
+        // Front-to-back ratio
         let front_to_back_ratio_db = self.calculate_front_to_back_ratio(far_field);
-        
+
+        // Cross-pol discrimination at main beam direction
+        let cross_pol_discrimination_db = self.calculate_cross_pol_discrimination(far_field, max_idx);
+
         Ok(PatternMetrics {
             beamwidth_deg,
             directivity_dbi,
-            efficiency: 0.85, // Typical efficiency
+            efficiency: 0.85,
             max_gain_dbi,
             front_to_back_ratio_db,
-            cross_pol_discrimination_db: 20.0, // Typical value
-            impedance_bandwidth_mhz: 50.0, // Typical value
+            cross_pol_discrimination_db,
+            impedance_bandwidth_mhz: 50.0,
         })
     }
 
-    /// Calculate 3dB beamwidth
+    /// Calculate 3dB beamwidth with linear interpolation at half-power crossings
     fn calculate_beamwidth(&self, far_field: &[FarFieldSample], half_power_level: f64) -> f64 {
-        // Simplified beamwidth calculation
-        let mut angles_above_half_power = Vec::new();
-        
-        for sample in far_field {
-            if sample.gain_db >= half_power_level {
-                angles_above_half_power.push(sample.theta * 180.0 / PI);
+        // Extract phi=0 cut (samples with phi closest to 0)
+        let min_phi = far_field
+            .iter()
+            .map(|s| s.phi.abs())
+            .fold(f64::INFINITY, f64::min);
+
+        let mut cut: Vec<(f64, f64)> = far_field
+            .iter()
+            .filter(|s| (s.phi - min_phi).abs() < 1e-9 || (s.phi.abs() < 1e-9))
+            .map(|s| (s.theta, s.gain_db))
+            .collect();
+
+        if cut.len() < 3 {
+            return 60.0;
+        }
+
+        cut.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // Find peak (max gain angle) in this cut
+        let (peak_idx, _) = cut
+            .iter()
+            .enumerate()
+            .fold((0, f64::NEG_INFINITY), |(bi, bg), (i, &(_, g))| {
+                if g > bg { (i, g) } else { (bi, bg) }
+            });
+
+        // Interpolate 3dB crossing walking left from peak
+        let left_angle = Self::interpolate_crossing(&cut, peak_idx, half_power_level, false);
+
+        // Interpolate 3dB crossing walking right from peak
+        let right_angle = Self::interpolate_crossing(&cut, peak_idx, half_power_level, true);
+
+        match (left_angle, right_angle) {
+            (Some(l), Some(r)) => (r - l) * 180.0 / PI,
+            _ => 60.0,
+        }
+    }
+
+    /// Walk from peak_idx outward (forward=true → increasing index, false → decreasing)
+    /// and linearly interpolate the exact angle where gain crosses `level`.
+    fn interpolate_crossing(
+        cut: &[(f64, f64)],
+        peak_idx: usize,
+        level: f64,
+        forward: bool,
+    ) -> Option<f64> {
+        let range: Box<dyn Iterator<Item = usize>> = if forward {
+            Box::new(peak_idx..cut.len() - 1)
+        } else {
+            Box::new((1..=peak_idx).rev())
+        };
+
+        for i in range {
+            let (i0, i1) = if forward { (i, i + 1) } else { (i - 1, i) };
+            let (theta0, g0) = cut[i0];
+            let (theta1, g1) = cut[i1];
+
+            // Check if the level crossing happens between these two samples
+            let above0 = g0 >= level;
+            let above1 = g1 >= level;
+            if above0 != above1 {
+                // Linear interpolation
+                let t = (level - g0) / (g1 - g0);
+                return Some(theta0 + t * (theta1 - theta0));
             }
         }
-        
-        if angles_above_half_power.len() < 2 {
-            return 60.0; // Default beamwidth
+        None
+    }
+
+    /// Calculate cross-polarization discrimination at the main beam direction.
+    /// E_co = E_theta, E_cross = E_phi (theta-polarized antenna convention).
+    fn calculate_cross_pol_discrimination(&self, far_field: &[FarFieldSample], max_idx: usize) -> f64 {
+        let sample = &far_field[max_idx];
+        let co_power = sample.e_theta.norm_sqr();
+        let cross_power = sample.e_phi.norm_sqr();
+
+        if cross_power > 1e-30 {
+            10.0 * (co_power / cross_power).log10()
+        } else {
+            60.0 // Cross-pol negligible
         }
-        
-        angles_above_half_power.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let min_angle = angles_above_half_power[0];
-        let max_angle = angles_above_half_power[angles_above_half_power.len() - 1];
-        
-        max_angle - min_angle
+    }
+
+    /// Directivity via numerical spherical integration:
+    ///   D = 4π · U_max / P_rad
+    /// where P_rad = ∫∫ |E|² sin(θ) dθ dφ
+    fn calculate_directivity(&self, far_field: &[FarFieldSample]) -> f64 {
+        if far_field.is_empty() {
+            return 0.0;
+        }
+
+        // Collect unique sorted theta and phi values
+        let mut thetas: Vec<f64> = far_field.iter().map(|s| s.theta).collect();
+        let mut phis: Vec<f64> = far_field.iter().map(|s| s.phi).collect();
+        thetas.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        thetas.dedup_by(|a, b| (*a - *b).abs() < 1e-12);
+        phis.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        phis.dedup_by(|a, b| (*a - *b).abs() < 1e-12);
+
+        let n_theta = thetas.len();
+        let n_phi = phis.len();
+
+        if n_theta < 2 || n_phi < 2 {
+            return 0.0;
+        }
+
+        // Build lookup: index by (theta_idx, phi_idx)
+        let mut u_grid = vec![vec![0.0f64; n_phi]; n_theta];
+        let mut u_max: f64 = 0.0;
+
+        for sample in far_field {
+            let ti = thetas.iter().position(|&t| (t - sample.theta).abs() < 1e-12);
+            let pi = phis.iter().position(|&p| (p - sample.phi).abs() < 1e-12);
+            if let (Some(ti), Some(pi)) = (ti, pi) {
+                let u = sample.e_theta.norm_sqr() + sample.e_phi.norm_sqr();
+                u_grid[ti][pi] = u;
+                if u > u_max {
+                    u_max = u;
+                }
+            }
+        }
+
+        if u_max < 1e-30 {
+            return -100.0;
+        }
+
+        // Numerical integration using trapezoidal rule: ∫∫ U(θ,φ) sin(θ) dθ dφ
+        let mut p_rad = 0.0;
+        for i in 0..n_theta - 1 {
+            let d_theta = thetas[i + 1] - thetas[i];
+            for j in 0..n_phi - 1 {
+                let d_phi = phis[j + 1] - phis[j];
+                // Average of four corners
+                let u_avg = 0.25
+                    * (u_grid[i][j] + u_grid[i + 1][j] + u_grid[i][j + 1] + u_grid[i + 1][j + 1]);
+                let sin_avg = 0.5 * (thetas[i].sin() + thetas[i + 1].sin());
+                p_rad += u_avg * sin_avg * d_theta * d_phi;
+            }
+        }
+
+        if p_rad < 1e-30 {
+            return -100.0;
+        }
+
+        let directivity = 4.0 * PI * u_max / p_rad;
+        10.0 * directivity.log10()
     }
 
     /// Calculate front-to-back ratio
@@ -598,6 +732,38 @@ mod tests {
         assert!(result.is_err());
     }
     
+    #[test]
+    fn test_directivity_isotropic() {
+        // Uniform far-field pattern: all samples have equal |E|² → directivity should be ≈ 0 dBi
+        let transform = NearToFarFieldTransform::new(300e6);
+
+        let n_theta = 37;
+        let n_phi = 73;
+        let mut samples = Vec::new();
+
+        for i in 0..n_theta {
+            let theta = (i as f64 / (n_theta - 1) as f64) * PI;
+            for j in 0..n_phi {
+                let phi = (j as f64 / (n_phi - 1) as f64) * 2.0 * PI;
+                samples.push(FarFieldSample {
+                    theta,
+                    phi,
+                    e_theta: Complex64::new(1.0, 0.0),
+                    e_phi: Complex64::new(0.0, 0.0),
+                    gain_db: 0.0,
+                });
+            }
+        }
+
+        let d = transform.calculate_directivity(&samples);
+        // For a uniform pattern, D = 1 → 0 dBi. Allow ±0.5 dB for numerical error.
+        assert!(
+            (d - 0.0).abs() < 0.5,
+            "Isotropic directivity should be ~0 dBi, got {} dBi",
+            d
+        );
+    }
+
     #[test]
     fn test_compute_far_field_invalid_dimensions() {
         let transform = NearToFarFieldTransform::new(300e6);

@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react'
 import AntennaViewport from './AntennaViewport'
 
-// Mock ResizeObserver for tests
 class ResizeObserverMock {
   observe() {}
   unobserve() {}
@@ -13,49 +12,32 @@ Object.defineProperty(window, 'ResizeObserver', {
   value: ResizeObserverMock,
 })
 
-// Mock WebGL context for tests
-Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-  writable: true,
-  value: (contextType: string) => {
-    if (contextType === 'webgl' || contextType === 'webgl2') {
-      return {
-        canvas: {},
-        drawingBufferWidth: 800,
-        drawingBufferHeight: 600,
-        getExtension: () => null,
-        getParameter: () => null,
-        createShader: () => ({}),
-        shaderSource: () => {},
-        compileShader: () => {},
-        createProgram: () => ({}),
-        attachShader: () => {},
-        linkProgram: () => {},
-        useProgram: () => {},
-        createBuffer: () => ({}),
-        bindBuffer: () => {},
-        bufferData: () => {},
-        enableVertexAttribArray: () => {},
-        vertexAttribPointer: () => {},
-        drawArrays: () => {},
-        viewport: () => {},
-        clearColor: () => {},
-        clear: () => {},
-        enable: () => {},
-        disable: () => {},
-        getShaderParameter: () => true,
-        getProgramParameter: () => true,
-        getAttribLocation: () => 0,
-        getUniformLocation: () => ({}),
-        uniform1f: () => {},
-        uniform2f: () => {},
-        uniform3f: () => {},
-        uniform4f: () => {},
-        uniformMatrix4fv: () => {},
-      }
-    }
-    return null
-  },
-})
+vi.mock('@react-three/fiber', () => ({
+  Canvas: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="mock-canvas">{children}</div>
+  ),
+}))
+
+vi.mock('@react-three/drei', () => ({
+  OrbitControls: () => <div data-testid="orbit-controls" />,
+  Grid: () => <div data-testid="grid" />,
+}))
+
+vi.mock('./DipoleModel', () => ({
+  DipoleModel: () => <div data-testid="dipole-model" />,
+}))
+
+vi.mock('./MonopoleModel', () => ({
+  MonopoleModel: () => <div data-testid="monopole-model" />,
+}))
+
+vi.mock('./PatchModel', () => ({
+  PatchModel: () => <div data-testid="patch-model" />,
+}))
+
+vi.mock('./QfhModel', () => ({
+  QfhModel: () => <div data-testid="qfh-model" />,
+}))
 
 describe('AntennaViewport', () => {
   it('renders without crashing', () => {
@@ -63,10 +45,9 @@ describe('AntennaViewport', () => {
     expect(container.firstChild).toBeTruthy()
   })
 
-  it('has correct container styling', () => {
+  it('has relative positioning', () => {
     const { container } = render(<AntennaViewport />)
     const viewport = container.firstChild as HTMLElement
-    expect(viewport.style.width).toBe('100%')
-    expect(viewport.style.height).toBe('100vh')
+    expect(viewport.className).toContain('relative')
   })
 })

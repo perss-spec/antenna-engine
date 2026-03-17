@@ -5,31 +5,24 @@ import { MonopoleModel } from './MonopoleModel'
 import { PatchModel } from './PatchModel'
 import { QfhModel } from './QfhModel'
 import { YagiModel } from './models/YagiModel'
+import { HornModel } from './models/HornModel'
+import { VivaldiModel } from './models/VivaldiModel'
+import { LoopModel } from './models/LoopModel'
+import { BowTieModel } from './models/BowTieModel'
+import { DisconeModel } from './models/DisconeModel'
+import { BiconicalModel } from './models/BiconicalModel'
+import { SpiralModel } from './models/SpiralModel'
+import { ArrayModel } from './models/ArrayModel'
+import { FractalModel } from './models/FractalModel'
+import { ParabolicModel } from './models/ParabolicModel'
 import type { AntennaType } from '@/components/AntennaForm/AntennaForm'
 import { getCategoryForId } from '@/lib/antennaKB'
-import type { AntennaCategory } from '@/lib/antennaKB'
 import { cn } from '@/lib/utils'
 import { useRef, useState, useCallback } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Grid3x3, Maximize } from 'lucide-react'
 
 const C0 = 299792458
-
-const ANTENNA_LABELS: Record<string, string> = {
-  half_wave_dipole: 'Half-Wave Dipole',
-  quarter_wave_monopole: 'Quarter-Wave Monopole',
-  yagi_uda: 'Yagi-Uda',
-  log_periodic: 'Log-Periodic',
-  axial_helix: 'Axial Helix',
-  normal_helix: 'Normal-Mode Helix',
-  patch: 'Microstrip Patch',
-  horn: 'Horn Antenna',
-  parabolic: 'Parabolic Reflector',
-  loop: 'Loop Antenna',
-  spiral: 'Archimedean Spiral',
-  vivaldi: 'Vivaldi (UWB)',
-  phased_array: 'Phased Array',
-}
 
 interface AntennaViewportProps {
   antennaType?: AntennaType
@@ -43,6 +36,154 @@ function CameraController(_props: {
   controlsRef: React.RefObject<OrbitControlsImpl | null>
 }) {
   return null
+}
+
+/** Registry: maps antennaType → 3D model JSX */
+function renderModel(
+  antennaType: string,
+  length: number,
+  frequency: number,
+  radius: number,
+  wavelength: number,
+) {
+  const category = getCategoryForId(antennaType)
+
+  // --- Wire ---
+  if (category === 'wire') {
+    if (antennaType.includes('monopole')) {
+      return (
+        <MonopoleModel
+          length={length || wavelength / 4}
+          frequency={frequency}
+          radius={radius}
+          segments={20}
+          showFeedPoint
+          groundPlaneRadius={wavelength * 0.3}
+        />
+      )
+    }
+    if (antennaType.includes('yagi') || antennaType === 'log_periodic') {
+      return (
+        <YagiModel
+          driven_length={wavelength / 2}
+          reflector_length={(wavelength / 2) * 1.05}
+          director_length={(wavelength / 2) * 0.91}
+          spacing={wavelength * 0.25}
+          radius={radius}
+        />
+      )
+    }
+    if (antennaType.includes('helix') || antennaType === 'quadrifilar_helix') {
+      return (
+        <QfhModel
+          frequency={frequency}
+          turns={antennaType === 'axial_helix' ? 5 : 0.5}
+          diameter={wavelength * 0.16}
+          height={wavelength * 0.26}
+          wireRadius={radius}
+        />
+      )
+    }
+    if (antennaType === 'small_loop') {
+      return <LoopModel diameter={length || wavelength / 10} wireRadius={radius} />
+    }
+    // Default wire: dipole
+    return (
+      <DipoleModel
+        length={length || wavelength / 2}
+        frequency={frequency}
+        radius={radius}
+        segments={20}
+        showFeedPoint
+      />
+    )
+  }
+
+  // --- Microstrip ---
+  if (category === 'microstrip') {
+    return (
+      <PatchModel
+        length={length || wavelength / 4}
+        width={(length || wavelength / 4) * 1.3}
+        height={0.0016}
+        showSubstrate
+      />
+    )
+  }
+
+  // --- Broadband ---
+  if (category === 'broadband') {
+    if (antennaType === 'vivaldi_tsa') {
+      return <VivaldiModel length={length || wavelength / 2} apertureWidth={wavelength * 0.4} />
+    }
+    if (antennaType === 'bow_tie') {
+      return <BowTieModel armLength={length || wavelength / 4} />
+    }
+    if (antennaType === 'discone') {
+      return <DisconeModel />
+    }
+    if (antennaType === 'biconical') {
+      return <BiconicalModel />
+    }
+    if (antennaType === 'archimedean_spiral') {
+      return <SpiralModel outerRadius={wavelength * 0.15} />
+    }
+    // fallback broadband
+    return <BowTieModel armLength={length || wavelength / 4} />
+  }
+
+  // --- Aperture ---
+  if (category === 'aperture') {
+    if (antennaType === 'parabolic_reflector') {
+      return <ParabolicModel diameter={wavelength * 5} focalLength={wavelength * 2} />
+    }
+    return (
+      <HornModel
+        apertureWidth={wavelength}
+        apertureHeight={wavelength * 0.7}
+        length={wavelength * 1.5}
+      />
+    )
+  }
+
+  // --- Array ---
+  if (category === 'array') {
+    return (
+      <ArrayModel
+        numElements={4}
+        spacing={wavelength * 0.5}
+        elementLength={wavelength / 2}
+        elementRadius={radius}
+      />
+    )
+  }
+
+  // --- Special ---
+  if (category === 'special') {
+    if (antennaType === 'sierpinski_fractal') {
+      return <FractalModel size={length || wavelength / 4} />
+    }
+    // Default: dipole-like
+    return (
+      <DipoleModel
+        length={length || wavelength / 2}
+        frequency={frequency}
+        radius={radius}
+        segments={20}
+        showFeedPoint
+      />
+    )
+  }
+
+  return (
+    <DipoleModel
+      length={length || wavelength / 2}
+      frequency={frequency}
+      radius={radius}
+      segments={20}
+      showFeedPoint
+    />
+  )
 }
 
 function AntennaScene({
@@ -59,7 +200,6 @@ function AntennaScene({
   controlsRef: React.RefObject<OrbitControlsImpl | null>
 }) {
   const wavelength = C0 / frequency
-  const category: AntennaCategory = getCategoryForId(antennaType)
 
   return (
     <>
@@ -77,107 +217,7 @@ function AntennaScene({
       />
       <axesHelper args={[1]} />
 
-      {category === 'wire' && antennaType.includes('monopole') && (
-        <MonopoleModel
-          length={length || wavelength / 4}
-          frequency={frequency}
-          radius={radius}
-          segments={20}
-          showFeedPoint
-          groundPlaneRadius={wavelength * 0.3}
-
-        />
-      )}
-
-      {category === 'wire' && (antennaType.includes('yagi') || antennaType === 'log_periodic') && (
-        <YagiModel
-          driven_length={wavelength / 2}
-          reflector_length={(wavelength / 2) * 1.05}
-          director_length={(wavelength / 2) * 0.91}
-          spacing={wavelength * 0.25}
-          radius={radius}
-
-        />
-      )}
-
-      {category === 'wire' && antennaType.includes('helix') && (
-        <QfhModel
-          frequency={frequency}
-          turns={antennaType === 'axial_helix' ? 5 : 0.5}
-          diameter={wavelength * 0.16}
-          height={wavelength * 0.26}
-          wireRadius={radius}
-
-        />
-      )}
-
-      {category === 'wire' &&
-        !antennaType.includes('monopole') &&
-        !antennaType.includes('yagi') &&
-        antennaType !== 'log_periodic' &&
-        !antennaType.includes('helix') && (
-          <DipoleModel
-            length={length || wavelength / 2}
-            frequency={frequency}
-            radius={radius}
-            segments={20}
-            showFeedPoint
-
-          />
-        )}
-
-      {category === 'microstrip' && (
-        <PatchModel
-          length={length || wavelength / 4}
-          width={(length || wavelength / 4) * 1.3}
-          height={0.0016}
-          showSubstrate
-
-        />
-      )}
-
-      {category === 'broadband' && (
-        <DipoleModel
-          length={length || wavelength / 2}
-          frequency={frequency}
-          radius={radius * 3}
-          segments={20}
-          showFeedPoint
-
-        />
-      )}
-
-      {category === 'aperture' && (
-        <PatchModel
-          length={wavelength}
-          width={wavelength * 0.7}
-          height={wavelength * 0.5}
-          showSubstrate={false}
-
-        />
-      )}
-
-      {category === 'array' && (
-        <YagiModel
-          driven_length={wavelength / 2}
-          reflector_length={wavelength / 2}
-          director_length={wavelength / 2}
-          spacing={wavelength * 0.5}
-          radius={radius}
-
-        />
-      )}
-
-      {category === 'special' && (
-        <DipoleModel
-          length={length || wavelength / 2}
-          frequency={frequency}
-          radius={radius}
-          segments={20}
-          showFeedPoint
-
-        />
-      )}
+      {renderModel(antennaType, length, frequency, radius, wavelength)}
 
       <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} />
       <CameraController controlsRef={controlsRef} />
@@ -202,8 +242,6 @@ export default function AntennaViewport({
   const [wireframe, setWireframe] = useState(false)
   const [activePreset, setActivePreset] = useState<string>('iso')
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
-
-  const label = ANTENNA_LABELS[antennaType] ?? antennaType
 
   const handlePreset = useCallback(
     (preset: (typeof VIEW_PRESETS)[number]['key']) => {
@@ -236,16 +274,13 @@ export default function AntennaViewport({
 
   return (
     <div className={cn('relative w-full h-full', className)}>
-      {/* Viewport header label */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center pointer-events-none">
         <span className="mt-2 text-[11px] tracking-wide font-mono text-text-muted bg-base/70 backdrop-blur px-3 py-1 rounded-lg">
-          {label}
+          {antennaType.replace(/_/g, ' ')}
         </span>
       </div>
 
-      {/* Toolbar */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 bg-base/80 backdrop-blur-md border border-border/50 rounded-xl p-2">
-        {/* View presets */}
         {VIEW_PRESETS.map((p) => (
           <button
             key={p.key}
@@ -264,7 +299,6 @@ export default function AntennaViewport({
 
         <div className="h-px bg-border mx-1 my-0.5" />
 
-        {/* Wireframe toggle */}
         <button
           title="Toggle wireframe"
           onClick={() => setWireframe((v) => !v)}
@@ -278,7 +312,6 @@ export default function AntennaViewport({
           <Grid3x3 size={16} />
         </button>
 
-        {/* Fit all / reset */}
         <button
           title="Fit all (reset view)"
           onClick={handleFitAll}
@@ -298,7 +331,6 @@ export default function AntennaViewport({
           length={length}
           frequency={frequency}
           radius={radius}
-
           controlsRef={controlsRef}
         />
       </Canvas>

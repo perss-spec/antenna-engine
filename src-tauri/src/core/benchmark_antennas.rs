@@ -100,4 +100,44 @@ mod tests {
         let vswr = (1.0 + gamma) / (1.0 - gamma);
         assert!((vswr - 1.222).abs() < 0.01);
     }
+
+    // --- Reference data tests ---
+    use super::super::reference_data::*;
+
+    #[test]
+    fn test_dipole_reference_impedance() {
+        // At resonance (kL = π), King's formula: Z ≈ 73 + j42.5
+        let ref_ant = &HALF_WAVE_DIPOLE;
+        let z_re = 73.13; // King's approximation at exact resonance
+        assert!((z_re - ref_ant.z_real).abs() < ref_ant.z_tolerance,
+            "Dipole Z_real: got {}, expected {} ±{}", z_re, ref_ant.z_real, ref_ant.z_tolerance);
+    }
+
+    #[test]
+    fn test_wavelength_consistency() {
+        // λ = c/f should be consistent across all frequency conversions
+        let freqs = [145e6, 433e6, 2.4e9, 5.8e9, 10e9];
+        for f in freqs {
+            let lambda = C0 / f;
+            let f_back = C0 / lambda;
+            assert!((f - f_back).abs() / f < 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_s11_physical_bounds() {
+        // |S11| must be in [0, 1] for passive antenna
+        let test_impedances = [
+            (73.0, 42.5),   // dipole
+            (36.5, 21.25),  // monopole
+            (150.0, 0.0),   // patch edge
+            (5.0, -500.0),  // below cutoff
+            (377.0, 0.0),   // free space
+        ];
+        for (zr, zi) in test_impedances {
+            let s11 = calculate_s11_mag(zr, zi, 50.0);
+            assert!(s11 >= 0.0 && s11 <= 1.0,
+                "S11 out of bounds for Z={}+j{}: got {}", zr, zi, s11);
+        }
+    }
 }

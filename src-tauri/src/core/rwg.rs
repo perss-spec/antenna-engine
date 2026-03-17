@@ -14,10 +14,22 @@ pub struct RwgEdge {
     pub area_minus: f64,
 }
 
+#[derive(Debug, Clone)]
+pub struct HalfRwgEdge {
+    pub v1: usize,
+    pub v2: usize,
+    pub triangle: usize,
+    pub v_free: usize,
+    pub length: f64,
+    pub area: f64,
+}
+
 #[derive(Debug)]
 pub struct RwgBasis {
     pub edges: Vec<RwgEdge>,
     pub num_basis: usize,
+    pub boundary_edges: Vec<HalfRwgEdge>,
+    pub num_boundary: usize,
 }
 
 impl RwgBasis {
@@ -68,11 +80,37 @@ impl RwgBasis {
             }
         }
 
+        let mut boundary_edges = Vec::new();
+
+        for ((v1, v2), triangles) in edge_map.iter() {
+            if triangles.len() == 1 {
+                let tri_idx = triangles[0];
+                let v_free = find_free_vertex(&mesh.triangles[tri_idx], *v1, *v2)?;
+
+                let p1 = &mesh.vertices[*v1];
+                let p2 = &mesh.vertices[*v2];
+                let length = p1.distance(p2);
+                let area = calculate_triangle_area(mesh, tri_idx);
+
+                boundary_edges.push(HalfRwgEdge {
+                    v1: *v1,
+                    v2: *v2,
+                    triangle: tri_idx,
+                    v_free,
+                    length,
+                    area,
+                });
+            }
+        }
+
         let num_basis = rwg_edges.len();
+        let num_boundary = boundary_edges.len();
 
         Ok(RwgBasis {
             edges: rwg_edges,
             num_basis,
+            boundary_edges,
+            num_boundary,
         })
     }
 
@@ -131,6 +169,42 @@ impl RwgBasis {
             edge.length / edge.area_plus
         } else if tri_idx == edge.t_minus {
             -edge.length / edge.area_minus
+        } else {
+            0.0
+        }
+    }
+
+    pub fn evaluate_half(
+        &self,
+        boundary_idx: usize,
+        point: &Point3D,
+        tri_idx: usize,
+        mesh: &Mesh,
+    ) -> Point3D {
+        if boundary_idx >= self.num_boundary {
+            return Point3D::new(0.0, 0.0, 0.0);
+        }
+
+        let half = &self.boundary_edges[boundary_idx];
+
+        if tri_idx == half.triangle {
+            let v_free = &mesh.vertices[half.v_free];
+            let rho = point.sub(v_free);
+            rho.scale(half.length / (2.0 * half.area))
+        } else {
+            Point3D::new(0.0, 0.0, 0.0)
+        }
+    }
+
+    pub fn divergence_half(&self, boundary_idx: usize, tri_idx: usize) -> f64 {
+        if boundary_idx >= self.num_boundary {
+            return 0.0;
+        }
+
+        let half = &self.boundary_edges[boundary_idx];
+
+        if tri_idx == half.triangle {
+            half.length / half.area
         } else {
             0.0
         }
@@ -319,6 +393,81 @@ mod tests {
         let total =
             div_plus * rwg.edges[0].area_plus + div_minus * rwg.edges[0].area_minus;
         assert!(total.abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_boundary_edges() {
+        // Single triangle — all 3 edges are boundary (no shared edges)
+        let vertices = vec![
+            Point3D::new(0.0, 0.0, 0.0),
+            Point3D::new(1.0, 0.0, 0.0),
+            Point3D::new(0.0, 1.0, 0.0),
+        ];
+
+        let triangles = vec![Triangle { vertices: [0, 1, 2] }];
+
+        let mesh = Mesh {
+            vertices: vertices.clone(),
+            triangles,
+            segments: Vec::new(),
+        };
+
+        let rwg = RwgBasis::from_mesh(&mesh).unwrap();
+
+        assert_eq!(rwg.num_basis, 0, "No interior edges for a single triangle");
+        assert_eq!(rwg.num_boundary, 3, "Single triangle has 3 boundary edges");
+
+        // Verify each boundary edge has correct triangle index
+        for half in &rwg.boundary_edges {
+            assert_eq!(half.triangle, 0);
+            assert!(half.length > 0.0);
+            assert!(half.area > 0.0);
+            // v_free must differ from edge vertices
+            assert_ne!(half.v_free, half.v1);
+            assert_ne!(half.v_free, half.v2);
+        }
+
+        // Test evaluate_half: at the free vertex the basis function should be zero
+        for (i, half) in rwg.boundary_edges.iter().enumerate() {
+            let v_free_pt = &mesh.vertices[half.v_free];
+            let val = rwg.evaluate_half(i, v_free_pt, 0, &mesh);
+            assert!(
+                val.magnitude() < 1e-12,
+                "Basis function must be zero at free vertex"
+            );
+        }
+
+        // Test divergence_half: positive for matching triangle, zero for wrong triangle
+        for i in 0..rwg.num_boundary {
+            let div = rwg.divergence_half(i, 0);
+            assert!(div > 0.0, "Divergence must be positive for the owning triangle");
+
+            let div_wrong = rwg.divergence_half(i, 999);
+            assert!((div_wrong).abs() < 1e-15, "Divergence must be zero for non-matching triangle");
+        }
+
+        // Two triangles sharing one edge: 1 interior + 4 boundary
+        let vertices2 = vec![
+            Point3D::new(0.0, 0.0, 0.0),
+            Point3D::new(1.0, 0.0, 0.0),
+            Point3D::new(0.0, 1.0, 0.0),
+            Point3D::new(1.0, 1.0, 0.0),
+        ];
+
+        let triangles2 = vec![
+            Triangle { vertices: [0, 1, 2] },
+            Triangle { vertices: [1, 3, 2] },
+        ];
+
+        let mesh2 = Mesh {
+            vertices: vertices2,
+            triangles: triangles2,
+            segments: Vec::new(),
+        };
+
+        let rwg2 = RwgBasis::from_mesh(&mesh2).unwrap();
+        assert_eq!(rwg2.num_basis, 1, "One shared interior edge");
+        assert_eq!(rwg2.num_boundary, 4, "Four boundary edges");
     }
 
     #[test]

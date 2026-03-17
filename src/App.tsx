@@ -23,114 +23,7 @@ import type { SimulationResult as EMSimResult, SweepResult } from './components/
 import { MeshViewer } from './viewport/MeshViewer';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-
-// Category-based impedance solver
-function solveByCategory(
-  category: AntennaCategory,
-  _antennaType: string,
-  ap: Record<string, number>,
-  f: number,
-  lambda: number,
-  k: number,
-  conductorLoss: (length: number, radius: number, freq: number) => number,
-  clampTan: (x: number) => number,
-  C0: number,
-): [number, number] {
-  switch (category) {
-    case 'wire': {
-      // King's approximation — works for dipoles, monopoles, helical, loops, yagi, LPDA
-      const L = ap.length_m || lambda / 2;
-      const a = ap.radius_m || 0.001;
-      const x = k * L - Math.PI;
-      const zr = 73.13 * (1 + 0.014 * x * x) + conductorLoss(L, a, f);
-      const zi = 42.5 * clampTan(x);
-      return [zr, zi];
-    }
-    case 'microstrip': {
-      // Cavity model (Hammerstad & Jensen) — patches, PIFAs, IFAs
-      const er = ap.substrate_er || 4.4;
-      const h = ap.substrate_height_m || 0.0016;
-      const W = ap.width_m || C0 / (2 * f) * Math.sqrt(2 / (er + 1));
-      const erEff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / W, -0.5);
-      const deltaL = 0.412 * h * (erEff + 0.3) * (W / h + 0.264)
-        / ((erEff - 0.258) * (W / h + 0.8));
-      const pLen = ap.length_m || C0 / (2 * f * Math.sqrt(erEff));
-      const Le = pLen + 2 * deltaL;
-      const fRes = C0 / (2 * Le * Math.sqrt(erEff));
-      const Zedge = Math.min(90 * er * er / (er - 1) * Math.pow(pLen / W, 2), 400);
-      const Q = C0 / (4 * fRes * h * Math.sqrt(erEff));
-      const detuning = f / fRes - fRes / f;
-      const zr = Zedge / (1 + Q * Q * detuning * detuning);
-      const zi = -zr * Q * detuning;
-      return [zr, zi];
-    }
-    case 'broadband': {
-      // Transmission line model — Vivaldi, bow-tie, spiral, discone, biconical
-      const L = ap.length_m || lambda / 2;
-      const a = ap.radius_m || 0.001;
-      const Zchar = 120 * Math.log(L / Math.max(a, 1e-6));
-      const fCenter = C0 / (2 * L);
-      const ratio = f / fCenter;
-      const bl = (Math.PI / 2) * ratio;
-      const tanBl = Math.tan(Math.min(Math.max(bl, -1.5), 1.5));
-      const ZL = 377; // free space impedance as load
-      const denR = Zchar;
-      const denI = ZL * tanBl;
-      const denMag2 = denR * denR + denI * denI;
-      let zr = Zchar * (ZL * denR + Zchar * tanBl * denI) / denMag2;
-      const zi = Zchar * (Zchar * tanBl * denR - ZL * denI) / denMag2;
-      // Broadband antennas have more stable impedance
-      zr = zr * 0.7 + 50 * 0.3; // tendency toward 50 ohm
-      return [Math.max(zr, 5) + conductorLoss(L, a, f), zi * 0.6];
-    }
-    case 'aperture': {
-      // Waveguide model — horns, slots, open waveguide, reflector
-      const aW = ap.aperture_width || lambda;
-      const bW = ap.aperture_height || lambda * 0.7;
-      const fCutoff = C0 / (2 * Math.max(aW, lambda * 0.5));
-      const ratio = f / fCutoff;
-      if (ratio < 1) {
-        return [5, -500]; // below cutoff
-      }
-      const Zw = 377 / Math.sqrt(1 - Math.pow(fCutoff / f, 2));
-      // Aperture impedance ≈ Zw modified by flare
-      const flare = Math.sqrt(aW * bW) / lambda;
-      const zr = Zw * (1 - 0.3 / (flare + 1));
-      const zi = Zw * 0.1 * (1 - ratio) / ratio;
-      return [Math.max(zr, 10), zi];
-    }
-    case 'array': {
-      // Array factor model — ULA, planar, phased, Butler matrix
-      const N = ap.num_elements || 4;
-      const d = ap.element_spacing || lambda / 2;
-      // Element impedance (dipole-like)
-      const L = ap.length_m || lambda / 2;
-      const x = k * L - Math.PI;
-      const ze_r = 73.13 * (1 + 0.014 * x * x);
-      const ze_i = 42.5 * clampTan(x);
-      // Mutual coupling reduces input impedance
-      const kd = k * d;
-      const Z12 = 73 * (kd > 0.01 ? Math.sin(kd) / kd : 1);
-      // Active element impedance
-      const zr = ze_r - (N - 1) * Z12 * 0.15;
-      const zi = ze_i + (N - 1) * Z12 * 0.05;
-      return [Math.max(zr, 5), zi];
-    }
-    case 'special':
-    default: {
-      // Generic resonator model for fractal, DRA, metamaterial, reconfigurable
-      const L = ap.length_m || lambda / 2;
-      const a = ap.radius_m || 0.001;
-      const fRes = C0 / (2 * L);
-      const Q = 20; // moderate Q for special antennas
-      const detuning = f / fRes - fRes / f;
-      const Rrad = 73.13;
-      const zr = Rrad / (1 + Q * Q * detuning * detuning) + conductorLoss(L, a, f);
-      const zi = -Rrad * Q * detuning / (1 + Q * Q * detuning * detuning);
-      return [Math.max(zr, 5), zi];
-    }
-  }
-}
+import { solveByCategory } from '@/lib/impedanceSolver';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
 const invoke = isTauri
@@ -154,19 +47,6 @@ const invoke = isTauri
       const n = a.freq_points || a.freqPoints || 101;
       const ap = a.antenna_params || {};
 
-      // Physics constants
-      const MU0 = 4 * Math.PI * 1e-7;
-      const SIGMA_CU = 5.8e7; // copper conductivity S/m
-
-      const clampTan = (x: number) => {
-        if (Math.abs(x) < 0.01) return x; // small angle: tan(x) ≈ x
-        const t = Math.tan(Math.min(Math.max(x, -1.5), 1.5));
-        return Math.abs(t) > 500 ? 500 * Math.sign(t) : t;
-      };
-
-      const conductorLoss = (length: number, radius: number, freq: number) =>
-        (length / (2 * Math.PI * Math.max(radius, 1e-6))) * Math.sqrt(Math.PI * freq * MU0 / SIGMA_CU);
-
       const frequencies: number[] = [];
       const s11Db: number[] = [];
       const s11Real: number[] = [];
@@ -183,7 +63,7 @@ const invoke = isTauri
         let zr: number, zi: number;
 
         const category: AntennaCategory = getCategoryForId(antennaType);
-        [zr, zi] = solveByCategory(category, antennaType, ap, f, lambda, k, conductorLoss, clampTan, C0);
+        [zr, zi] = solveByCategory(category, antennaType, ap, f, lambda, k);
 
         impedanceReal.push(zr);
         impedanceImag.push(zi);

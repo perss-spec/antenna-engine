@@ -314,6 +314,24 @@ pub fn gmres(
     }))
 }
 
+/// GMRES with auto-selected restart parameter
+/// - For small systems (n <= 30): restart = n (full GMRES, no restart)
+/// - For large systems (n > 30): restart = max(30, sqrt(n) as usize)
+pub fn gmres_auto(
+    a: &Array2<Complex64>,
+    b: &Array1<Complex64>,
+    tol: f64,
+    max_iter: usize,
+) -> Result<(Array1<Complex64>, ConvergenceInfo)> {
+    let n = a.nrows();
+    let restart = if n <= 30 {
+        n
+    } else {
+        30_usize.max((n as f64).sqrt() as usize)
+    };
+    gmres(a, b, tol, max_iter, restart)
+}
+
 /// Estimate condition number using power iteration
 pub fn estimate_condition_number(a: &Array2<Complex64>) -> f64 {
     let n = a.nrows();
@@ -469,5 +487,48 @@ mod tests {
         a[[2, 2]] = Complex64::new(0.01, 0.0);
         let cond = estimate_condition_number(&a);
         assert!(cond > 50.0);
+    }
+
+    #[test]
+    fn test_gmres_auto_convergence() {
+        // 10x10 system (small: restart = n = 10)
+        let n = 10;
+        let mut a = Array2::zeros((n, n));
+        for i in 0..n {
+            a[[i, i]] = Complex64::new(10.0, 0.0);
+            if i > 0 {
+                a[[i, i - 1]] = Complex64::new(-1.0, 0.5);
+            }
+            if i < n - 1 {
+                a[[i, i + 1]] = Complex64::new(-1.0, -0.5);
+            }
+        }
+        let b = Array1::from_elem(n, Complex64::new(1.0, 0.0));
+        let (x, info) = gmres_auto(&a, &b, 1e-8, 100).unwrap();
+        assert!(info.converged);
+        assert!(info.residual_norm < 1e-8);
+        let r = &b - &matvec(&a, &x);
+        let r_norm = r.mapv(|v| v.norm_sqr()).sum().sqrt();
+        assert!(r_norm < 1e-7);
+
+        // 100x100 system (large: restart = max(30, sqrt(100)) = 30)
+        let n = 100;
+        let mut a = Array2::zeros((n, n));
+        for i in 0..n {
+            a[[i, i]] = Complex64::new(10.0, 0.0);
+            if i > 0 {
+                a[[i, i - 1]] = Complex64::new(-1.0, 0.5);
+            }
+            if i < n - 1 {
+                a[[i, i + 1]] = Complex64::new(-1.0, -0.5);
+            }
+        }
+        let b = Array1::from_elem(n, Complex64::new(1.0, 0.0));
+        let (x, info) = gmres_auto(&a, &b, 1e-8, 200).unwrap();
+        assert!(info.converged);
+        assert!(info.residual_norm < 1e-8);
+        let r = &b - &matvec(&a, &x);
+        let r_norm = r.mapv(|v| v.norm_sqr()).sum().sqrt();
+        assert!(r_norm < 1e-7);
     }
 }

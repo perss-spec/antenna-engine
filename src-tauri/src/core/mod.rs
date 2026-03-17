@@ -20,6 +20,7 @@ pub mod import_stl;
 pub mod import_nastran;
 pub mod fdtd_bridge;
 pub mod benchmark_antennas;
+pub mod reference_data;
 pub mod batch;
 pub mod coverage;
 pub mod export;
