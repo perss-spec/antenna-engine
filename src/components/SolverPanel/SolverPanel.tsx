@@ -1,6 +1,39 @@
 import React, { useState, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { solveByCategory } from '@/lib/impedanceSolver';
+import { getCategoryForId } from '@/lib/antennaKB';
 import './SolverPanel.css';
+
+const C0 = 299792458;
+
+function localSweepLoop(antennaType: string, params: Record<string, number>, fStart: number, fEnd: number, nPts: number) {
+  const frequencies: number[] = [];
+  const z_re: number[] = [], z_im: number[] = [], s11: number[] = [], vswr: number[] = [];
+  for (let i = 0; i < nPts; i++) {
+    const f = fStart + (fEnd - fStart) * i / (nPts - 1);
+    frequencies.push(f);
+    const r = localSolve(antennaType, f, params);
+    z_re.push(r.impedance_real); z_im.push(r.impedance_imag);
+    s11.push(r.s11_db); vswr.push(r.vswr);
+  }
+  return { frequencies, z_re, z_im, s11, vswr };
+}
+
+function localSolve(antennaType: string, freq: number, params: Record<string, number>) {
+  const lambda = C0 / freq;
+  const k = 2 * Math.PI / lambda;
+  const category = getCategoryForId(antennaType);
+  const [zr, zi] = solveByCategory(category, antennaType, params, freq, lambda, k);
+  const dr = zr + 50, di = zi;
+  const dMag2 = dr * dr + di * di;
+  const gr = ((zr - 50) * dr + zi * di) / dMag2;
+  const gi = (zi * dr - (zr - 50) * di) / dMag2;
+  const gMag2 = gr * gr + gi * gi;
+  const s11_db = 10 * Math.log10(gMag2 || 1e-20);
+  const s11_mag = Math.sqrt(gMag2);
+  const vswr = (1 + Math.min(s11_mag, 0.9999)) / (1 - Math.min(s11_mag, 0.9999));
+  return { impedance_real: zr, impedance_imag: zi, s11_db, vswr };
+}
 
 export interface SimulationResult {
   solver: 'MoM Wire' | 'MoM Surface' | 'FDTD';
@@ -77,6 +110,17 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
   const [momResult, setMomResult] = useState<SimulationResult | null>(null);
   const [fdtdResult, setFdtdResult] = useState<SimulationResult | null>(null);
 
+  // Try server, fallback to local JS
+  const solveOne = useCallback(async (freq: number): Promise<{ impedance_real: number; impedance_imag: number; s11_db: number; vswr: number }> => {
+    const serverOk = await api.isServerAvailable();
+    if (serverOk) {
+      try {
+        return await api.solve({ antenna_type: antennaType, frequency: freq, parameters: antennaParams });
+      } catch { /* fallback */ }
+    }
+    return localSolve(antennaType, freq, antennaParams);
+  }, [antennaType, antennaParams]);
+
   const handleRun = useCallback(async () => {
     if (isRunning) return;
 
@@ -95,59 +139,25 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
           frequencyMode === 'preset' ? (PRESET_FREQUENCIES[presetBand][0] + PRESET_FREQUENCIES[presetBand][1]) / 2 :
           (freqStart + freqEnd) / 2;
 
-        setProgress(10);
+        setProgress(30);
+        const resp = await solveOne(freq);
+        setProgress(90);
 
-        // Use MoM job for MoM solvers, solve for quick analytical
-        const useMom = solverType.includes('MoM');
-
-        if (useMom) {
-          const { job_id } = await api.submitMomJob({
-            antenna_type: antennaType,
-            frequency: freq,
-            segments: meshResolution * 2 + 1,
-            parameters: antennaParams,
-          });
-
-          // Poll until done
-          const job = await api.waitForJob(job_id, (p) => setProgress(10 + p * 0.85));
-          if (job.status === 'failed') throw new Error(job.error || 'MoM failed');
-
-          const data = job.result as any;
-          const result: SimulationResult = {
-            solver: solverType,
-            frequency: freq,
-            impedance: { real: data.impedance_real, imag: data.impedance_imag },
-            s11_db: data.s11_db,
-            vswr: data.vswr,
-            gain_dbi: data.radiation_pattern?.max_gain_dbi ?? 2.15,
-            computation_time: (performance.now() - t0) / 1000,
-            convergence: { converged: true, iterations: data.segments || meshResolution, final_error: 0 },
-          };
-          setCurrentResult(result);
-          onSolveComplete(result);
-          if (comparisonMode) setMomResult(result);
-        } else {
-          // Analytical solve via server
-          const resp = await api.solve({
-            antenna_type: antennaType,
-            frequency: freq,
-            parameters: antennaParams,
-          });
-          setProgress(90);
-
-          const result: SimulationResult = {
-            solver: solverType,
-            frequency: freq,
-            impedance: { real: resp.impedance_real, imag: resp.impedance_imag },
-            s11_db: resp.s11_db,
-            vswr: resp.vswr,
-            gain_dbi: 2.15,
-            computation_time: (performance.now() - t0) / 1000,
-            convergence: { converged: true, iterations: 1, final_error: 0 },
-          };
-          setCurrentResult(result);
-          onSolveComplete(result);
-          if (comparisonMode) setFdtdResult(result);
+        const result: SimulationResult = {
+          solver: solverType,
+          frequency: freq,
+          impedance: { real: resp.impedance_real, imag: resp.impedance_imag },
+          s11_db: resp.s11_db,
+          vswr: resp.vswr,
+          gain_dbi: 2.15,
+          computation_time: (performance.now() - t0) / 1000,
+          convergence: { converged: true, iterations: 1, final_error: 0 },
+        };
+        setCurrentResult(result);
+        onSolveComplete(result);
+        if (comparisonMode) {
+          if (solverType.includes('MoM')) setMomResult(result);
+          else setFdtdResult(result);
         }
       } else {
         // Frequency sweep
@@ -160,29 +170,48 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
         }
 
         setProgress(10);
-        const resp = await api.sweep({
-          antenna_type: antennaType,
-          freq_start: fS,
-          freq_stop: fE,
-          freq_points: freqPoints,
-          parameters: antennaParams,
-        });
+
+        // Try server sweep, fallback to local loop
+        let sweepData: { frequencies: number[]; z_re: number[]; z_im: number[]; s11: number[]; vswr: number[] };
+        const serverOk = await api.isServerAvailable();
+        if (serverOk) {
+          try {
+            const resp = await api.sweep({
+              antenna_type: antennaType, freq_start: fS, freq_stop: fE,
+              freq_points: freqPoints, parameters: antennaParams,
+            });
+            sweepData = {
+              frequencies: resp.frequencies,
+              z_re: resp.impedance_real, z_im: resp.impedance_imag,
+              s11: resp.s11_db,
+              vswr: resp.s11_db.map(s => {
+                const mag = Math.pow(10, s / 20);
+                return (1 + mag) / (1 - Math.min(mag, 0.9999));
+              }),
+            };
+          } catch {
+            sweepData = localSweepLoop(antennaType, antennaParams, fS, fE, freqPoints);
+          }
+        } else {
+          sweepData = localSweepLoop(antennaType, antennaParams, fS, fE, freqPoints);
+        }
+
         setProgress(90);
 
-        const results: SimulationResult[] = resp.frequencies.map((f, i) => ({
+        const results: SimulationResult[] = sweepData.frequencies.map((f, i) => ({
           solver: solverType,
           frequency: f,
-          impedance: { real: resp.impedance_real[i], imag: resp.impedance_imag[i] },
-          s11_db: resp.s11_db[i],
-          vswr: 1,
+          impedance: { real: sweepData.z_re[i], imag: sweepData.z_im[i] },
+          s11_db: sweepData.s11[i],
+          vswr: sweepData.vswr[i],
           gain_dbi: 2.15,
-          computation_time: (performance.now() - t0) / 1000 / resp.frequencies.length,
+          computation_time: (performance.now() - t0) / 1000 / sweepData.frequencies.length,
           convergence: { converged: true, iterations: 1, final_error: 0 },
         }));
 
         const sweepResult: SweepResult = {
           solver: solverType,
-          frequencies: resp.frequencies,
+          frequencies: sweepData.frequencies,
           results,
         };
         setSweepResults(sweepResult);
@@ -195,7 +224,7 @@ export const SolverPanel: React.FC<SolverPanelProps> = ({
     } finally {
       setIsRunning(false);
     }
-  }, [isRunning, frequencyMode, comparisonMode, singleFreq, freqStart, freqEnd, freqPoints, presetBand, solverType, meshResolution, antennaType, antennaParams, onSolveComplete, onSweepComplete]);
+  }, [isRunning, frequencyMode, comparisonMode, singleFreq, freqStart, freqEnd, freqPoints, presetBand, solverType, meshResolution, antennaType, antennaParams, onSolveComplete, onSweepComplete, solveOne]);
 
   const handleCancel = () => {
     setIsRunning(false);
