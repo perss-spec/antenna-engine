@@ -451,6 +451,8 @@ function App() {
       : summary
         ? 'Review Results'
         : 'Configure';
+  const workflowStep = summary ? 3 : (isSimulating || isOptimizing) ? 2 : 1;
+  const canExport = chartData.length > 0;
   const workspaceNav = [
     { id: 's-parameters', label: 'S-Parameters', icon: ChartLine, disabled: !summary },
     { id: 'impedance', label: 'Impedance', icon: Waypoints, disabled: !summary },
@@ -535,16 +537,34 @@ function App() {
 
       <div className="h-11 bg-base border-b border-border px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-[11px]">
-          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">1. Configure</span>
+          <span className={`px-2.5 py-1 rounded-md border ${workflowStep >= 1 ? 'bg-accent/10 text-accent border-accent/20' : 'bg-elevated text-text-muted border-border'}`}>1. Configure</span>
           <span className="text-text-dim">→</span>
-          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">2. Run</span>
+          <span className={`px-2.5 py-1 rounded-md border ${workflowStep >= 2 ? 'bg-accent/10 text-accent border-accent/20' : 'bg-elevated text-text-muted border-border'}`}>2. Run</span>
           <span className="text-text-dim">→</span>
-          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">3. Analyze</span>
+          <span className={`px-2.5 py-1 rounded-md border ${workflowStep >= 3 ? 'bg-accent/10 text-accent border-accent/20' : 'bg-elevated text-text-muted border-border'}`}>3. Analyze</span>
           <span className="text-text-dim">→</span>
-          <span className="px-2.5 py-1 rounded-md bg-elevated text-text-muted border border-border">4. Export</span>
+          <span className={`px-2.5 py-1 rounded-md border ${canExport ? 'bg-accent/10 text-accent border-accent/20' : 'bg-elevated text-text-muted border-border'}`}>4. Export</span>
         </div>
-        <div className="text-xs text-text-muted">
-          Workspace state: <span className="font-medium text-text-primary">{workflowState}</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('s-parameters')}
+            disabled={!summary}
+            className="h-7 px-2.5 rounded-md text-[11px] border border-border bg-surface text-text-muted hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Analyze
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            disabled={!summary}
+            className="h-7 px-2.5 rounded-md text-[11px] border border-border bg-surface text-text-muted hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            History
+          </button>
+          <div className="text-xs text-text-muted">
+            Workspace state: <span className="font-medium text-text-primary">{workflowState}</span>
+          </div>
         </div>
       </div>
 
