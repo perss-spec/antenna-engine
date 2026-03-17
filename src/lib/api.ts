@@ -1,8 +1,8 @@
 // PROMIN Antenna Studio — Server API Client
 import { useState, useEffect } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
-const N8N_BASE = import.meta.env.VITE_N8N_URL || '/webhook';
+const API_BASE = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:3001/api`;
+const N8N_BASE = import.meta.env.VITE_N8N_URL || `${window.location.protocol}//${window.location.hostname}:5678/webhook`;
 
 // Types
 export interface SolveRequest {
