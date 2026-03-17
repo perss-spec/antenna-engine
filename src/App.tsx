@@ -4,7 +4,6 @@ import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'reac
 import AntennaForm from './components/AntennaForm/AntennaForm';
 import type { AntennaParameters } from './components/AntennaForm/AntennaForm';
 import { getCategoryForId } from '@/lib/antennaKB';
-import type { AntennaCategory } from '@/lib/antennaKB';
 import S11Chart from './components/S11Chart/S11Chart';
 import SmithChart from './components/SmithChart/SmithChart';
 import OptimizationPanel from './components/OptimizationPanel/OptimizationPanel';
@@ -25,6 +24,7 @@ import { MeshViewer } from './viewport/MeshViewer';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { solveByCategory } from '@/lib/impedanceSolver';
+import { api } from '@/lib/api';
 import {
   applyTheme,
   persistTheme,
@@ -34,72 +34,100 @@ import {
 } from '@/lib/theme';
 
 const isTauri = '__TAURI_INTERNALS__' in window;
+
+// Server-first sweep: try Axum API, fallback to local JS
+async function serverSweep(antennaType: string, fStart: number, fStop: number, n: number, ap: Record<string, number>): Promise<SimulateResponse> {
+  try {
+    const resp = await api.sweep({
+      antenna_type: antennaType,
+      freq_start: fStart,
+      freq_stop: fStop,
+      freq_points: n,
+      parameters: ap,
+    });
+    const minIdx = resp.s11_db.indexOf(Math.min(...resp.s11_db));
+    const bwIndices = resp.s11_db.map((v: number, i: number) => v <= -10 ? i : -1).filter((i: number) => i >= 0);
+    const bandwidth = bwIndices.length >= 2
+      ? resp.frequencies[bwIndices[bwIndices.length - 1]] - resp.frequencies[bwIndices[0]]
+      : 0;
+    return {
+      frequencies: resp.frequencies,
+      s11Db: resp.s11_db,
+      s11Real: resp.s11_real,
+      s11Imag: resp.s11_imag,
+      impedanceReal: resp.impedance_real,
+      impedanceImag: resp.impedance_imag,
+      resonantFreq: resp.frequencies[minIdx],
+      minS11: resp.s11_db[minIdx],
+      bandwidth,
+    };
+  } catch {
+    // Server unavailable — fallback to local JS solver
+    return localSweep(antennaType, fStart, fStop, n, ap);
+  }
+}
+
+function localSweep(antennaType: string, fStart: number, fStop: number, n: number, ap: Record<string, number>): SimulateResponse {
+  const C0 = 299792458;
+  const category = getCategoryForId(antennaType);
+  const frequencies: number[] = [];
+  const s11Db: number[] = [];
+  const s11Real: number[] = [];
+  const s11Imag: number[] = [];
+  const impedanceReal: number[] = [];
+  const impedanceImag: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const f = fStart + (fStop - fStart) * i / (n - 1);
+    const lambda = C0 / f;
+    const k = 2 * Math.PI / lambda;
+    frequencies.push(f);
+
+    const [zr, zi] = solveByCategory(category, antennaType, ap, f, lambda, k);
+    impedanceReal.push(zr);
+    impedanceImag.push(zi);
+
+    const dr = zr + 50, di = zi;
+    const dMag2 = dr * dr + di * di;
+    const gr = ((zr - 50) * dr + zi * di) / dMag2;
+    const gi = (zi * dr - (zr - 50) * di) / dMag2;
+    const gMag2 = gr * gr + gi * gi;
+    s11Db.push(10 * Math.log10(gMag2 || 1e-20));
+    s11Real.push(gr);
+    s11Imag.push(gi);
+  }
+
+  const minIdx = s11Db.indexOf(Math.min(...s11Db));
+  const bwIndices = s11Db.map((v, i) => v <= -10 ? i : -1).filter(i => i >= 0);
+  const bandwidth = bwIndices.length >= 2
+    ? frequencies[bwIndices[bwIndices.length - 1]] - frequencies[bwIndices[0]]
+    : 0;
+
+  return {
+    frequencies, s11Db, s11Real, s11Imag, impedanceReal, impedanceImag,
+    resonantFreq: frequencies[minIdx],
+    minS11: s11Db[minIdx],
+    bandwidth,
+  };
+}
+
 const invoke = isTauri
   ? (await import('@tauri-apps/api/core')).invoke
   : async (_cmd: string, args: any): Promise<any> => {
-      await new Promise(r => setTimeout(r, 400));
-      const a = args as any;
-
       if (_cmd === 'get_antenna_templates') {
         const { ANTENNA_PRESETS: presets } = await import('@/lib/antennaKB');
-        return presets.map(p => ({
+        return presets.map((p: any) => ({
           id: p.id, name: p.name, type: p.category, default_frequency: p.frequency * 1e6,
         }));
       }
-
-      // simulate_sweep mock — parametrized by antenna dimensions
-      const C0 = 299792458;
-      const antennaType = a.antenna_type || a.antennaType || 'dipole';
-      const fStart = a.freq_start || a.freqStart;
-      const fStop = a.freq_stop || a.freqStop;
-      const n = a.freq_points || a.freqPoints || 101;
-      const ap = a.antenna_params || {};
-
-      const frequencies: number[] = [];
-      const s11Db: number[] = [];
-      const s11Real: number[] = [];
-      const s11Imag: number[] = [];
-      const impedanceReal: number[] = [];
-      const impedanceImag: number[] = [];
-
-      for (let i = 0; i < n; i++) {
-        const f = fStart + (fStop - fStart) * i / (n - 1);
-        const lambda = C0 / f;
-        const k = 2 * Math.PI / lambda;
-        frequencies.push(f);
-
-        let zr: number, zi: number;
-
-        const category: AntennaCategory = getCategoryForId(antennaType);
-        [zr, zi] = solveByCategory(category, antennaType, ap, f, lambda, k);
-
-        impedanceReal.push(zr);
-        impedanceImag.push(zi);
-
-        const dr = zr + 50, di = zi;
-        const dMag2 = dr * dr + di * di;
-        const gr = ((zr - 50) * dr + zi * di) / dMag2;
-        const gi = (zi * dr - (zr - 50) * di) / dMag2;
-        const gMag2 = gr * gr + gi * gi;
-        const s11db = 10 * Math.log10(gMag2 || 1e-20);
-
-        s11Db.push(s11db);
-        s11Real.push(gr);
-        s11Imag.push(gi);
-      }
-
-      const minIdx = s11Db.indexOf(Math.min(...s11Db));
-      const bwIndices = s11Db.map((v, i) => v <= -10 ? i : -1).filter(i => i >= 0);
-      const bandwidth = bwIndices.length >= 2
-        ? frequencies[bwIndices[bwIndices.length - 1]] - frequencies[bwIndices[0]]
-        : 0;
-
-      return {
-        frequencies, s11Db, s11Real, s11Imag, impedanceReal, impedanceImag,
-        resonantFreq: frequencies[minIdx],
-        minS11: s11Db[minIdx],
-        bandwidth,
-      };
+      const a = args as any;
+      return serverSweep(
+        a.antenna_type || 'dipole',
+        a.freq_start || a.freqStart,
+        a.freq_stop || a.freqStop,
+        a.freq_points || a.freqPoints || 101,
+        a.antenna_params || {},
+      );
     };
 
 interface SimulateResponse {
