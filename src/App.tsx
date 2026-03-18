@@ -895,19 +895,19 @@ function App() {
 
           {/* Render charts invisibly underneath the loading screen overlay, forcing full layout flow */}
           <div className="absolute top-0 left-0 w-[1000px] shrink-0 flex flex-col gap-4 bg-base text-text-primary z-0 opacity-100" style={{ transform: 'translateY(100vh)' }}>
-            <div id="export-s11" className="w-[1000px] h-[600px] p-6 bg-base">
+            <div id="export-s11" className="flex flex-col w-[1000px] h-[600px] p-6 bg-base">
               <S11Chart data={chartData} simulationData={compChartData} />
             </div>
-            <div id="export-vswr" className="w-[1000px] h-[600px] p-6 bg-base">
+            <div id="export-vswr" className="flex flex-col w-[1000px] h-[600px] p-6 bg-base">
               <VswrChart data={vswrData} comparisonData={compVswrData} />
             </div>
-            <div id="export-impedance" className="w-[1000px] h-[600px] p-6 bg-base">
+            <div id="export-impedance" className="flex flex-col w-[1000px] h-[600px] p-6 bg-base">
               <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
             </div>
-            <div id="export-smith" className="w-[800px] h-[800px] p-6 bg-base flex justify-center items-center mx-auto">
+            <div id="export-smith" className="flex flex-col w-[1000px] h-[800px] p-6 bg-base items-center justify-center mx-auto">
               <SmithChart impedancePoints={smithData} />
             </div>
-            <div id="export-3d" className="w-[1000px] h-[700px] p-6 bg-base">
+            <div id="export-3d" className="flex flex-col w-[1200px] h-[650px] p-6 bg-base">
               <AntennaViewport
                 antennaType={params.antennaType}
                 length={params.length / 1000}
@@ -916,7 +916,7 @@ function App() {
                 className="w-full h-full"
               />
             </div>
-            <div id="export-radiation" className="w-[1000px] h-[700px] p-6 bg-base">
+            <div id="export-radiation" className="flex flex-col w-[1200px] h-[650px] p-6 bg-base">
               <RadiationPatternView
                 antennaType={params.antennaType}
                 frequency={params.frequency * 1e6}

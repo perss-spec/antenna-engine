@@ -237,7 +237,7 @@ export async function generatePdfReport(
 
     if (images.threeD) {
       const imgProps = doc.getImageProperties(images.threeD);
-      const sizeLimit = 95; // maximum height
+      const sizeLimit = 120; // maximum height
       let imgWidth = CONTENT_WIDTH;
       let imgHeight = (imgProps.height * CONTENT_WIDTH) / imgProps.width;
       if (imgHeight > sizeLimit) {
@@ -252,7 +252,7 @@ export async function generatePdfReport(
 
     if (images.radiation) {
       const imgProps = doc.getImageProperties(images.radiation);
-      const sizeLimit = 100; // max height
+      const sizeLimit = 120; // max height
       let imgWidth = CONTENT_WIDTH;
       let imgHeight = (imgProps.height * CONTENT_WIDTH) / imgProps.width;
       if (imgHeight > sizeLimit) {
