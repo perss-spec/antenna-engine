@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { FC, JSX } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface ImpedancePoint {
   re: number;
@@ -366,15 +366,11 @@ const SmithChart: FC<SmithChartProps> = ({
   const hovered = hoveredIdx !== null ? plotData[hoveredIdx] : null;
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold">Smith Chart</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="relative flex justify-center">
+    <div className={cn("w-full h-full flex flex-col items-stretch min-h-[300px]", className)}>
+      <div className="w-full relative flex flex-1 items-center justify-center">
           <svg
             viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-            className="w-full max-w-[600px] aspect-square mx-auto"
+            className="w-full h-full object-contain overflow-visible"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeaveChart}
           >
@@ -535,8 +531,7 @@ const SmithChart: FC<SmithChartProps> = ({
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
   );
 };
 
