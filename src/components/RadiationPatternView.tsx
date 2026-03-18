@@ -182,7 +182,7 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
 
   return (
     <div className="flex flex-col gap-3 flex-1">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-html2canvas-ignore="true">
         <div className="flex gap-2 items-center">
           <span className="text-sm font-semibold text-text-primary">{t('radiation.title')}</span>
           {maxGain > -Infinity && (
@@ -245,7 +245,7 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-text-dim">
+      <div className="flex items-center gap-4 text-xs text-text-dim" data-html2canvas-ignore="true">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ background: getChartColor(1) }} />
           <span>{t('radiation.highGain')}</span>

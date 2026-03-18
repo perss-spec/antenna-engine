@@ -21,7 +21,8 @@ export async function captureElementAsImage(elementId: string, scale: number = 2
       }
     });
 
-    return canvas.toDataURL('image/png');
+    // Use JPEG with 0.85 quality to massively shrink PDF sizes
+    return canvas.toDataURL('image/jpeg', 0.85);
   } catch (error) {
     console.error(`Failed to capture element ${elementId}:`, error);
     return null;

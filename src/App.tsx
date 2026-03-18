@@ -882,36 +882,38 @@ function App() {
       {/* Hidden container specifically scoped for PDF Export capture */}
       {isPreparingExport && params && results && (
         <div 
-          className="fixed top-0 left-[-9999px] pointer-events-none opacity-100 flex flex-col gap-4 bg-base text-text-primary"
-          style={{ width: '1000px', zIndex: -9999 }}
+          className="fixed top-0 left-0 w-0 h-0 overflow-hidden pointer-events-none"
+          style={{ zIndex: -9999 }}
         >
-          <div id="export-s11" className="w-[1000px] h-[600px] p-6 bg-base">
-            <S11Chart data={chartData} simulationData={compChartData} />
-          </div>
-          <div id="export-vswr" className="w-[1000px] h-[600px] p-6 bg-base">
-            <VswrChart data={vswrData} comparisonData={compVswrData} />
-          </div>
-          <div id="export-impedance" className="w-[1000px] h-[600px] p-6 bg-base">
-            <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
-          </div>
-          <div id="export-smith" className="w-[800px] h-[800px] p-6 bg-base flex justify-center items-center mx-auto">
-            <SmithChart impedancePoints={smithData} />
-          </div>
-          <div id="export-3d" className="w-[1000px] h-[700px] p-6 bg-base">
-            <AntennaViewport
-              antennaType={params.antennaType}
-              length={params.length / 1000}
-              frequency={params.frequency * 1e6}
-              radius={params.radius / 1000}
-              className="w-full h-full"
-            />
-          </div>
-          <div id="export-radiation" className="w-[1000px] h-[700px] p-6 bg-base">
-            <RadiationPatternView
-              antennaType={params.antennaType}
-              frequency={params.frequency * 1e6}
-              patternData={results?.pattern}
-            />
+          <div className="flex flex-col gap-4 bg-base text-text-primary w-[1000px]">
+            <div id="export-s11" className="w-[1000px] h-[600px] p-6 bg-base">
+              <S11Chart data={chartData} simulationData={compChartData} />
+            </div>
+            <div id="export-vswr" className="w-[1000px] h-[600px] p-6 bg-base">
+              <VswrChart data={vswrData} comparisonData={compVswrData} />
+            </div>
+            <div id="export-impedance" className="w-[1000px] h-[600px] p-6 bg-base">
+              <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
+            </div>
+            <div id="export-smith" className="w-[800px] h-[800px] p-6 bg-base flex justify-center items-center mx-auto">
+              <SmithChart impedancePoints={smithData} />
+            </div>
+            <div id="export-3d" className="w-[1000px] h-[700px] p-6 bg-base">
+              <AntennaViewport
+                antennaType={params.antennaType}
+                length={params.length / 1000}
+                frequency={params.frequency * 1e6}
+                radius={params.radius / 1000}
+                className="w-full h-full"
+              />
+            </div>
+            <div id="export-radiation" className="w-[1000px] h-[700px] p-6 bg-base">
+              <RadiationPatternView
+                antennaType={params.antennaType}
+                frequency={params.frequency * 1e6}
+                patternData={results?.pattern}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -244,7 +244,7 @@ export async function generatePdfReport(
         imgHeight = sizeLimit;
         imgWidth = (imgProps.width * sizeLimit) / imgProps.height;
       }
-      doc.addImage(images.threeD, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+      doc.addImage(images.threeD, 'JPEG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
       y += imgHeight + 4;
       y = addFigureCaption(figNum++, '3D Antenna Geometry Overview', y);
       y += 8;
@@ -259,7 +259,7 @@ export async function generatePdfReport(
         imgHeight = sizeLimit;
         imgWidth = (imgProps.width * sizeLimit) / imgProps.height;
       }
-      doc.addImage(images.radiation, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+      doc.addImage(images.radiation, 'JPEG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
       y += imgHeight + 4;
       y = addFigureCaption(figNum++, '3D Far-field Radiation Pattern (Directivity/Gain)', y);
     }
@@ -277,7 +277,7 @@ export async function generatePdfReport(
     const imgProps = doc.getImageProperties(images.s11);
     const imgHeight = Math.min((imgProps.height * CONTENT_WIDTH) / imgProps.width, 100);
     const imgWidth = (imgProps.width * imgHeight) / imgProps.height;
-    doc.addImage(images.s11, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+    doc.addImage(images.s11, 'JPEG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
     y += imgHeight + 4;
     y = addFigureCaption(figNum++, 'Input Reflection Coefficient (S11) vs Frequency', y);
     y += 8;
@@ -287,7 +287,7 @@ export async function generatePdfReport(
     const imgProps = doc.getImageProperties(images.vswr);
     const imgHeight = Math.min((imgProps.height * CONTENT_WIDTH) / imgProps.width, 100);
     const imgWidth = (imgProps.width * imgHeight) / imgProps.height;
-    doc.addImage(images.vswr, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+    doc.addImage(images.vswr, 'JPEG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
     y += imgHeight + 4;
     y = addFigureCaption(figNum++, 'Voltage Standing Wave Ratio (VSWR)', y);
   }
@@ -305,7 +305,7 @@ export async function generatePdfReport(
       const imgProps = doc.getImageProperties(images.impedance);
       const imgHeight = Math.min((imgProps.height * CONTENT_WIDTH) / imgProps.width, 95);
       const imgWidth = (imgProps.width * imgHeight) / imgProps.height;
-      doc.addImage(images.impedance, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+      doc.addImage(images.impedance, 'JPEG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
       y += imgHeight + 4;
       y = addFigureCaption(figNum++, 'Complex Impedance Z(f) (Real & Imaginary)', y);
       y += 8;
@@ -315,7 +315,7 @@ export async function generatePdfReport(
       const imgProps = doc.getImageProperties(images.smith);
       const size = Math.min(110, imgProps.height * (CONTENT_WIDTH) / imgProps.width);
       const xOffset = MARGIN + (CONTENT_WIDTH - size) / 2;
-      doc.addImage(images.smith, 'PNG', xOffset, y, size, size);
+      doc.addImage(images.smith, 'JPEG', xOffset, y, size, size);
       y += size + 4;
       y = addFigureCaption(figNum++, 'Smith Chart Reflection Tracking', y);
     }

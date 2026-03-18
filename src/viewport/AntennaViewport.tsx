@@ -274,13 +274,13 @@ export default function AntennaViewport({
 
   return (
     <div className={cn('relative w-full h-full', className)}>
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center pointer-events-none" data-html2canvas-ignore="true">
         <span className="mt-2 text-[11px] tracking-wide font-mono text-text-muted bg-base/70 backdrop-blur px-3 py-1 rounded-lg">
           {antennaType.replace(/_/g, ' ')}
         </span>
       </div>
 
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 bg-base/80 backdrop-blur-md border border-border/50 rounded-xl p-2">
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 bg-base/80 backdrop-blur-md border border-border/50 rounded-xl p-2" data-html2canvas-ignore="true">
         {VIEW_PRESETS.map((p) => (
           <button
             key={p.key}
