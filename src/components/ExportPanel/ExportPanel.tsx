@@ -6,6 +6,11 @@ import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
+import type { AntennaParameters } from '@/components/AntennaForm/AntennaForm';
+import type { UnifiedSimResults } from '@/lib/unifiedResults';
+import type { AntennaPreset, KBEntry } from '@/lib/antennaKB';
+import { generatePdfReport } from '@/lib/pdfReportGenerator';
+import { captureElementAsImage } from '@/lib/captureCharts';
 
 export interface ExportPanelProps {
   frequencies: number[];
@@ -16,6 +21,13 @@ export interface ExportPanelProps {
   impedanceImag: number[];
   disabled?: boolean;
   className?: string;
+
+  // New props for PDF Generation
+  params?: AntennaParameters;
+  results?: UnifiedSimResults;
+  preset?: AntennaPreset;
+  kbEntry?: KBEntry;
+  simTimeMs?: number;
 }
 
 type S1PFormat = 'RI' | 'MA' | 'DB';
@@ -142,11 +154,17 @@ const ExportPanel: FC<ExportPanelProps> = ({
   impedanceImag,
   disabled = false,
   className,
+  params,
+  results,
+  preset,
+  kbEntry,
+  simTimeMs = 0,
 }) => {
   const { t } = useT();
   const [s1pFormat, setS1pFormat] = useState<S1PFormat>('RI');
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('MHz');
   const [showSettings, setShowSettings] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const handleExportS1P = () => {
     const content = generateS1PContent(frequencies, s11Real, s11Imag, s1pFormat, frequencyUnit);
@@ -166,6 +184,32 @@ const ExportPanel: FC<ExportPanelProps> = ({
     downloadFile(content, `promin_export_${Date.now()}.csv`, 'text/csv;charset=utf-8;');
   };
 
+  const handleExportPDF = async () => {
+    if (!params || !results) return;
+    setIsExportingPDF(true);
+    
+    try {
+      // Small delay to ensure any chart animations are done
+      await new Promise(r => setTimeout(r, 300));
+
+      const s11 = await captureElementAsImage('chart-s11');
+      const vswr = await captureElementAsImage('chart-vswr');
+      const zf = await captureElementAsImage('chart-impedance');
+      const smith = await captureElementAsImage('chart-smith');
+      
+      await generatePdfReport(
+        params,
+        results,
+        preset,
+        kbEntry,
+        { s11, vswr, impedance: zf, smith },
+        simTimeMs
+      );
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const isExportDisabled = disabled || frequencies.length === 0;
 
   return (
@@ -178,6 +222,10 @@ const ExportPanel: FC<ExportPanelProps> = ({
         <Button onClick={handleExportCSV} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1">
           <Download className="h-3 w-3 mr-1.5" />
           {t('export.csv')}
+        </Button>
+        <Button onClick={handleExportPDF} disabled={isExportDisabled || isExportingPDF || !params} variant="default" size="sm" className="flex-1 bg-accent hover:bg-accent-hover text-white border-0">
+          <Download className="h-3 w-3 mr-1.5" />
+          {isExportingPDF ? t('export.generating') : t('export.pdf')}
         </Button>
         <Button 
           onClick={() => setShowSettings(!showSettings)} 

@@ -715,6 +715,10 @@ function App() {
                           impedanceReal={impedanceData.real}
                           impedanceImag={impedanceData.imag}
                           disabled={isSimulating}
+                          params={params}
+                          results={results || undefined}
+                          preset={preset}
+                          simTimeMs={simTime || 0}
                         />
                       </div>
                     )}
@@ -739,25 +743,25 @@ function App() {
                         </div>
                       ))}
                     </div>
-                    <div className="soft-card p-4 flex-1 min-h-[300px] flex flex-col">
+                    <div id="chart-s11" className="soft-card p-4 flex-1 min-h-[300px] flex flex-col bg-base">
                       <S11Chart data={chartData} simulationData={compChartData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="impedance" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="soft-card p-4 flex-1 flex items-center justify-center">
+                    <div id="chart-smith" className="soft-card p-4 flex-1 flex items-center justify-center bg-base">
                       <SmithChart impedancePoints={smithData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="vswr" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="soft-card p-4 flex-1 min-h-[300px] flex flex-col">
+                    <div id="chart-vswr" className="soft-card p-4 flex-1 min-h-[300px] flex flex-col bg-base">
                       <VswrChart data={vswrData} comparisonData={compVswrData} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="z-freq" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="soft-card p-4 flex-1 min-h-[300px] flex flex-col">
+                    <div id="chart-impedance" className="soft-card p-4 flex-1 min-h-[300px] flex flex-col bg-base">
                       <ImpedanceChart data={impedanceChartData} comparisonData={compImpedanceData} />
                     </div>
                   </TabsContent>

@@ -131,6 +131,8 @@ const en: Record<string, string> = {
   // Export panel
   'export.s1p': 'Export S1P',
   'export.csv': 'Export CSV',
+  'export.pdf': 'Export PDF',
+  'export.generating': 'Generating...',
   'export.s1pFormat': 'S1P Format',
   'export.freqUnit': 'Frequency Unit',
   'export.ri': 'Real/Imaginary',
@@ -298,6 +300,8 @@ const uk: Record<string, string> = {
   // Export panel
   'export.s1p': 'Експорт S1P',
   'export.csv': 'Експорт CSV',
+  'export.pdf': 'Експорт PDF',
+  'export.generating': 'Генерується...',
   'export.s1pFormat': 'Формат S1P',
   'export.freqUnit': 'Одиниця частоти',
   'export.ri': 'Re/Im',
