@@ -882,10 +882,19 @@ function App() {
       {/* Hidden container specifically scoped for PDF Export capture */}
       {isPreparingExport && params && results && (
         <div 
-          className="fixed top-0 left-0 w-0 h-0 overflow-hidden pointer-events-none"
-          style={{ zIndex: -9999 }}
+          className="fixed inset-0 z-[9999] bg-base flex flex-col pointer-events-none"
         >
-          <div className="flex flex-col gap-4 bg-base text-text-primary w-[1000px]">
+          <div className="absolute inset-0 bg-base/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+            <svg className="animate-spin w-12 h-12 text-accent mb-6" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            <h2 className="text-2xl font-bold tracking-tight text-text-primary">Generating PDF Report</h2>
+            <p className="text-text-muted mt-2">Capturing high-resolution simulation diagrams...</p>
+          </div>
+
+          {/* Render charts invisibly underneath the loading screen overlay, forcing full layout flow */}
+          <div className="absolute top-0 left-0 w-[1000px] shrink-0 flex flex-col gap-4 bg-base text-text-primary z-0 opacity-100" style={{ transform: 'translateY(100vh)' }}>
             <div id="export-s11" className="w-[1000px] h-[600px] p-6 bg-base">
               <S11Chart data={chartData} simulationData={compChartData} />
             </div>
