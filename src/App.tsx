@@ -767,23 +767,25 @@ function App() {
                   </TabsContent>
 
                   <TabsContent value="3d-view" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <div className="soft-card flex-1 min-h-[300px] overflow-hidden">
+                    <div id="chart-3d" className="soft-card flex-1 min-h-[300px] flex flex-col bg-base overflow-hidden">
                       <AntennaViewport
                         antennaType={params.antennaType}
                         length={params.length / 1000}
                         frequency={params.frequency * 1e6}
                         radius={params.radius / 1000}
-                        className="h-full"
+                        className="h-full flex-1"
                       />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="radiation" className="flex-1 flex flex-col overflow-y-auto min-h-0">
-                    <RadiationPatternView
-                      antennaType={params.antennaType}
-                      frequency={params.frequency * 1e6}
-                      patternData={results?.pattern}
-                    />
+                    <div id="chart-radiation" className="flex-1 flex flex-col bg-base rounded-xl p-2 min-h-0">
+                      <RadiationPatternView
+                        antennaType={params.antennaType}
+                        frequency={params.frequency * 1e6}
+                        patternData={results?.pattern}
+                      />
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="history" className="flex-1 flex flex-col overflow-y-auto min-h-0">

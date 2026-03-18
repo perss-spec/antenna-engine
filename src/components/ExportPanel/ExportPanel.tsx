@@ -197,12 +197,16 @@ const ExportPanel: FC<ExportPanelProps> = ({
       const zf = await captureElementAsImage('chart-impedance');
       const smith = await captureElementAsImage('chart-smith');
       
+      // Attempt to capture 3D and Radiation (they might be hidden if tabs weren't opened but HTML2Canvas will try)
+      const threeD = await captureElementAsImage('chart-3d');
+      const radiation = await captureElementAsImage('chart-radiation');
+      
       await generatePdfReport(
         params,
         results,
         preset,
         kbEntry,
-        { s11, vswr, impedance: zf, smith },
+        { s11, vswr, impedance: zf, smith, threeD, radiation },
         simTimeMs
       );
     } finally {

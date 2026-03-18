@@ -214,6 +214,7 @@ export function RadiationPatternView({ antennaType, frequency, patternData }: Ra
         {pattern ? (
           <Canvas
             camera={{ position: [2, 1.5, 2], fov: 50 }}
+            gl={{ preserveDrawingBuffer: true, antialias: true }}
             style={{ background: 'transparent', width: '100%', height: '100%' }}
           >
             <ambientLight intensity={0.4} />

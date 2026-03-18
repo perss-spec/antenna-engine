@@ -324,6 +324,7 @@ export default function AntennaViewport({
       <Canvas
         camera={{ position: [0.5, 0.3, 0.5], fov: 50 }}
         className="h-full"
+        gl={{ preserveDrawingBuffer: true, antialias: true }}
         style={{ background: 'transparent' }}
       >
         <AntennaScene

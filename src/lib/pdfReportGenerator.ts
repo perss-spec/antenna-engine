@@ -8,6 +8,8 @@ export interface ReportImages {
   vswr?: string | null;
   smith?: string | null;
   impedance?: string | null;
+  threeD?: string | null;
+  radiation?: string | null;
 }
 
 const PAGE_WIDTH = 210;
@@ -181,7 +183,49 @@ export async function generatePdfReport(
 
   addFooter(pageNum++);
 
-  // --- PAGE 2: CHARTS (S11 & VSWR) ---
+  // --- PAGE 2: 3D MODEL & RADIATION (Optional) ---
+  if (images.threeD || images.radiation) {
+    doc.addPage();
+    setBg(COLORS.bg);
+    y = addHeader('3D Geometry & Radiation Pattern');
+
+    if (images.threeD) {
+      setTextColor(COLORS.primary);
+      doc.setFontSize(12);
+      doc.text('Antenna 3D Model', MARGIN, y);
+      y += 5;
+      const imgProps = doc.getImageProperties(images.threeD);
+      const sizeLimit = 95; // maximum height
+      let imgWidth = CONTENT_WIDTH;
+      let imgHeight = (imgProps.height * CONTENT_WIDTH) / imgProps.width;
+      if (imgHeight > sizeLimit) {
+        imgHeight = sizeLimit;
+        imgWidth = (imgProps.width * sizeLimit) / imgProps.height;
+      }
+      doc.addImage(images.threeD, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+      y += imgHeight + 15;
+    }
+
+    if (images.radiation) {
+      setTextColor(COLORS.primary);
+      doc.setFontSize(12);
+      doc.text('3D Radiation Pattern', MARGIN, y);
+      y += 5;
+      const imgProps = doc.getImageProperties(images.radiation);
+      const sizeLimit = 100; // max height
+      let imgWidth = CONTENT_WIDTH;
+      let imgHeight = (imgProps.height * CONTENT_WIDTH) / imgProps.width;
+      if (imgHeight > sizeLimit) {
+        imgHeight = sizeLimit;
+        imgWidth = (imgProps.width * sizeLimit) / imgProps.height;
+      }
+      doc.addImage(images.radiation, 'PNG', MARGIN + (CONTENT_WIDTH - imgWidth)/2, y, imgWidth, imgHeight);
+    }
+
+    addFooter(pageNum++);
+  }
+
+  // --- PAGE 3: CHARTS (S11 & VSWR) ---
   doc.addPage();
   setBg(COLORS.bg);
   y = addHeader('Return Loss & VSWR Analysis');
