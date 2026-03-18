@@ -113,11 +113,7 @@
   --shadow-glow: 0 0 16px rgba(63, 108, 255, 0.15);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Removed global * reset to allow Tailwind utility classes to work */
 
 body {
   background: var(--color-base);
