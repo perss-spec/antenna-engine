@@ -28,6 +28,8 @@ export interface ExportPanelProps {
   preset?: AntennaPreset;
   kbEntry?: KBEntry;
   simTimeMs?: number;
+  onExportStart?: () => void;
+  onExportEnd?: () => void;
 }
 
 type S1PFormat = 'RI' | 'MA' | 'DB';
@@ -159,6 +161,8 @@ const ExportPanel: FC<ExportPanelProps> = ({
   preset,
   kbEntry,
   simTimeMs = 0,
+  onExportStart,
+  onExportEnd,
 }) => {
   const { t } = useT();
   const [s1pFormat, setS1pFormat] = useState<S1PFormat>('RI');
@@ -187,19 +191,19 @@ const ExportPanel: FC<ExportPanelProps> = ({
   const handleExportPDF = async () => {
     if (!params || !results) return;
     setIsExportingPDF(true);
+    onExportStart?.();
     
     try {
-      // Small delay to ensure any chart animations are done
-      await new Promise(r => setTimeout(r, 300));
+      // Small delay to ensure any chart animations and external canvases are mounted
+      await new Promise(r => setTimeout(r, 2000));
 
-      const s11 = await captureElementAsImage('chart-s11');
-      const vswr = await captureElementAsImage('chart-vswr');
-      const zf = await captureElementAsImage('chart-impedance');
-      const smith = await captureElementAsImage('chart-smith');
+      const s11 = await captureElementAsImage('export-s11');
+      const vswr = await captureElementAsImage('export-vswr');
+      const zf = await captureElementAsImage('export-impedance');
+      const smith = await captureElementAsImage('export-smith');
       
-      // Attempt to capture 3D and Radiation (they might be hidden if tabs weren't opened but HTML2Canvas will try)
-      const threeD = await captureElementAsImage('chart-3d');
-      const radiation = await captureElementAsImage('chart-radiation');
+      const threeD = await captureElementAsImage('export-3d');
+      const radiation = await captureElementAsImage('export-radiation');
       
       await generatePdfReport(
         params,
@@ -209,8 +213,11 @@ const ExportPanel: FC<ExportPanelProps> = ({
         { s11, vswr, impedance: zf, smith, threeD, radiation },
         simTimeMs
       );
+    } catch (e) {
+      console.error('PDF Generation failed:', e);
     } finally {
       setIsExportingPDF(false);
+      onExportEnd?.();
     }
   };
 
