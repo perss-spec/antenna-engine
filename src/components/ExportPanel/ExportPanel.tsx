@@ -214,16 +214,16 @@ const ExportPanel: FC<ExportPanelProps> = ({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="flex items-center gap-2">
-        <Button onClick={handleExportS1P} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={handleExportS1P} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1 min-w-[100px]">
           <Download className="h-3 w-3 mr-1.5" />
           {t('export.s1p')}
         </Button>
-        <Button onClick={handleExportCSV} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1">
+        <Button onClick={handleExportCSV} disabled={isExportDisabled} variant="outline" size="sm" className="flex-1 min-w-[100px]">
           <Download className="h-3 w-3 mr-1.5" />
           {t('export.csv')}
         </Button>
-        <Button onClick={handleExportPDF} disabled={isExportDisabled || isExportingPDF || !params} variant="default" size="sm" className="flex-1 bg-accent hover:bg-accent-hover text-white border-0">
+        <Button onClick={handleExportPDF} disabled={isExportDisabled || isExportingPDF || !params} variant="default" size="sm" className="flex-1 min-w-[100px] bg-accent hover:bg-accent-hover text-white border-0">
           <Download className="h-3 w-3 mr-1.5" />
           {isExportingPDF ? t('export.generating') : t('export.pdf')}
         </Button>
